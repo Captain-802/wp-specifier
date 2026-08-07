@@ -144,18 +144,31 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
 .tie-edit-button:focus-visible { outline: 3px solid rgba(0,125,121,.28); outline-offset: 2px; }
 .tie-flag { font-size: 11px; font-weight: 700; color: #a4560c; background: #fdf2e4; border: 1px solid #f0d3ab; border-radius: 4px; padding: 4px 9px; }
 
-.tie-dialog { border: none; border-radius: 9px; padding: 0; width: min(480px, calc(100vw - 32px)); box-shadow: 0 18px 48px rgba(14,32,52,.28); color: var(--navy); }
+.tie-dialog { border: none; border-radius: 9px; padding: 0; width: min(880px, calc(100vw - 32px)); box-shadow: 0 18px 48px rgba(14,32,52,.28); color: var(--navy); }
 /* The panel now carries every assumption, so it can outgrow a short screen. */
 .tie-dialog-scroll { max-height: min(52vh, 460px); overflow-y: auto; padding-right: 4px; }
 .tie-group-title { margin: 0 0 9px; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .tie-rows + .tie-group-title { margin-top: 18px; }
 .tie-group-note { margin: -3px 0 10px; font-size: 11px; line-height: 1.5; color: var(--muted); }
-.tie-case { margin-bottom: 16px; padding: 12px 12px 10px; border: 1px solid #e2e7ec; border-radius: 7px; background: #fbfcfd; }
-.tie-case .tie-row { background: #fff; margin-bottom: 8px; }
-.tie-case-title { margin: 0 0 10px; font-size: 12px; font-weight: 800; color: var(--navy); }
-.tie-case-total { margin: 8px 0 0; font-size: 11px; color: var(--muted); }
-.tie-case-total strong { color: var(--navy); font-size: 12px; }
-.tie-governs { font-style: normal; font-size: 10px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--teal); background: var(--soft-teal); border-radius: 3px; padding: 2px 5px; margin-left: 6px; }
+/* Tie grid, laid out like the workbook's Ties sheet. Wide content, so it
+   scrolls sideways inside the dialog rather than stretching it. */
+.tie-table-wrap { overflow-x: auto; border: 1px solid #dce2e9; border-radius: 6px; }
+.tie-table { border-collapse: collapse; font-size: 12px; width: 100%; }
+.tie-table th, .tie-table td { border-right: 1px solid #e6ebf0; border-bottom: 1px solid #e6ebf0; padding: 6px 7px; text-align: center; }
+.tie-table thead th { background: #f5f7f9; font-size: 11px; font-weight: 800; color: var(--navy); white-space: nowrap; }
+.tie-table .tie-group-head { border-left: 2px solid #cbd4df; }
+.tie-table .tie-case-head { font-weight: 700; color: var(--muted); font-size: 10px; letter-spacing: .03em; }
+.tie-table tbody th { text-align: left; background: #fbfcfd; white-space: nowrap; position: sticky; left: 0; z-index: 1; }
+.tie-table-corner { text-align: left; position: sticky; left: 0; z-index: 2; }
+.tie-table-name { display: block; font-weight: 800; font-size: 12px; color: var(--navy); }
+.tie-table-note { display: block; font-weight: 500; font-size: 10px; color: var(--muted); margin-top: 1px; }
+.tie-table input { width: 64px; font: inherit; font-size: 12px; padding: 5px 6px; border: 1px solid #cbd4df; border-radius: 4px; text-align: right; }
+.tie-table input:focus-visible { outline: 2px solid rgba(0,125,121,.3); outline-offset: 1px; border-color: var(--teal); }
+.tie-table input.is-custom { border-color: #dda45c; background: #fffaf3; }
+.tie-table input.governs { box-shadow: inset 3px 0 0 var(--teal); }
+.tie-table input.is-invalid { border-color: #b4342b; background: #fdf3f2; }
+.tie-table-total td { background: #f5f7f9; font-weight: 800; color: var(--navy); }
+.tie-table-total th { background: #f5f7f9; }
 .tie-row-check { display: flex; align-items: center; justify-content: flex-end; gap: 8px; font-size: 12px; }
 .tie-row-check input { width: 17px; height: 17px; accent-color: var(--teal); cursor: pointer; }
 .tie-dialog::backdrop { background: rgba(14,32,52,.45); }

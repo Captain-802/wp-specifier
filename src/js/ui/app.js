@@ -119,39 +119,93 @@
           </div>`;
       }).join("");
 
-      // One block per post family and load case: the two ties on the load
-      // path, then the level total the weaker of them produces.
+      // Laid out like the workbook's Ties sheet: one column per post family
+      // and load case, one row per tie on the load path, and a computed row
+      // showing what the weaker of the two leaves gives that level.
       const config = windpost.config;
-      const cells = config.listTieStrengths();
-      this.tieRows.innerHTML = config.listTieLevelStrengths().map((level) => {
-        const rows = cells
-          .filter((c) => c.type === level.type && c.loadCase === level.loadCase)
-          .map((cell) => {
-            const id = `tie-${cell.type}-${cell.loadCase}-${cell.leaf}`;
-            const where = cell.leaf === "inner" ? "inner leaf" : "outer leaf";
-            return `
-              <div class="tie-row">
-                <label for="${id}">
-                  <span class="tie-row-name">${this.escape(cell.label)}${cell.governs ? ' <em class="tie-governs">governs</em>' : ""}</span>
-                  <span class="tie-row-meta">${where} · catalogue ${this.number(cell.defaultValue, 3)} kN</span>
-                </label>
-                <span class="tie-row-input">
-                  <input id="${id}" type="number" step="0.001" min="0"
-                         data-tie-type="${cell.type}" data-tie-case="${cell.loadCase}"
-                         data-tie-leaf="${cell.leaf}" value="${this.number(cell.value, 3)}">
-                  <span class="tie-row-unit">kN</span>
-                </span>
-              </div>`;
-          }).join("");
-        const sets = level.setsPerLevel > 1 ? ` × ${level.setsPerLevel} sets` : "";
-        return `
-          <div class="tie-case">
-            <h4 class="tie-case-title">${level.type} post · ${this.escape(level.caseLabel)}</h4>
-            ${rows}
-            <p class="tie-case-total">Level capacity = min(${this.number(level.inner, 3)}, ${this.number(level.outer, 3)})${sets} =
-              <strong>${this.number(level.value, 3)} kN</strong></p>
-          </div>`;
-      }).join("");
+      const columns = [];
+      config.TIE_TYPES.forEach((type) => config.TIE_LOAD_CASES.forEach((loadCase) => {
+        columns.push({ type, loadCase });
+      }));
+
+      const shortCase = { SS: "SS", Cant: "Cant", Point: "Point" };
+      const groupHead = config.TIE_TYPES.map((type) =>
+        `<th colspan="${config.TIE_LOAD_CASES.length}" class="tie-group-head">${type} post</th>`).join("");
+      const caseHead = columns.map((c) =>
+        `<th class="tie-case-head">${shortCase[c.loadCase]}</th>`).join("");
+
+      const cellFor = (type, loadCase, leaf) => {
+        const value = config.tieLeafStrength(type, loadCase, leaf);
+        const custom = config.isTieStrengthCustom(type, loadCase, leaf);
+        return `<td><input type="number" step="0.001" min="0"
+          class="${custom ? "is-custom" : ""}"
+          data-tie-type="${type}" data-tie-case="${loadCase}" data-tie-leaf="${leaf}"
+          aria-label="${type} post ${loadCase} ${leaf} tie"
+          value="${this.number(value, 3)}"></td>`;
+      };
+
+      const leafRow = (leaf, name, note) => `
+        <tr>
+          <th scope="row"><span class="tie-table-name">${name}</span><span class="tie-table-note">${note}</span></th>
+          ${columns.map((c) => cellFor(c.type, c.loadCase, leaf)).join("")}
+        </tr>`;
+
+      this.tieRows.innerHTML = `
+        <div class="tie-table-wrap">
+          <table class="tie-table">
+            <thead>
+              <tr><th rowspan="2" class="tie-table-corner">Tie</th>${groupHead}</tr>
+              <tr>${caseHead}</tr>
+            </thead>
+            <tbody>
+              ${leafRow("inner", "Inner tie", "U tie / Shear tie")}
+              ${leafRow("outer", "EDC tie", "outer leaf")}
+              <tr class="tie-table-total">
+                <th scope="row"><span class="tie-table-name">Level capacity</span><span class="tie-table-note">min of the two × sets</span></th>
+                ${columns.map((c) => `<td data-tie-total="${c.type}.${c.loadCase}"></td>`).join("")}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="tie-group-note">All values in kN, per tie set. A DU carries two
+          sets per level, so its level capacity is twice the weaker leaf.</p>`;
+
+      // Keep the computed row live while the engineer is still typing.
+      this.tieRows.querySelectorAll("input[data-tie-type]").forEach((input) => {
+        input.addEventListener("input", () => this.refreshTieTableTotals());
+      });
+      this.refreshTieTableTotals();
+    },
+
+    refreshTieTableTotals() {
+      const config = windpost.config;
+      const read = (type, loadCase, leaf) => {
+        const input = this.tieRows.querySelector(
+          `input[data-tie-type="${type}"][data-tie-case="${loadCase}"][data-tie-leaf="${leaf}"]`
+        );
+        const value = input ? Number(input.value) : NaN;
+        return Number.isFinite(value) ? value : null;
+      };
+      this.tieRows.querySelectorAll("[data-tie-total]").forEach((cell) => {
+        const [type, loadCase] = cell.dataset.tieTotal.split(".");
+        const inner = read(type, loadCase, "inner");
+        const outer = read(type, loadCase, "outer");
+        if (inner === null || outer === null) { cell.textContent = "—"; return; }
+        cell.textContent = this.number(Math.min(inner, outer) * config.setsPerLevel(type), 3);
+      });
+      // Mark the weaker leaf so the governing end is obvious at a glance.
+      config.TIE_TYPES.forEach((type) => config.TIE_LOAD_CASES.forEach((loadCase) => {
+        const inner = read(type, loadCase, "inner");
+        const outer = read(type, loadCase, "outer");
+        config.TIE_LEAVES.forEach((leaf) => {
+          const input = this.tieRows.querySelector(
+            `input[data-tie-type="${type}"][data-tie-case="${loadCase}"][data-tie-leaf="${leaf}"]`
+          );
+          if (!input || inner === null || outer === null) return;
+          const mine = leaf === "inner" ? inner : outer;
+          input.classList.toggle("governs", mine < Math.max(inner, outer));
+        });
+      }));
     },
 
     setTieStrengthError(message) {
