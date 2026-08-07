@@ -915,6 +915,44 @@ canvas:focus { box-shadow: inset 0 0 0 3px rgba(47, 127, 145, .28); }
   });
 
   // ---------------------------------------------------------------------
+  // Design assumptions.
+  //
+  // The material and spacing constants behind every calculation. Same
+  // pattern as the tie strengths: DESIGN_DEFAULTS holds the catalogue
+  // values and never changes; edits live in an override store that
+  // designValue() reads through. The bounds are sanity limits to catch a
+  // mistyped figure, not code limits.
+  // ---------------------------------------------------------------------
+  const PD = (windpost.parameters && windpost.parameters.design) || {};
+
+  const DESIGN_SPEC = Object.freeze([
+    { key: "fy", label: "Allowable stress", hint: "fᵧ in bending",
+      unit: "N/mm²", decimals: 2, min: 1, max: 2000, value: PD.fy ?? 127.27 },
+    { key: "e", label: "Initial E", hint: "Young's modulus",
+      unit: "kN/mm²", decimals: 0, min: 1, max: 1000, value: PD.e ?? 200 },
+    { key: "secantFy", label: "Secant fᵧ", hint: "Ramberg-Osgood proof strength",
+      unit: "N/mm²", decimals: 2, min: 1, max: 2000, value: PD.secantFy ?? 210 },
+    { key: "secantN", label: "Secant exponent", hint: "Ramberg-Osgood n",
+      unit: "", decimals: 2, min: 1, max: 100, value: PD.secantN ?? 7 },
+    { key: "firstTieSpacing", label: "First tie spacing", hint: "base to first tie",
+      unit: "mm", decimals: 0, min: 1, max: 5000, value: PD.firstTieSpacing ?? 225 },
+    { key: "standardTieSpacing", label: "Standard tie spacing", hint: "tie to tie",
+      unit: "mm", decimals: 0, min: 1, max: 5000, value: PD.standardTieSpacing ?? 225 },
+    { key: "apply10mmLimit", label: "10 mm deflection cap", hint: "cap deflection at 10 mm",
+      type: "boolean", value: false }
+  ]);
+
+  const DESIGN_KEYS = Object.freeze(DESIGN_SPEC.map((d) => d.key));
+  const DESIGN_META = Object.freeze(DESIGN_SPEC.reduce((all, d) => {
+    all[d.key] = d;
+    return all;
+  }, Object.create(null)));
+  const DESIGN_DEFAULTS = Object.freeze(DESIGN_SPEC.reduce((all, d) => {
+    all[d.key] = d.value;
+    return all;
+  }, Object.create(null)));
+
+  // ---------------------------------------------------------------------
   // Tie strength overrides.
   //
   // DEFAULT_TIE_STRENGTH_KN stays frozen as the catalogue values. Anything
@@ -960,6 +998,110 @@ canvas:focus { box-shadow: inset 0 0 0 3px rgba(47, 127, 145, .28); }
       if (Object.keys(overrides).length === 0) global.localStorage.removeItem(OVERRIDE_STORAGE_KEY);
       else global.localStorage.setItem(OVERRIDE_STORAGE_KEY, JSON.stringify(overrides));
     } catch (error) { /* storage unavailable - overrides stay in memory */ }
+  }
+
+  // --- design assumption overrides, same shape as the tie layer ---------
+  const DESIGN_STORAGE_KEY = "windpost_design_overrides_v1";
+  let designOverrides = Object.create(null);
+
+  function isValidDesignValue(key, value) {
+    const meta = DESIGN_META[key];
+    if (!meta) return false;
+    if (meta.type === "boolean") return typeof value === "boolean";
+    if (typeof value !== "number" && typeof value !== "string") return false;
+    if (typeof value === "string" && value.trim() === "") return false;
+    const n = Number(value);
+    return Number.isFinite(n) && n >= meta.min && n <= meta.max;
+  }
+
+  function normaliseDesignValue(key, value) {
+    return DESIGN_META[key].type === "boolean" ? Boolean(value) : Number(value);
+  }
+
+  function readStoredDesignOverrides() {
+    try {
+      const raw = global.localStorage && global.localStorage.getItem(DESIGN_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      DESIGN_KEYS.forEach((key) => {
+        if (Object.prototype.hasOwnProperty.call(parsed, key) && isValidDesignValue(key, parsed[key])) {
+          designOverrides[key] = normaliseDesignValue(key, parsed[key]);
+        }
+      });
+    } catch (error) {
+      designOverrides = Object.create(null);
+    }
+  }
+
+  function persistDesignOverrides() {
+    try {
+      if (!global.localStorage) return;
+      if (Object.keys(designOverrides).length === 0) global.localStorage.removeItem(DESIGN_STORAGE_KEY);
+      else global.localStorage.setItem(DESIGN_STORAGE_KEY, JSON.stringify(designOverrides));
+    } catch (error) { /* storage unavailable - overrides stay in memory */ }
+  }
+
+  function designValue(key) {
+    return Object.prototype.hasOwnProperty.call(designOverrides, key)
+      ? designOverrides[key]
+      : DESIGN_DEFAULTS[key];
+  }
+
+  function setDesignValue(key, value) {
+    if (!isValidDesignValue(key, value)) return false;
+    designOverrides[key] = normaliseDesignValue(key, value);
+    persistDesignOverrides();
+    return true;
+  }
+
+  function clearDesignValue(key) {
+    delete designOverrides[key];
+    persistDesignOverrides();
+  }
+
+  function resetDesignValues() {
+    designOverrides = Object.create(null);
+    persistDesignOverrides();
+  }
+
+  function isDesignCustom(key) {
+    if (key === undefined) return DESIGN_KEYS.some((k) => isDesignCustom(k));
+    return designValue(key) !== DESIGN_DEFAULTS[key];
+  }
+
+  function listDesignValues() {
+    return DESIGN_SPEC.map((meta) => ({
+      key: meta.key,
+      label: meta.label,
+      hint: meta.hint,
+      unit: meta.unit || "",
+      decimals: meta.decimals,
+      type: meta.type || "number",
+      min: meta.min,
+      max: meta.max,
+      value: designValue(meta.key),
+      defaultValue: DESIGN_DEFAULTS[meta.key],
+      custom: isDesignCustom(meta.key)
+    }));
+  }
+
+  // The values actually used by a calculation. The detailed report prints
+  // these, so it must show what was used, not what the catalogue says.
+  function currentDesignValues() {
+    return DESIGN_KEYS.reduce((all, key) => {
+      all[key] = designValue(key);
+      return all;
+    }, {});
+  }
+
+  // Anything edited at all - drives the single "edited" badge in the panel.
+  function isAnyAssumptionCustom() {
+    return isTieStrengthCustom() || isDesignCustom();
+  }
+
+  function resetAllAssumptions() {
+    resetTieStrengths();
+    resetDesignValues();
   }
 
   function tieStrength(type) {
@@ -1009,6 +1151,7 @@ canvas:focus { box-shadow: inset 0 0 0 3px rgba(47, 127, 145, .28); }
   }
 
   readStoredOverrides();
+  readStoredDesignOverrides();
 
   windpost.config = Object.freeze({
     CM4_TO_MM4: 10000,
@@ -1024,6 +1167,17 @@ canvas:focus { box-shadow: inset 0 0 0 3px rgba(47, 127, 145, .28); }
     resetTieStrengths,
     isTieStrengthCustom,
     listTieStrengths,
+    DESIGN_DEFAULTS,
+    DESIGN_KEYS,
+    designValue,
+    setDesignValue,
+    clearDesignValue,
+    resetDesignValues,
+    isDesignCustom,
+    listDesignValues,
+    currentDesignValues,
+    isAnyAssumptionCustom,
+    resetAllAssumptions,
     PARAPET_TOP_TIE_CLEARANCE_MM: P.parapetTopTieClearance_mm ?? 50,
     STORAGE_KEY: "windpost_saved_designs_original_gui_local_v1",
     PROPPED_CANTILEVER_DEFLECTION_COEFF: P.proppedCantileverDeflectionCoeff ?? 0.0054161216

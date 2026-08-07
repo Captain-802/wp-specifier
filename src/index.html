@@ -188,23 +188,23 @@
         </section>
 
         <details class="defaults-panel">
-          <summary><span>Design assumptions</span><small>Locked to the existing designer defaults</small></summary>
+          <summary><span>Design assumptions</span><small>Catalogue values — editable</small></summary>
           <div class="defaults-grid">
-            <div><span>Allowable stress</span><strong>127.27 N/mm²</strong></div>
-            <div><span>Initial E</span><strong>200 kN/mm²</strong></div>
-            <div><span>Secant f<sub>y</sub></span><strong>210 N/mm²</strong></div>
-            <div><span>Secant exponent</span><strong>n = 7</strong></div>
+            <div><span>Allowable stress</span><strong data-design-readout="fy">127.27 N/mm²</strong></div>
+            <div><span>Initial E</span><strong data-design-readout="e">200 kN/mm²</strong></div>
+            <div><span>Secant f<sub>y</sub></span><strong data-design-readout="secantFy">210 N/mm²</strong></div>
+            <div><span>Secant exponent</span><strong data-design-readout="secantN">n = 7</strong></div>
             <div><span>U tie strength</span><strong data-tie-readout="U">1.713 kN</strong></div>
             <div><span>L tie strength</span><strong data-tie-readout="L">2.250 kN</strong></div>
             <div><span>DU tie strength</span><strong data-tie-readout="DU">3.426 kN</strong></div>
-            <div><span>First / standard spacing</span><strong>225 / 225 mm</strong></div>
-            <div><span>10 mm deflection cap</span><strong>Not applied</strong></div>
+            <div><span>First / standard spacing</span><strong data-design-readout="spacingPair">225 / 225 mm</strong></div>
+            <div><span>10 mm deflection cap</span><strong data-design-readout="apply10mmLimit">Not applied</strong></div>
           </div>
           <div class="defaults-edit-row">
-            <button id="edit-tie-strengths" class="tie-edit-button" type="button">
-              <span aria-hidden="true">✎</span> Edit tie strengths
+            <button id="edit-assumptions" class="tie-edit-button" type="button">
+              <span aria-hidden="true">✎</span> Edit design assumptions
             </button>
-            <span id="tie-strength-flag" class="tie-flag hidden">Edited — not catalogue values</span>
+            <span id="assumptions-flag" class="tie-flag hidden">Edited — not catalogue values</span>
           </div>
         </details>
 
@@ -261,20 +261,32 @@
 
   <!-- Tie strength editor. Outside the design form: it carries its own form,
        and a form inside a form is invalid. -->
-  <dialog id="tie-strength-dialog" class="tie-dialog" aria-labelledby="tie-dialog-title">
-    <form id="tie-strength-form" method="dialog">
-      <h2 id="tie-dialog-title">Tie strengths</h2>
+  <dialog id="assumptions-dialog" class="tie-dialog" aria-labelledby="assumptions-title">
+    <form id="assumptions-form" method="dialog">
+      <h2 id="assumptions-title">Design assumptions</h2>
       <p class="tie-dialog-note">
-        Ultimate strength resisted at each tie level. A DU post carries two sets
-        of ties per level, so its value is normally twice the U tie.
+        Every calculation on this page runs on these values. Anything changed
+        from the catalogue is flagged on the design brief and in the report.
       </p>
-      <div id="tie-strength-rows" class="tie-rows"></div>
-      <p id="tie-strength-error" class="tie-dialog-error hidden" role="alert"></p>
+
+      <div class="tie-dialog-scroll">
+        <h3 class="tie-group-title">Material and spacing</h3>
+        <div id="design-rows" class="tie-rows"></div>
+
+        <h3 class="tie-group-title">Tie strengths</h3>
+        <p class="tie-group-note">
+          Ultimate strength resisted at each tie level. A DU post carries two
+          sets of ties per level, so its value is normally twice the U tie.
+        </p>
+        <div id="tie-rows" class="tie-rows"></div>
+      </div>
+
+      <p id="assumptions-error" class="tie-dialog-error hidden" role="alert"></p>
       <div class="tie-dialog-actions">
-        <button id="tie-strength-reset" class="secondary-button" type="button">Reset to catalogue</button>
+        <button id="assumptions-reset" class="secondary-button" type="button">Reset to catalogue</button>
         <span class="tie-dialog-spacer"></span>
-        <button id="tie-strength-cancel" class="secondary-button" type="button">Cancel</button>
-        <button id="tie-strength-apply" class="primary-button small" type="button">Apply</button>
+        <button id="assumptions-cancel" class="secondary-button" type="button">Cancel</button>
+        <button id="assumptions-apply" class="primary-button small" type="button">Apply</button>
       </div>
     </form>
   </dialog>

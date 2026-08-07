@@ -144,7 +144,14 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
 .tie-edit-button:focus-visible { outline: 3px solid rgba(0,125,121,.28); outline-offset: 2px; }
 .tie-flag { font-size: 11px; font-weight: 700; color: #a4560c; background: #fdf2e4; border: 1px solid #f0d3ab; border-radius: 4px; padding: 4px 9px; }
 
-.tie-dialog { border: none; border-radius: 9px; padding: 0; width: min(460px, calc(100vw - 32px)); box-shadow: 0 18px 48px rgba(14,32,52,.28); color: var(--navy); }
+.tie-dialog { border: none; border-radius: 9px; padding: 0; width: min(480px, calc(100vw - 32px)); box-shadow: 0 18px 48px rgba(14,32,52,.28); color: var(--navy); }
+/* The panel now carries every assumption, so it can outgrow a short screen. */
+.tie-dialog-scroll { max-height: min(52vh, 460px); overflow-y: auto; padding-right: 4px; }
+.tie-group-title { margin: 0 0 9px; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.tie-rows + .tie-group-title { margin-top: 18px; }
+.tie-group-note { margin: -3px 0 10px; font-size: 11px; line-height: 1.5; color: var(--muted); }
+.tie-row-check { display: flex; align-items: center; justify-content: flex-end; gap: 8px; font-size: 12px; }
+.tie-row-check input { width: 17px; height: 17px; accent-color: var(--teal); cursor: pointer; }
 .tie-dialog::backdrop { background: rgba(14,32,52,.45); }
 .tie-dialog form { padding: 22px 24px 20px; margin: 0; }
 .tie-dialog h2 { margin: 0; font-size: 19px; color: var(--navy); }

@@ -6,26 +6,29 @@
   const { getCalculatedDesignValues } = windpost.windpostCalculationEngine;
   const { calculateWallAndTie } = windpost.outerTieSelectionEngine;
 
-  // Editable design constants come from windpost.parameters (generated from
-  // windpost-database.xlsx); literals are the fallback if that file is absent.
-  const PD = (windpost.parameters && windpost.parameters.design) || {};
-
-  const DESIGN_DEFAULTS = Object.freeze({
-    fy: PD.fy ?? 127.27,
-    e: PD.e ?? 200,
-    secantFy: PD.secantFy ?? 210,
-    secantN: PD.secantN ?? 7,
-    firstTieSpacing: PD.firstTieSpacing ?? 225,
-    standardTieSpacing: PD.standardTieSpacing ?? 225,
-    apply10mmLimit: false,
+  // The catalogue constants now live in config, alongside the override layer
+  // that the Design assumptions editor writes to. DESIGN_DEFAULTS remains the
+  // unedited catalogue; currentDesignValues() is what a calculation runs on.
+  const NON_EDITABLE_DEFAULTS = Object.freeze({
     useCustomDeflectionLimit: false,
     customDeflectionLimit: "",
     connectionCapacityCap: ""
   });
 
+  const DESIGN_DEFAULTS = Object.freeze({
+    ...windpost.config.DESIGN_DEFAULTS,
+    ...NON_EDITABLE_DEFAULTS
+  });
+
+  // The assumptions a run actually used - passed back on the design object so
+  // the detailed report prints the edited figures, not the catalogue ones.
+  function currentDesignDefaults() {
+    return { ...windpost.config.currentDesignValues(), ...NON_EDITABLE_DEFAULTS };
+  }
+
   function sharedCalculationInputs(type) {
     return {
-      ...DESIGN_DEFAULTS,
+      ...currentDesignDefaults(),
       tieStrength: windpost.config.tieStrength(type)
     };
   }
@@ -145,7 +148,7 @@
           normalized.loadType
         ),
         inputs: normalized,
-        designDefaults: { ...DESIGN_DEFAULTS }
+        designDefaults: currentDesignDefaults()
       };
     }
 
@@ -175,7 +178,7 @@
         normalized.loadType
       ),
       inputs: normalized,
-      designDefaults: { ...DESIGN_DEFAULTS }
+      designDefaults: currentDesignDefaults()
     };
   }
 

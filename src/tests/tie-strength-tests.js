@@ -35,9 +35,9 @@ const C = W.config;
 
 let passed = 0;
 function check(name, task) {
-  C.resetTieStrengths();      // every check starts from the catalogue
+  C.resetAllAssumptions();    // every check starts from the catalogue
   task();
-  C.resetTieStrengths();
+  C.resetAllAssumptions();
   passed += 1;
   console.log(`PASS ${passed}: ${name}`);
 }
@@ -160,6 +160,96 @@ check("zero tie strength drives the tie capacity to zero", () => {
   C.setTieStrength("U", 0);
   const calc = capacityOf("U", "UP 115x60x6", 2670);
   assert.strictEqual(calc.totalTiesCapacity, 0);
+});
+
+// --- design assumptions -----------------------------------------------
+
+check("catalogue design assumptions are the published values", () => {
+  assert.strictEqual(C.designValue("fy"), 127.27);
+  assert.strictEqual(C.designValue("e"), 200);
+  assert.strictEqual(C.designValue("secantFy"), 210);
+  assert.strictEqual(C.designValue("secantN"), 7);
+  assert.strictEqual(C.designValue("firstTieSpacing"), 225);
+  assert.strictEqual(C.designValue("standardTieSpacing"), 225);
+  assert.strictEqual(C.designValue("apply10mmLimit"), false);
+});
+
+check("DESIGN_DEFAULTS is frozen and survives an edit", () => {
+  assert.ok(Object.isFrozen(C.DESIGN_DEFAULTS));
+  C.setDesignValue("fy", 150);
+  assert.strictEqual(C.DESIGN_DEFAULTS.fy, 127.27, "catalogue must not be mutated");
+  assert.strictEqual(C.designValue("fy"), 150);
+});
+
+check("out-of-range and mistyped design values are rejected", () => {
+  [0, -5, 5000, NaN, "", null, undefined, true].forEach((bad) => {
+    assert.strictEqual(C.setDesignValue("fy", bad), false, `fy ${bad} should be rejected`);
+  });
+  assert.strictEqual(C.designValue("fy"), 127.27);
+  assert.strictEqual(C.setDesignValue("nonsense", 5), false, "unknown key is rejected");
+});
+
+check("the deflection cap only accepts a boolean", () => {
+  assert.strictEqual(C.setDesignValue("apply10mmLimit", "yes"), false);
+  assert.strictEqual(C.setDesignValue("apply10mmLimit", 1), false);
+  assert.strictEqual(C.setDesignValue("apply10mmLimit", true), true);
+  assert.strictEqual(C.designValue("apply10mmLimit"), true);
+});
+
+check("resetAllAssumptions clears design values and tie strengths together", () => {
+  C.setDesignValue("fy", 150);
+  C.setTieStrength("U", 3);
+  assert.strictEqual(C.isAnyAssumptionCustom(), true);
+  C.resetAllAssumptions();
+  assert.strictEqual(C.designValue("fy"), 127.27);
+  assert.strictEqual(C.tieStrength("U"), 1.713);
+  assert.strictEqual(C.isAnyAssumptionCustom(), false);
+});
+
+check("listDesignValues carries units, bounds and the custom flag", () => {
+  const list = C.listDesignValues();
+  assert.deepStrictEqual(list.map((d) => d.key), [
+    "fy", "e", "secantFy", "secantN", "firstTieSpacing", "standardTieSpacing", "apply10mmLimit"
+  ]);
+  assert.strictEqual(list[0].unit, "N/mm²");
+  assert.strictEqual(list[6].type, "boolean");
+  assert.strictEqual(list[0].custom, false);
+  C.setDesignValue("fy", 150);
+  assert.strictEqual(C.listDesignValues()[0].custom, true);
+  assert.strictEqual(C.listDesignValues()[0].defaultValue, 127.27);
+});
+
+check("a raised allowable stress raises the bending capacity", () => {
+  const base = capacityOf("U", "UP 115x60x6", 2670);
+  C.setDesignValue("fy", 254.54);   // double it
+  const raised = capacityOf("U", "UP 115x60x6", 2670);
+  assert.ok(raised.safeLoadBendingMomentBased > base.safeLoadBendingMomentBased,
+    `bending should rise: ${base.safeLoadBendingMomentBased} -> ${raised.safeLoadBendingMomentBased}`);
+  assert.ok(Math.abs(raised.safeLoadBendingMomentBased - base.safeLoadBendingMomentBased * 2) < 1e-6,
+    "the bending-governed load is linear in fy");
+});
+
+check("a wider tie spacing gives fewer tie levels and less tie capacity", () => {
+  const base = capacityOf("U", "UP 115x60x6", 2670);
+  C.setDesignValue("standardTieSpacing", 450);
+  const wider = capacityOf("U", "UP 115x60x6", 2670);
+  assert.ok(wider.numberOfTies < base.numberOfTies,
+    `${base.numberOfTies} -> ${wider.numberOfTies}`);
+  assert.ok(wider.totalTiesCapacity < base.totalTiesCapacity);
+});
+
+check("the report is given the values actually used, not the catalogue", () => {
+  C.setDesignValue("fy", 150);
+  C.setDesignValue("standardTieSpacing", 300);
+  const design = W.automaticSelectionEngine.runDesign({
+    mode: "manual", type: "U", supportCondition: "simplySupported", loadType: "udl",
+    length_mm: 2670, selectedSectionName: "UP 115x60x6",
+    wall: { innerLeaf_mm: 100, cavity_mm: 100, outerLeaf_mm: 102.5 }
+  });
+  assert.strictEqual(design.designDefaults.fy, 150);
+  assert.strictEqual(design.designDefaults.standardTieSpacing, 300);
+  assert.strictEqual(W.automaticSelectionEngine.DESIGN_DEFAULTS.fy, 127.27,
+    "the engine's catalogue export stays unedited");
 });
 
 console.log(`\n${passed} checks passed.`);

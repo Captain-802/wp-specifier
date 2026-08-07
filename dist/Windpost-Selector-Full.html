@@ -153,7 +153,14 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
 .tie-edit-button:focus-visible { outline: 3px solid rgba(0,125,121,.28); outline-offset: 2px; }
 .tie-flag { font-size: 11px; font-weight: 700; color: #a4560c; background: #fdf2e4; border: 1px solid #f0d3ab; border-radius: 4px; padding: 4px 9px; }
 
-.tie-dialog { border: none; border-radius: 9px; padding: 0; width: min(460px, calc(100vw - 32px)); box-shadow: 0 18px 48px rgba(14,32,52,.28); color: var(--navy); }
+.tie-dialog { border: none; border-radius: 9px; padding: 0; width: min(480px, calc(100vw - 32px)); box-shadow: 0 18px 48px rgba(14,32,52,.28); color: var(--navy); }
+/* The panel now carries every assumption, so it can outgrow a short screen. */
+.tie-dialog-scroll { max-height: min(52vh, 460px); overflow-y: auto; padding-right: 4px; }
+.tie-group-title { margin: 0 0 9px; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.tie-rows + .tie-group-title { margin-top: 18px; }
+.tie-group-note { margin: -3px 0 10px; font-size: 11px; line-height: 1.5; color: var(--muted); }
+.tie-row-check { display: flex; align-items: center; justify-content: flex-end; gap: 8px; font-size: 12px; }
+.tie-row-check input { width: 17px; height: 17px; accent-color: var(--teal); cursor: pointer; }
 .tie-dialog::backdrop { background: rgba(14,32,52,.45); }
 .tie-dialog form { padding: 22px 24px 20px; margin: 0; }
 .tie-dialog h2 { margin: 0; font-size: 19px; color: var(--navy); }
@@ -572,23 +579,23 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
         </section>
 
         <details class="defaults-panel">
-          <summary><span>Design assumptions</span><small>Locked to the existing designer defaults</small></summary>
+          <summary><span>Design assumptions</span><small>Catalogue values — editable</small></summary>
           <div class="defaults-grid">
-            <div><span>Allowable stress</span><strong>127.27 N/mm²</strong></div>
-            <div><span>Initial E</span><strong>200 kN/mm²</strong></div>
-            <div><span>Secant f<sub>y</sub></span><strong>210 N/mm²</strong></div>
-            <div><span>Secant exponent</span><strong>n = 7</strong></div>
+            <div><span>Allowable stress</span><strong data-design-readout="fy">127.27 N/mm²</strong></div>
+            <div><span>Initial E</span><strong data-design-readout="e">200 kN/mm²</strong></div>
+            <div><span>Secant f<sub>y</sub></span><strong data-design-readout="secantFy">210 N/mm²</strong></div>
+            <div><span>Secant exponent</span><strong data-design-readout="secantN">n = 7</strong></div>
             <div><span>U tie strength</span><strong data-tie-readout="U">1.713 kN</strong></div>
             <div><span>L tie strength</span><strong data-tie-readout="L">2.250 kN</strong></div>
             <div><span>DU tie strength</span><strong data-tie-readout="DU">3.426 kN</strong></div>
-            <div><span>First / standard spacing</span><strong>225 / 225 mm</strong></div>
-            <div><span>10 mm deflection cap</span><strong>Not applied</strong></div>
+            <div><span>First / standard spacing</span><strong data-design-readout="spacingPair">225 / 225 mm</strong></div>
+            <div><span>10 mm deflection cap</span><strong data-design-readout="apply10mmLimit">Not applied</strong></div>
           </div>
           <div class="defaults-edit-row">
-            <button id="edit-tie-strengths" class="tie-edit-button" type="button">
-              <span aria-hidden="true">✎</span> Edit tie strengths
+            <button id="edit-assumptions" class="tie-edit-button" type="button">
+              <span aria-hidden="true">✎</span> Edit design assumptions
             </button>
-            <span id="tie-strength-flag" class="tie-flag hidden">Edited — not catalogue values</span>
+            <span id="assumptions-flag" class="tie-flag hidden">Edited — not catalogue values</span>
           </div>
         </details>
 
@@ -645,20 +652,32 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
 
   <!-- Tie strength editor. Outside the design form: it carries its own form,
        and a form inside a form is invalid. -->
-  <dialog id="tie-strength-dialog" class="tie-dialog" aria-labelledby="tie-dialog-title">
-    <form id="tie-strength-form" method="dialog">
-      <h2 id="tie-dialog-title">Tie strengths</h2>
+  <dialog id="assumptions-dialog" class="tie-dialog" aria-labelledby="assumptions-title">
+    <form id="assumptions-form" method="dialog">
+      <h2 id="assumptions-title">Design assumptions</h2>
       <p class="tie-dialog-note">
-        Ultimate strength resisted at each tie level. A DU post carries two sets
-        of ties per level, so its value is normally twice the U tie.
+        Every calculation on this page runs on these values. Anything changed
+        from the catalogue is flagged on the design brief and in the report.
       </p>
-      <div id="tie-strength-rows" class="tie-rows"></div>
-      <p id="tie-strength-error" class="tie-dialog-error hidden" role="alert"></p>
+
+      <div class="tie-dialog-scroll">
+        <h3 class="tie-group-title">Material and spacing</h3>
+        <div id="design-rows" class="tie-rows"></div>
+
+        <h3 class="tie-group-title">Tie strengths</h3>
+        <p class="tie-group-note">
+          Ultimate strength resisted at each tie level. A DU post carries two
+          sets of ties per level, so its value is normally twice the U tie.
+        </p>
+        <div id="tie-rows" class="tie-rows"></div>
+      </div>
+
+      <p id="assumptions-error" class="tie-dialog-error hidden" role="alert"></p>
       <div class="tie-dialog-actions">
-        <button id="tie-strength-reset" class="secondary-button" type="button">Reset to catalogue</button>
+        <button id="assumptions-reset" class="secondary-button" type="button">Reset to catalogue</button>
         <span class="tie-dialog-spacer"></span>
-        <button id="tie-strength-cancel" class="secondary-button" type="button">Cancel</button>
-        <button id="tie-strength-apply" class="primary-button small" type="button">Apply</button>
+        <button id="assumptions-cancel" class="secondary-button" type="button">Cancel</button>
+        <button id="assumptions-apply" class="primary-button small" type="button">Apply</button>
       </div>
     </form>
   </dialog>
@@ -754,6 +773,44 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
   });
 
   // ---------------------------------------------------------------------
+  // Design assumptions.
+  //
+  // The material and spacing constants behind every calculation. Same
+  // pattern as the tie strengths: DESIGN_DEFAULTS holds the catalogue
+  // values and never changes; edits live in an override store that
+  // designValue() reads through. The bounds are sanity limits to catch a
+  // mistyped figure, not code limits.
+  // ---------------------------------------------------------------------
+  const PD = (windpost.parameters && windpost.parameters.design) || {};
+
+  const DESIGN_SPEC = Object.freeze([
+    { key: "fy", label: "Allowable stress", hint: "fᵧ in bending",
+      unit: "N/mm²", decimals: 2, min: 1, max: 2000, value: PD.fy ?? 127.27 },
+    { key: "e", label: "Initial E", hint: "Young's modulus",
+      unit: "kN/mm²", decimals: 0, min: 1, max: 1000, value: PD.e ?? 200 },
+    { key: "secantFy", label: "Secant fᵧ", hint: "Ramberg-Osgood proof strength",
+      unit: "N/mm²", decimals: 2, min: 1, max: 2000, value: PD.secantFy ?? 210 },
+    { key: "secantN", label: "Secant exponent", hint: "Ramberg-Osgood n",
+      unit: "", decimals: 2, min: 1, max: 100, value: PD.secantN ?? 7 },
+    { key: "firstTieSpacing", label: "First tie spacing", hint: "base to first tie",
+      unit: "mm", decimals: 0, min: 1, max: 5000, value: PD.firstTieSpacing ?? 225 },
+    { key: "standardTieSpacing", label: "Standard tie spacing", hint: "tie to tie",
+      unit: "mm", decimals: 0, min: 1, max: 5000, value: PD.standardTieSpacing ?? 225 },
+    { key: "apply10mmLimit", label: "10 mm deflection cap", hint: "cap deflection at 10 mm",
+      type: "boolean", value: false }
+  ]);
+
+  const DESIGN_KEYS = Object.freeze(DESIGN_SPEC.map((d) => d.key));
+  const DESIGN_META = Object.freeze(DESIGN_SPEC.reduce((all, d) => {
+    all[d.key] = d;
+    return all;
+  }, Object.create(null)));
+  const DESIGN_DEFAULTS = Object.freeze(DESIGN_SPEC.reduce((all, d) => {
+    all[d.key] = d.value;
+    return all;
+  }, Object.create(null)));
+
+  // ---------------------------------------------------------------------
   // Tie strength overrides.
   //
   // DEFAULT_TIE_STRENGTH_KN stays frozen as the catalogue values. Anything
@@ -799,6 +856,110 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
       if (Object.keys(overrides).length === 0) global.localStorage.removeItem(OVERRIDE_STORAGE_KEY);
       else global.localStorage.setItem(OVERRIDE_STORAGE_KEY, JSON.stringify(overrides));
     } catch (error) { /* storage unavailable - overrides stay in memory */ }
+  }
+
+  // --- design assumption overrides, same shape as the tie layer ---------
+  const DESIGN_STORAGE_KEY = "windpost_design_overrides_v1";
+  let designOverrides = Object.create(null);
+
+  function isValidDesignValue(key, value) {
+    const meta = DESIGN_META[key];
+    if (!meta) return false;
+    if (meta.type === "boolean") return typeof value === "boolean";
+    if (typeof value !== "number" && typeof value !== "string") return false;
+    if (typeof value === "string" && value.trim() === "") return false;
+    const n = Number(value);
+    return Number.isFinite(n) && n >= meta.min && n <= meta.max;
+  }
+
+  function normaliseDesignValue(key, value) {
+    return DESIGN_META[key].type === "boolean" ? Boolean(value) : Number(value);
+  }
+
+  function readStoredDesignOverrides() {
+    try {
+      const raw = global.localStorage && global.localStorage.getItem(DESIGN_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      DESIGN_KEYS.forEach((key) => {
+        if (Object.prototype.hasOwnProperty.call(parsed, key) && isValidDesignValue(key, parsed[key])) {
+          designOverrides[key] = normaliseDesignValue(key, parsed[key]);
+        }
+      });
+    } catch (error) {
+      designOverrides = Object.create(null);
+    }
+  }
+
+  function persistDesignOverrides() {
+    try {
+      if (!global.localStorage) return;
+      if (Object.keys(designOverrides).length === 0) global.localStorage.removeItem(DESIGN_STORAGE_KEY);
+      else global.localStorage.setItem(DESIGN_STORAGE_KEY, JSON.stringify(designOverrides));
+    } catch (error) { /* storage unavailable - overrides stay in memory */ }
+  }
+
+  function designValue(key) {
+    return Object.prototype.hasOwnProperty.call(designOverrides, key)
+      ? designOverrides[key]
+      : DESIGN_DEFAULTS[key];
+  }
+
+  function setDesignValue(key, value) {
+    if (!isValidDesignValue(key, value)) return false;
+    designOverrides[key] = normaliseDesignValue(key, value);
+    persistDesignOverrides();
+    return true;
+  }
+
+  function clearDesignValue(key) {
+    delete designOverrides[key];
+    persistDesignOverrides();
+  }
+
+  function resetDesignValues() {
+    designOverrides = Object.create(null);
+    persistDesignOverrides();
+  }
+
+  function isDesignCustom(key) {
+    if (key === undefined) return DESIGN_KEYS.some((k) => isDesignCustom(k));
+    return designValue(key) !== DESIGN_DEFAULTS[key];
+  }
+
+  function listDesignValues() {
+    return DESIGN_SPEC.map((meta) => ({
+      key: meta.key,
+      label: meta.label,
+      hint: meta.hint,
+      unit: meta.unit || "",
+      decimals: meta.decimals,
+      type: meta.type || "number",
+      min: meta.min,
+      max: meta.max,
+      value: designValue(meta.key),
+      defaultValue: DESIGN_DEFAULTS[meta.key],
+      custom: isDesignCustom(meta.key)
+    }));
+  }
+
+  // The values actually used by a calculation. The detailed report prints
+  // these, so it must show what was used, not what the catalogue says.
+  function currentDesignValues() {
+    return DESIGN_KEYS.reduce((all, key) => {
+      all[key] = designValue(key);
+      return all;
+    }, {});
+  }
+
+  // Anything edited at all - drives the single "edited" badge in the panel.
+  function isAnyAssumptionCustom() {
+    return isTieStrengthCustom() || isDesignCustom();
+  }
+
+  function resetAllAssumptions() {
+    resetTieStrengths();
+    resetDesignValues();
   }
 
   function tieStrength(type) {
@@ -848,6 +1009,7 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
   }
 
   readStoredOverrides();
+  readStoredDesignOverrides();
 
   windpost.config = Object.freeze({
     CM4_TO_MM4: 10000,
@@ -863,6 +1025,17 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
     resetTieStrengths,
     isTieStrengthCustom,
     listTieStrengths,
+    DESIGN_DEFAULTS,
+    DESIGN_KEYS,
+    designValue,
+    setDesignValue,
+    clearDesignValue,
+    resetDesignValues,
+    isDesignCustom,
+    listDesignValues,
+    currentDesignValues,
+    isAnyAssumptionCustom,
+    resetAllAssumptions,
     PARAPET_TOP_TIE_CLEARANCE_MM: P.parapetTopTieClearance_mm ?? 50,
     STORAGE_KEY: "windpost_saved_designs_original_gui_local_v1",
     PROPPED_CANTILEVER_DEFLECTION_COEFF: P.proppedCantileverDeflectionCoeff ?? 0.0054161216
@@ -3031,26 +3204,29 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
   const { getCalculatedDesignValues } = windpost.windpostCalculationEngine;
   const { calculateWallAndTie } = windpost.outerTieSelectionEngine;
 
-  // Editable design constants come from windpost.parameters (generated from
-  // windpost-database.xlsx); literals are the fallback if that file is absent.
-  const PD = (windpost.parameters && windpost.parameters.design) || {};
-
-  const DESIGN_DEFAULTS = Object.freeze({
-    fy: PD.fy ?? 127.27,
-    e: PD.e ?? 200,
-    secantFy: PD.secantFy ?? 210,
-    secantN: PD.secantN ?? 7,
-    firstTieSpacing: PD.firstTieSpacing ?? 225,
-    standardTieSpacing: PD.standardTieSpacing ?? 225,
-    apply10mmLimit: false,
+  // The catalogue constants now live in config, alongside the override layer
+  // that the Design assumptions editor writes to. DESIGN_DEFAULTS remains the
+  // unedited catalogue; currentDesignValues() is what a calculation runs on.
+  const NON_EDITABLE_DEFAULTS = Object.freeze({
     useCustomDeflectionLimit: false,
     customDeflectionLimit: "",
     connectionCapacityCap: ""
   });
 
+  const DESIGN_DEFAULTS = Object.freeze({
+    ...windpost.config.DESIGN_DEFAULTS,
+    ...NON_EDITABLE_DEFAULTS
+  });
+
+  // The assumptions a run actually used - passed back on the design object so
+  // the detailed report prints the edited figures, not the catalogue ones.
+  function currentDesignDefaults() {
+    return { ...windpost.config.currentDesignValues(), ...NON_EDITABLE_DEFAULTS };
+  }
+
   function sharedCalculationInputs(type) {
     return {
-      ...DESIGN_DEFAULTS,
+      ...currentDesignDefaults(),
       tieStrength: windpost.config.tieStrength(type)
     };
   }
@@ -3170,7 +3346,7 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
           normalized.loadType
         ),
         inputs: normalized,
-        designDefaults: { ...DESIGN_DEFAULTS }
+        designDefaults: currentDesignDefaults()
       };
     }
 
@@ -3200,7 +3376,7 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
         normalized.loadType
       ),
       inputs: normalized,
-      designDefaults: { ...DESIGN_DEFAULTS }
+      designDefaults: currentDesignDefaults()
     };
   }
 
@@ -6534,30 +6710,32 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
       this.initTieStrengthEditor();
     },
 
-    // --- Tie strength editor ------------------------------------------
-    // Values are per tie LEVEL. Everything reads through config.tieStrength,
-    // so applying an edit here changes the capacity, the detailed report and
-    // the baseplate check together.
+    // --- Design assumptions editor -------------------------------------
+    // Covers the material and spacing constants and the tie strengths.
+    // Everything reads through config.designValue / config.tieStrength, so an
+    // edit here reaches the capacity, the detailed report and the baseplate
+    // check together. Tie strengths are per tie LEVEL.
 
     initTieStrengthEditor() {
-      this.tieDialog = document.getElementById("tie-strength-dialog");
-      const openButton = document.getElementById("edit-tie-strengths");
+      this.tieDialog = document.getElementById("assumptions-dialog");
+      const openButton = document.getElementById("edit-assumptions");
       if (!this.tieDialog || !openButton) return;
-      this.tieRows = document.getElementById("tie-strength-rows");
-      this.tieError = document.getElementById("tie-strength-error");
+      this.designRows = document.getElementById("design-rows");
+      this.tieRows = document.getElementById("tie-rows");
+      this.tieError = document.getElementById("assumptions-error");
 
       openButton.addEventListener("click", () => this.openTieStrengthEditor());
-      document.getElementById("tie-strength-cancel")
+      document.getElementById("assumptions-cancel")
         .addEventListener("click", () => this.tieDialog.close());
-      document.getElementById("tie-strength-apply")
+      document.getElementById("assumptions-apply")
         .addEventListener("click", () => this.applyTieStrengths());
-      document.getElementById("tie-strength-reset").addEventListener("click", () => {
-        windpost.config.resetTieStrengths();
+      document.getElementById("assumptions-reset").addEventListener("click", () => {
+        windpost.config.resetAllAssumptions();
         this.renderTieStrengthRows();
         this.afterTieStrengthChange();
       });
       // Enter in any field applies rather than silently dismissing the dialog.
-      document.getElementById("tie-strength-form").addEventListener("submit", (event) => {
+      document.getElementById("assumptions-form").addEventListener("submit", (event) => {
         event.preventDefault();
         this.applyTieStrengths();
       });
@@ -6570,11 +6748,39 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
       this.setTieStrengthError("");
       if (typeof this.tieDialog.showModal === "function") this.tieDialog.showModal();
       else this.tieDialog.setAttribute("open", "");
-      const first = this.tieRows.querySelector("input");
-      if (first) { first.focus(); first.select(); }
+      const first = this.designRows.querySelector("input");
+      if (first) { first.focus(); if (first.select) first.select(); }
     },
 
     renderTieStrengthRows() {
+      this.designRows.innerHTML = windpost.config.listDesignValues().map((item) => {
+        const id = `design-${item.key}`;
+        const control = item.type === "boolean"
+          ? `<span class="tie-row-check">
+               <input id="${id}" data-design-key="${item.key}" type="checkbox"
+                      ${item.value ? "checked" : ""}>
+               <span class="tie-row-unit">${item.value ? "Applied" : "Not applied"}</span>
+             </span>`
+          : `<span class="tie-row-input">
+               <input id="${id}" data-design-key="${item.key}" type="number"
+                      step="${item.decimals ? Math.pow(10, -item.decimals).toFixed(item.decimals) : "1"}"
+                      min="${item.min}" max="${item.max}"
+                      value="${this.number(item.value, item.decimals)}">
+               <span class="tie-row-unit">${this.escape(item.unit)}</span>
+             </span>`;
+        const note = item.type === "boolean"
+          ? this.escape(item.hint)
+          : `${this.escape(item.hint)} · catalogue ${this.number(item.defaultValue, item.decimals)} ${item.unit}`.trim();
+        return `
+          <div class="tie-row">
+            <label for="${id}">
+              <span class="tie-row-name">${item.label}</span>
+              <span class="tie-row-meta">${note}</span>
+            </label>
+            ${control}
+          </div>`;
+      }).join("");
+
       this.tieRows.innerHTML = windpost.config.listTieStrengths().map((tie) => {
         const note = tie.derived
           ? `Following the U tie (2 × ${this.number(windpost.config.tieStrength("U"), 3)})`
@@ -6600,26 +6806,50 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
     },
 
     applyTieStrengths() {
-      const inputs = [...this.tieRows.querySelectorAll("input[data-tie-type]")];
-      const bad = inputs.filter((input) => {
+      const config = windpost.config;
+      const tieInputs = [...this.tieRows.querySelectorAll("input[data-tie-type]")];
+      const designInputs = [...this.designRows.querySelectorAll("input[data-design-key]")];
+
+      const badTies = tieInputs.filter((input) => {
         const value = Number(input.value);
         const ok = input.value.trim() !== "" && Number.isFinite(value) && value >= 0 && value <= 1000;
         input.classList.toggle("is-invalid", !ok);
         return !ok;
       });
-      if (bad.length) {
+      const badDesign = designInputs.filter((input) => {
+        if (input.type === "checkbox") return false;
+        const value = Number(input.value);
+        const ok = input.value.trim() !== "" && Number.isFinite(value) &&
+          value >= Number(input.min) && value <= Number(input.max);
+        input.classList.toggle("is-invalid", !ok);
+        return !ok;
+      });
+
+      if (badDesign.length) {
+        const meta = badDesign[0];
+        this.setTieStrengthError(`Enter a value between ${meta.min} and ${meta.max}.`);
+        meta.focus();
+        return;
+      }
+      if (badTies.length) {
         this.setTieStrengthError("Enter a tie strength between 0 and 1000 kN.");
-        bad[0].focus();
+        badTies[0].focus();
         return;
       }
 
-      inputs.forEach((input) => {
+      // Writing back the catalogue value clears the override rather than
+      // pinning it, so DU can resume following U and the badge clears.
+      designInputs.forEach((input) => {
+        const key = input.dataset.designKey;
+        const value = input.type === "checkbox" ? input.checked : Number(input.value);
+        if (value === config.DESIGN_DEFAULTS[key]) config.clearDesignValue(key);
+        else config.setDesignValue(key, value);
+      });
+      tieInputs.forEach((input) => {
         const type = input.dataset.tieType;
         const value = Number(input.value);
-        // Writing back the catalogue value clears the override rather than
-        // pinning it, so DU can resume following U and the badge clears.
-        if (value === windpost.config.DEFAULT_TIE_STRENGTH_KN[type]) windpost.config.clearTieStrength(type);
-        else windpost.config.setTieStrength(type, value);
+        if (value === config.DEFAULT_TIE_STRENGTH_KN[type]) config.clearTieStrength(type);
+        else config.setTieStrength(type, value);
       });
 
       this.setTieStrengthError("");
@@ -6629,22 +6859,43 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
 
     afterTieStrengthChange() {
       this.refreshTieStrengthReadouts();
-      // A displayed capacity computed on the old strengths would now be wrong,
-      // so recompute it if one is on screen; otherwise just clear it.
+      // A displayed capacity computed on the old assumptions would now be
+      // wrong, so recompute it if one is on screen; otherwise just clear it.
       const showing = !document.getElementById("result-content").classList.contains("hidden");
       if (showing) this.calculate();
       else this.invalidateResult();
     },
 
     refreshTieStrengthReadouts() {
-      windpost.config.listTieStrengths().forEach((tie) => {
-        const cell = document.querySelector(`[data-tie-readout="${tie.type}"]`);
+      const config = windpost.config;
+      const setCell = (selector, text, custom) => {
+        const cell = document.querySelector(selector);
         if (!cell) return;
-        cell.textContent = `${this.number(tie.value, 3)} kN`;
-        cell.classList.toggle("is-custom", tie.custom);
+        cell.textContent = text;
+        cell.classList.toggle("is-custom", Boolean(custom));
+      };
+
+      config.listTieStrengths().forEach((tie) => {
+        setCell(`[data-tie-readout="${tie.type}"]`, `${this.number(tie.value, 3)} kN`, tie.custom);
       });
-      const flag = document.getElementById("tie-strength-flag");
-      if (flag) flag.classList.toggle("hidden", !windpost.config.isTieStrengthCustom());
+      config.listDesignValues().forEach((item) => {
+        if (item.key === "firstTieSpacing" || item.key === "standardTieSpacing") return;
+        const text = item.type === "boolean"
+          ? (item.value ? "Applied" : "Not applied")
+          : item.key === "secantN"
+            ? `n = ${this.number(item.value, item.decimals)}`
+            : `${this.number(item.value, item.decimals)} ${item.unit}`.trim();
+        setCell(`[data-design-readout="${item.key}"]`, text, item.custom);
+      });
+      // The panel shows the two spacings in one cell.
+      setCell(
+        '[data-design-readout="spacingPair"]',
+        `${this.number(config.designValue("firstTieSpacing"), 0)} / ${this.number(config.designValue("standardTieSpacing"), 0)} mm`,
+        config.isDesignCustom("firstTieSpacing") || config.isDesignCustom("standardTieSpacing")
+      );
+
+      const flag = document.getElementById("assumptions-flag");
+      if (flag) flag.classList.toggle("hidden", !config.isAnyAssumptionCustom());
     },
 
     setProjectStatus(message, failed) {

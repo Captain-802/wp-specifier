@@ -48,30 +48,32 @@
       this.initTieStrengthEditor();
     },
 
-    // --- Tie strength editor ------------------------------------------
-    // Values are per tie LEVEL. Everything reads through config.tieStrength,
-    // so applying an edit here changes the capacity, the detailed report and
-    // the baseplate check together.
+    // --- Design assumptions editor -------------------------------------
+    // Covers the material and spacing constants and the tie strengths.
+    // Everything reads through config.designValue / config.tieStrength, so an
+    // edit here reaches the capacity, the detailed report and the baseplate
+    // check together. Tie strengths are per tie LEVEL.
 
     initTieStrengthEditor() {
-      this.tieDialog = document.getElementById("tie-strength-dialog");
-      const openButton = document.getElementById("edit-tie-strengths");
+      this.tieDialog = document.getElementById("assumptions-dialog");
+      const openButton = document.getElementById("edit-assumptions");
       if (!this.tieDialog || !openButton) return;
-      this.tieRows = document.getElementById("tie-strength-rows");
-      this.tieError = document.getElementById("tie-strength-error");
+      this.designRows = document.getElementById("design-rows");
+      this.tieRows = document.getElementById("tie-rows");
+      this.tieError = document.getElementById("assumptions-error");
 
       openButton.addEventListener("click", () => this.openTieStrengthEditor());
-      document.getElementById("tie-strength-cancel")
+      document.getElementById("assumptions-cancel")
         .addEventListener("click", () => this.tieDialog.close());
-      document.getElementById("tie-strength-apply")
+      document.getElementById("assumptions-apply")
         .addEventListener("click", () => this.applyTieStrengths());
-      document.getElementById("tie-strength-reset").addEventListener("click", () => {
-        windpost.config.resetTieStrengths();
+      document.getElementById("assumptions-reset").addEventListener("click", () => {
+        windpost.config.resetAllAssumptions();
         this.renderTieStrengthRows();
         this.afterTieStrengthChange();
       });
       // Enter in any field applies rather than silently dismissing the dialog.
-      document.getElementById("tie-strength-form").addEventListener("submit", (event) => {
+      document.getElementById("assumptions-form").addEventListener("submit", (event) => {
         event.preventDefault();
         this.applyTieStrengths();
       });
@@ -84,11 +86,39 @@
       this.setTieStrengthError("");
       if (typeof this.tieDialog.showModal === "function") this.tieDialog.showModal();
       else this.tieDialog.setAttribute("open", "");
-      const first = this.tieRows.querySelector("input");
-      if (first) { first.focus(); first.select(); }
+      const first = this.designRows.querySelector("input");
+      if (first) { first.focus(); if (first.select) first.select(); }
     },
 
     renderTieStrengthRows() {
+      this.designRows.innerHTML = windpost.config.listDesignValues().map((item) => {
+        const id = `design-${item.key}`;
+        const control = item.type === "boolean"
+          ? `<span class="tie-row-check">
+               <input id="${id}" data-design-key="${item.key}" type="checkbox"
+                      ${item.value ? "checked" : ""}>
+               <span class="tie-row-unit">${item.value ? "Applied" : "Not applied"}</span>
+             </span>`
+          : `<span class="tie-row-input">
+               <input id="${id}" data-design-key="${item.key}" type="number"
+                      step="${item.decimals ? Math.pow(10, -item.decimals).toFixed(item.decimals) : "1"}"
+                      min="${item.min}" max="${item.max}"
+                      value="${this.number(item.value, item.decimals)}">
+               <span class="tie-row-unit">${this.escape(item.unit)}</span>
+             </span>`;
+        const note = item.type === "boolean"
+          ? this.escape(item.hint)
+          : `${this.escape(item.hint)} · catalogue ${this.number(item.defaultValue, item.decimals)} ${item.unit}`.trim();
+        return `
+          <div class="tie-row">
+            <label for="${id}">
+              <span class="tie-row-name">${item.label}</span>
+              <span class="tie-row-meta">${note}</span>
+            </label>
+            ${control}
+          </div>`;
+      }).join("");
+
       this.tieRows.innerHTML = windpost.config.listTieStrengths().map((tie) => {
         const note = tie.derived
           ? `Following the U tie (2 × ${this.number(windpost.config.tieStrength("U"), 3)})`
@@ -114,26 +144,50 @@
     },
 
     applyTieStrengths() {
-      const inputs = [...this.tieRows.querySelectorAll("input[data-tie-type]")];
-      const bad = inputs.filter((input) => {
+      const config = windpost.config;
+      const tieInputs = [...this.tieRows.querySelectorAll("input[data-tie-type]")];
+      const designInputs = [...this.designRows.querySelectorAll("input[data-design-key]")];
+
+      const badTies = tieInputs.filter((input) => {
         const value = Number(input.value);
         const ok = input.value.trim() !== "" && Number.isFinite(value) && value >= 0 && value <= 1000;
         input.classList.toggle("is-invalid", !ok);
         return !ok;
       });
-      if (bad.length) {
+      const badDesign = designInputs.filter((input) => {
+        if (input.type === "checkbox") return false;
+        const value = Number(input.value);
+        const ok = input.value.trim() !== "" && Number.isFinite(value) &&
+          value >= Number(input.min) && value <= Number(input.max);
+        input.classList.toggle("is-invalid", !ok);
+        return !ok;
+      });
+
+      if (badDesign.length) {
+        const meta = badDesign[0];
+        this.setTieStrengthError(`Enter a value between ${meta.min} and ${meta.max}.`);
+        meta.focus();
+        return;
+      }
+      if (badTies.length) {
         this.setTieStrengthError("Enter a tie strength between 0 and 1000 kN.");
-        bad[0].focus();
+        badTies[0].focus();
         return;
       }
 
-      inputs.forEach((input) => {
+      // Writing back the catalogue value clears the override rather than
+      // pinning it, so DU can resume following U and the badge clears.
+      designInputs.forEach((input) => {
+        const key = input.dataset.designKey;
+        const value = input.type === "checkbox" ? input.checked : Number(input.value);
+        if (value === config.DESIGN_DEFAULTS[key]) config.clearDesignValue(key);
+        else config.setDesignValue(key, value);
+      });
+      tieInputs.forEach((input) => {
         const type = input.dataset.tieType;
         const value = Number(input.value);
-        // Writing back the catalogue value clears the override rather than
-        // pinning it, so DU can resume following U and the badge clears.
-        if (value === windpost.config.DEFAULT_TIE_STRENGTH_KN[type]) windpost.config.clearTieStrength(type);
-        else windpost.config.setTieStrength(type, value);
+        if (value === config.DEFAULT_TIE_STRENGTH_KN[type]) config.clearTieStrength(type);
+        else config.setTieStrength(type, value);
       });
 
       this.setTieStrengthError("");
@@ -143,22 +197,43 @@
 
     afterTieStrengthChange() {
       this.refreshTieStrengthReadouts();
-      // A displayed capacity computed on the old strengths would now be wrong,
-      // so recompute it if one is on screen; otherwise just clear it.
+      // A displayed capacity computed on the old assumptions would now be
+      // wrong, so recompute it if one is on screen; otherwise just clear it.
       const showing = !document.getElementById("result-content").classList.contains("hidden");
       if (showing) this.calculate();
       else this.invalidateResult();
     },
 
     refreshTieStrengthReadouts() {
-      windpost.config.listTieStrengths().forEach((tie) => {
-        const cell = document.querySelector(`[data-tie-readout="${tie.type}"]`);
+      const config = windpost.config;
+      const setCell = (selector, text, custom) => {
+        const cell = document.querySelector(selector);
         if (!cell) return;
-        cell.textContent = `${this.number(tie.value, 3)} kN`;
-        cell.classList.toggle("is-custom", tie.custom);
+        cell.textContent = text;
+        cell.classList.toggle("is-custom", Boolean(custom));
+      };
+
+      config.listTieStrengths().forEach((tie) => {
+        setCell(`[data-tie-readout="${tie.type}"]`, `${this.number(tie.value, 3)} kN`, tie.custom);
       });
-      const flag = document.getElementById("tie-strength-flag");
-      if (flag) flag.classList.toggle("hidden", !windpost.config.isTieStrengthCustom());
+      config.listDesignValues().forEach((item) => {
+        if (item.key === "firstTieSpacing" || item.key === "standardTieSpacing") return;
+        const text = item.type === "boolean"
+          ? (item.value ? "Applied" : "Not applied")
+          : item.key === "secantN"
+            ? `n = ${this.number(item.value, item.decimals)}`
+            : `${this.number(item.value, item.decimals)} ${item.unit}`.trim();
+        setCell(`[data-design-readout="${item.key}"]`, text, item.custom);
+      });
+      // The panel shows the two spacings in one cell.
+      setCell(
+        '[data-design-readout="spacingPair"]',
+        `${this.number(config.designValue("firstTieSpacing"), 0)} / ${this.number(config.designValue("standardTieSpacing"), 0)} mm`,
+        config.isDesignCustom("firstTieSpacing") || config.isDesignCustom("standardTieSpacing")
+      );
+
+      const flag = document.getElementById("assumptions-flag");
+      if (flag) flag.classList.toggle("hidden", !config.isAnyAssumptionCustom());
     },
 
     setProjectStatus(message, failed) {
