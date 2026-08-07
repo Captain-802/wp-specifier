@@ -119,21 +119,37 @@
           </div>`;
       }).join("");
 
-      this.tieRows.innerHTML = windpost.config.listTieStrengths().map((tie) => {
-        const note = tie.derived
-          ? `Following the U tie (2 × ${this.number(windpost.config.tieStrength("U"), 3)})`
-          : `${tie.type} post · catalogue ${this.number(tie.defaultValue, 3)} kN`;
+      // One block per post family and load case: the two ties on the load
+      // path, then the level total the weaker of them produces.
+      const config = windpost.config;
+      const cells = config.listTieStrengths();
+      this.tieRows.innerHTML = config.listTieLevelStrengths().map((level) => {
+        const rows = cells
+          .filter((c) => c.type === level.type && c.loadCase === level.loadCase)
+          .map((cell) => {
+            const id = `tie-${cell.type}-${cell.loadCase}-${cell.leaf}`;
+            const where = cell.leaf === "inner" ? "inner leaf" : "outer leaf";
+            return `
+              <div class="tie-row">
+                <label for="${id}">
+                  <span class="tie-row-name">${this.escape(cell.label)}${cell.governs ? ' <em class="tie-governs">governs</em>' : ""}</span>
+                  <span class="tie-row-meta">${where} · catalogue ${this.number(cell.defaultValue, 3)} kN</span>
+                </label>
+                <span class="tie-row-input">
+                  <input id="${id}" type="number" step="0.001" min="0"
+                         data-tie-type="${cell.type}" data-tie-case="${cell.loadCase}"
+                         data-tie-leaf="${cell.leaf}" value="${this.number(cell.value, 3)}">
+                  <span class="tie-row-unit">kN</span>
+                </span>
+              </div>`;
+          }).join("");
+        const sets = level.setsPerLevel > 1 ? ` × ${level.setsPerLevel} sets` : "";
         return `
-          <div class="tie-row">
-            <label for="tie-strength-${tie.type}">
-              <span class="tie-row-name">${this.escape(tie.label)}</span>
-              <span class="tie-row-meta">${this.escape(note)}</span>
-            </label>
-            <span class="tie-row-input">
-              <input id="tie-strength-${tie.type}" data-tie-type="${tie.type}" type="number"
-                     step="0.001" min="0" value="${this.number(tie.value, 3)}">
-              <span class="tie-row-unit">kN</span>
-            </span>
+          <div class="tie-case">
+            <h4 class="tie-case-title">${level.type} post · ${this.escape(level.caseLabel)}</h4>
+            ${rows}
+            <p class="tie-case-total">Level capacity = min(${this.number(level.inner, 3)}, ${this.number(level.outer, 3)})${sets} =
+              <strong>${this.number(level.value, 3)} kN</strong></p>
           </div>`;
       }).join("");
     },
@@ -184,10 +200,13 @@
         else config.setDesignValue(key, value);
       });
       tieInputs.forEach((input) => {
-        const type = input.dataset.tieType;
+        const { tieType, tieCase, tieLeaf } = input.dataset;
         const value = Number(input.value);
-        if (value === config.DEFAULT_TIE_STRENGTH_KN[type]) config.clearTieStrength(type);
-        else config.setTieStrength(type, value);
+        if (value === config.DEFAULT_TIE_GRID[tieType][tieCase][tieLeaf]) {
+          config.clearTieStrength(tieType, tieCase, tieLeaf);
+        } else {
+          config.setTieStrength(tieType, tieCase, tieLeaf, value);
+        }
       });
 
       this.setTieStrengthError("");
@@ -213,9 +232,17 @@
         cell.classList.toggle("is-custom", Boolean(custom));
       };
 
-      config.listTieStrengths().forEach((tie) => {
-        setCell(`[data-tie-readout="${tie.type}"]`, `${this.number(tie.value, 3)} kN`, tie.custom);
-      });
+      // The panel quotes the simply-supported level value for each family;
+      // the dialog carries the per-load-case detail.
+      config.listTieLevelStrengths()
+        .filter((level) => level.loadCase === "SS")
+        .forEach((level) => {
+          setCell(
+            `[data-tie-readout="${level.type}"]`,
+            `${this.number(level.value, 3)} kN`,
+            config.isTieStrengthCustom(level.type)
+          );
+        });
       config.listDesignValues().forEach((item) => {
         if (item.key === "firstTieSpacing" || item.key === "standardTieSpacing") return;
         const text = item.type === "boolean"

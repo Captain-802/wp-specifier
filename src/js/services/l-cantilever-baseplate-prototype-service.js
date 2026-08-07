@@ -52,8 +52,8 @@
       zxx: section.zxx_mm3,
       area: section.crossSectionalArea_mm2,
       tieStrength: windpost.config.TIE_TYPES.includes(section.type)
-        ? windpost.config.tieStrength(section.type)
-        : windpost.config.tieStrength("L"),
+        ? windpost.config.tieStrength(section.type, "Cant")
+        : windpost.config.tieStrength("L", "Cant"),
       firstTieSpacing: parameters.firstTieSpacing,
       standardTieSpacing: parameters.standardTieSpacing,
       secantFy: parameters.secantFy,

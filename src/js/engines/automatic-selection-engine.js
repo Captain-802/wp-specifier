@@ -26,10 +26,11 @@
     return { ...windpost.config.currentDesignValues(), ...NON_EDITABLE_DEFAULTS };
   }
 
-  function sharedCalculationInputs(type) {
+  function sharedCalculationInputs(type, supportCondition, loadType) {
+    const loadCase = windpost.config.loadCaseOf(supportCondition, loadType);
     return {
       ...currentDesignDefaults(),
-      tieStrength: windpost.config.tieStrength(type)
+      tieStrength: windpost.config.tieStrength(type, loadCase)
     };
   }
 
@@ -59,7 +60,7 @@
   function evaluateSection(section, options) {
     const properties = getSectionProperties(section);
     const calculation = getCalculatedDesignValues({
-      ...sharedCalculationInputs(options.type),
+      ...sharedCalculationInputs(options.type, options.supportCondition, options.loadType),
       length: options.length_mm,
       ixx: properties.ixx_mm4,
       zxx: properties.zxx_mm3,

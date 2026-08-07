@@ -42,87 +42,135 @@ function check(name, task) {
   console.log(`PASS ${passed}: ${name}`);
 }
 
-check("catalogue tie strengths are the published values", () => {
+check("catalogue level strengths are unchanged by the grid, in every load case", () => {
+  C.TIE_LOAD_CASES.forEach((c) => {
+    assert.strictEqual(C.tieStrength("U", c), 1.713, `U ${c}`);
+    assert.strictEqual(C.tieStrength("L", c), 2.25, `L ${c}`);
+    assert.strictEqual(C.tieStrength("DU", c), 3.426, `DU ${c}`);
+  });
+  // the no-load-case call still answers, defaulting to simply supported
   assert.strictEqual(C.tieStrength("U"), 1.713);
-  assert.strictEqual(C.tieStrength("L"), 2.25);
-  assert.strictEqual(C.tieStrength("DU"), 3.426);
 });
 
-check("DEFAULT_TIE_STRENGTH_KN is frozen and survives an edit", () => {
-  assert.ok(Object.isFrozen(C.DEFAULT_TIE_STRENGTH_KN));
-  C.setTieStrength("U", 2.5);
-  assert.strictEqual(C.DEFAULT_TIE_STRENGTH_KN.U, 1.713, "catalogue must not be mutated");
-  assert.strictEqual(C.tieStrength("U"), 2.5);
+check("both leaves start at the catalogue figure", () => {
+  C.TIE_TYPES.forEach((t) => C.TIE_LOAD_CASES.forEach((c) => {
+    const expected = t === "L" ? 2.25 : 1.713;
+    assert.strictEqual(C.tieLeafStrength(t, c, "inner"), expected);
+    assert.strictEqual(C.tieLeafStrength(t, c, "outer"), expected);
+  }));
 });
 
-check("an edited U tie carries the DU value with it (2 sets per level)", () => {
-  C.setTieStrength("U", 2);
-  assert.strictEqual(C.tieStrength("DU"), 4);
+check("DEFAULT_TIE_GRID is frozen and survives an edit", () => {
+  assert.ok(Object.isFrozen(C.DEFAULT_TIE_GRID));
+  C.setTieStrength("U", "SS", "outer", 0.5);
+  assert.strictEqual(C.DEFAULT_TIE_GRID.U.SS.outer, 1.713, "catalogue must not be mutated");
+  assert.strictEqual(C.tieLeafStrength("U", "SS", "outer"), 0.5);
 });
 
-check("an explicit DU value breaks the link to U", () => {
-  C.setTieStrength("DU", 5);
-  C.setTieStrength("U", 2);
-  assert.strictEqual(C.tieStrength("DU"), 5, "DU was set by hand, so it must not follow U");
-  assert.strictEqual(C.tieStrength("U"), 2);
+check("the weaker leaf governs the level - a weak EDC pulls the level down", () => {
+  C.setTieStrength("U", "SS", "outer", 1.0);
+  assert.strictEqual(C.tieStrength("U", "SS"), 1.0, "outer is now the weak end");
+  assert.strictEqual(C.tieLeafStrength("U", "SS", "inner"), 1.713, "inner is untouched");
 });
 
-check("clearing DU restores the link to U", () => {
-  C.setTieStrength("DU", 5);
-  C.setTieStrength("U", 2);
-  C.clearTieStrength("DU");
-  assert.strictEqual(C.tieStrength("DU"), 4);
+check("a stronger leaf does not raise the level on its own", () => {
+  C.setTieStrength("U", "SS", "outer", 99);
+  assert.strictEqual(C.tieStrength("U", "SS"), 1.713, "the inner tie still governs");
 });
 
-check("L is independent of U", () => {
-  C.setTieStrength("U", 9);
-  assert.strictEqual(C.tieStrength("L"), 2.25);
+check("a DU level is the weaker leaf times two sets", () => {
+  assert.strictEqual(C.setsPerLevel("DU"), 2);
+  C.setTieStrength("DU", "SS", "outer", 1.0);
+  assert.strictEqual(C.tieStrength("DU", "SS"), 2.0);
 });
 
-check("reset returns every tie to its catalogue value", () => {
-  C.setTieStrength("U", 9);
-  C.setTieStrength("L", 9);
-  C.setTieStrength("DU", 9);
+check("load cases are independent of one another", () => {
+  C.setTieStrength("U", "Cant", "inner", 1.0);
+  assert.strictEqual(C.tieStrength("U", "Cant"), 1.0);
+  assert.strictEqual(C.tieStrength("U", "SS"), 1.713, "SS must not move");
+  assert.strictEqual(C.tieStrength("U", "Point"), 1.713, "Point must not move");
+});
+
+check("post families are independent of one another", () => {
+  C.setTieStrength("U", "SS", "inner", 1.0);
+  assert.strictEqual(C.tieStrength("L", "SS"), 2.25);
+  assert.strictEqual(C.tieStrength("DU", "SS"), 3.426);
+});
+
+check("loadCaseOf maps the selector inputs onto the grid columns", () => {
+  assert.strictEqual(C.loadCaseOf("simplySupported", "udl"), "SS");
+  assert.strictEqual(C.loadCaseOf("cantilever", "udl"), "Cant");
+  assert.strictEqual(C.loadCaseOf("cantilever", "tipPointLoad"), "Point");
+  assert.strictEqual(C.loadCaseOf("simplySupported", "tipPointLoad"), "SS",
+    "a top point load is a cantilever-only model");
+});
+
+check("rubbish values and unknown cells are rejected", () => {
+  [-1, 1001, NaN, Infinity, "abc", null, undefined].forEach((bad) => {
+    assert.strictEqual(C.setTieStrength("U", "SS", "inner", bad), false, `${bad} rejected`);
+  });
+  assert.strictEqual(C.tieLeafStrength("U", "SS", "inner"), 1.713);
+  assert.strictEqual(C.setTieStrength("XX", "SS", "inner", 2), false, "unknown post");
+  assert.strictEqual(C.setTieStrength("U", "NOPE", "inner", 2), false, "unknown load case");
+  assert.strictEqual(C.setTieStrength("U", "SS", "middle", 2), false, "unknown leaf");
+});
+
+check("zero is allowed - it discounts that leaf entirely", () => {
+  assert.strictEqual(C.setTieStrength("U", "SS", "outer", 0), true);
+  assert.strictEqual(C.tieStrength("U", "SS"), 0);
+});
+
+check("clearing one cell restores it; clearing a family restores all of it", () => {
+  C.setTieStrength("U", "SS", "inner", 1);
+  C.setTieStrength("U", "Cant", "outer", 1);
+  C.clearTieStrength("U", "SS", "inner");
+  assert.strictEqual(C.tieStrength("U", "SS"), 1.713);
+  assert.strictEqual(C.tieStrength("U", "Cant"), 1, "the other cell still stands");
+  C.clearTieStrength("U");
+  assert.strictEqual(C.tieStrength("U", "Cant"), 1.713);
+});
+
+check("reset returns every cell to catalogue", () => {
+  C.TIE_TYPES.forEach((t) => C.TIE_LOAD_CASES.forEach((c) =>
+    C.TIE_LEAVES.forEach((f) => C.setTieStrength(t, c, f, 9))));
   C.resetTieStrengths();
-  assert.strictEqual(C.tieStrength("U"), 1.713);
-  assert.strictEqual(C.tieStrength("L"), 2.25);
-  assert.strictEqual(C.tieStrength("DU"), 3.426);
+  assert.strictEqual(C.tieStrength("U", "SS"), 1.713);
+  assert.strictEqual(C.tieStrength("L", "Cant"), 2.25);
+  assert.strictEqual(C.tieStrength("DU", "Point"), 3.426);
   assert.strictEqual(C.isTieStrengthCustom(), false);
 });
 
-check("rubbish values are rejected and leave the current value standing", () => {
-  [-1, 1001, NaN, Infinity, "abc", null, undefined].forEach((bad) => {
-    assert.strictEqual(C.setTieStrength("U", bad), false, `${bad} should be rejected`);
-  });
-  assert.strictEqual(C.tieStrength("U"), 1.713);
-  assert.strictEqual(C.setTieStrength("XX", 2), false, "unknown tie type is rejected");
-});
-
-check("zero is allowed - it discounts the ties entirely", () => {
-  assert.strictEqual(C.setTieStrength("U", 0), true);
-  assert.strictEqual(C.tieStrength("U"), 0);
-});
-
-check("isTieStrengthCustom flags only the edited tie", () => {
-  C.setTieStrength("L", 3);
+check("isTieStrengthCustom narrows from family to cell", () => {
+  C.setTieStrength("L", "Cant", "outer", 3);
+  assert.strictEqual(C.isTieStrengthCustom("L", "Cant", "outer"), true);
+  assert.strictEqual(C.isTieStrengthCustom("L", "Cant", "inner"), false);
+  assert.strictEqual(C.isTieStrengthCustom("L", "SS"), false);
   assert.strictEqual(C.isTieStrengthCustom("L"), true);
   assert.strictEqual(C.isTieStrengthCustom("U"), false);
   assert.strictEqual(C.isTieStrengthCustom(), true);
 });
 
-check("listTieStrengths reports names, values and the derived DU flag", () => {
-  const plain = C.listTieStrengths();
-  assert.deepStrictEqual(plain.map((t) => t.type), ["U", "L", "DU"]);
-  assert.strictEqual(plain[0].label, "U tie");
-  assert.strictEqual(plain[1].label, "Shear tie");
-  assert.ok(/2 sets/.test(plain[2].label));
-  assert.strictEqual(plain[2].derived, false);
+check("listTieStrengths yields one row per cell, named by leaf", () => {
+  const rows = C.listTieStrengths();
+  assert.strictEqual(rows.length, 3 * 3 * 2, "3 posts x 3 cases x 2 leaves");
+  const uss = rows.filter((r) => r.type === "U" && r.loadCase === "SS");
+  assert.deepStrictEqual(uss.map((r) => r.label), ["U tie", "EDC tie"]);
+  assert.deepStrictEqual(rows.filter((r) => r.type === "L" && r.loadCase === "SS")
+    .map((r) => r.label), ["Shear tie", "EDC tie"]);
+  assert.strictEqual(uss[0].caseLabel, "Simply supported");
+});
 
-  C.setTieStrength("U", 2);
-  const edited = C.listTieStrengths();
-  assert.strictEqual(edited[2].derived, true, "DU is following the edited U");
-  assert.strictEqual(edited[2].value, 4);
-  assert.strictEqual(edited[2].defaultValue, 3.426, "catalogue value still reported");
+check("listTieLevelStrengths reports the resolved level value per case", () => {
+  const rows = C.listTieLevelStrengths();
+  assert.strictEqual(rows.length, 9, "3 posts x 3 cases");
+  const duPoint = rows.find((r) => r.type === "DU" && r.loadCase === "Point");
+  assert.strictEqual(duPoint.value, 3.426);
+  assert.strictEqual(duPoint.setsPerLevel, 2);
+  C.setTieStrength("DU", "Point", "outer", 1);
+  const after = C.listTieLevelStrengths().find((r) => r.type === "DU" && r.loadCase === "Point");
+  assert.strictEqual(after.value, 2, "min(1.713, 1) x 2");
+  assert.strictEqual(after.defaultValue, 3.426, "catalogue still reported");
+  assert.strictEqual(after.custom, true);
 });
 
 // --- the edit must actually reach the numbers -------------------------
@@ -138,7 +186,13 @@ function capacityOf(type, sectionName, length) {
 
 check("raising the U tie strength raises the tie-governed capacity", () => {
   const base = capacityOf("U", "UP 115x60x6", 2670);
-  C.setTieStrength("U", 3.426);
+  // both ends of the load path must be raised - lifting one alone is capped
+  // by the other, which is the whole point of the weakest-link rule
+  C.setTieStrength("U", "SS", "inner", 3.426);
+  const halfRaised = capacityOf("U", "UP 115x60x6", 2670);
+  assert.strictEqual(halfRaised.totalTiesCapacity, base.totalTiesCapacity,
+    "raising only the inner tie must not move the level");
+  C.setTieStrength("U", "SS", "outer", 3.426);
   const raised = capacityOf("U", "UP 115x60x6", 2670);
   assert.strictEqual(raised.totalTiesCapacity, base.totalTiesCapacity * 2,
     "tie capacity is ties x strength, so doubling the strength doubles it");
@@ -148,7 +202,10 @@ check("raising the U tie strength raises the tie-governed capacity", () => {
 check("the DU engine picks up an edited U through the 2-set rule", () => {
   const args = { section: "DU 115x60x6", length_mm: 2670, supportCondition: "simplySupported" };
   const base = W.duCapacityEngine.capacity(args);
-  C.setTieStrength("U", 2);
+  C.setTieStrength("U", "SS", "inner", 2);
+  C.setTieStrength("U", "SS", "outer", 2);
+  C.setTieStrength("DU", "SS", "inner", 2);
+  C.setTieStrength("DU", "SS", "outer", 2);
   const edited = W.duCapacityEngine.capacity(args);
   assert.ok(base.valid && edited.valid, "both DU capacity runs must be valid");
   assert.strictEqual(base.tieStrengthPerLevel_kN, 3.426);
@@ -157,7 +214,7 @@ check("the DU engine picks up an edited U through the 2-set rule", () => {
 });
 
 check("zero tie strength drives the tie capacity to zero", () => {
-  C.setTieStrength("U", 0);
+  C.setTieStrength("U", "SS", "outer", 0);
   const calc = capacityOf("U", "UP 115x60x6", 2670);
   assert.strictEqual(calc.totalTiesCapacity, 0);
 });
@@ -198,7 +255,7 @@ check("the deflection cap only accepts a boolean", () => {
 
 check("resetAllAssumptions clears design values and tie strengths together", () => {
   C.setDesignValue("fy", 150);
-  C.setTieStrength("U", 3);
+  C.setTieStrength("U", "SS", "inner", 3);
   assert.strictEqual(C.isAnyAssumptionCustom(), true);
   C.resetAllAssumptions();
   assert.strictEqual(C.designValue("fy"), 127.27);

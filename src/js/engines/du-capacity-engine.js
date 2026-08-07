@@ -27,10 +27,11 @@
 
   const design = () => (windpost.parameters && windpost.parameters.design) || {};
 
-  function tieStrengthFor(section) {
+  function tieStrengthFor(section, supportCondition, loadType) {
     const cfg = windpost.config;
     const type = section && section.type;
-    return cfg.TIE_TYPES.includes(type) ? cfg.tieStrength(type) : cfg.tieStrength("DU");
+    const loadCase = cfg.loadCaseOf(supportCondition, loadType);
+    return cfg.tieStrength(cfg.TIE_TYPES.includes(type) ? type : "DU", loadCase);
   }
 
   function sectionsList() {
@@ -93,7 +94,7 @@
       values.loadType === "tipPointLoad" ? "tipPointLoad" : "udl";
 
     const p = design();
-    const tieStrength = tieStrengthFor(section);
+    const tieStrength = tieStrengthFor(section, supportCondition, loadType);
     const result = windpost.windpostCalculationEngine.getCalculatedDesignValues({
       length: length_mm,
       fy: values.fy ?? p.fy,
@@ -124,7 +125,7 @@
       loadType,
       tieSetsPerLevel: windpost.config.DU_TIE_SETS_PER_LEVEL,
       tieStrengthPerLevel_kN: tieStrength,
-      singleChannelTieStrength_kN: windpost.config.tieStrength("U"),
+      singleChannelTieStrength_kN: windpost.config.tieStrength("U", windpost.config.loadCaseOf(supportCondition, loadType)),
       // numberOfTies is the LEVEL count the capacity chain works in; ties
       // holds the quantities that go on a schedule.
       numberOfTies: result.numberOfTies,

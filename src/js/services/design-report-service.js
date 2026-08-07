@@ -105,7 +105,7 @@
             <tr><td>I<sub>xx</sub></td><td>${format(properties.ixx_mm4, 2)} mm⁴</td><td>Z<sub>xx</sub></td><td>${format(properties.zxx_mm3, 2)} mm³</td></tr>
             <tr><td>Allowable stress, f<sub>y</sub></td><td>${format(designDefaults.fy)} N/mm²</td><td>Initial E</td><td>${format(designDefaults.e, 0)} kN/mm²</td></tr>
             <tr><td>Secant proof strength</td><td>${format(designDefaults.secantFy)} N/mm²</td><td>Ramberg–Osgood n</td><td>${format(designDefaults.secantN, 0)}</td></tr>
-            <tr><td>Tie strength</td><td>${format(windpost.config.tieStrength(section.type), 3)} kN/tie</td><td>Tie spacing</td><td>${format(designDefaults.standardTieSpacing, 0)} mm c/c</td></tr>
+            <tr><td>Tie strength</td><td>${format(windpost.config.tieStrength(section.type, windpost.config.loadCaseOf(inputs.supportCondition, inputs.loadType)), 3)} kN/tie</td><td>Tie spacing</td><td>${format(designDefaults.standardTieSpacing, 0)} mm c/c</td></tr>
           </table>
         </section>
 
@@ -136,7 +136,7 @@
             <div class="calc-line"><span>E<sub>mb</sub> = L<sub>actual</sub> − 18.77 − g</span><strong>${format(wall.actualTieLength_mm, 0)} − 18.77 − ${format(wall.outerGap_mm, 1)} = ${format(wall.outerEmbedment_mm, 1)} mm</strong></div>
             ${innerTieCalculation}
             <div class="calc-line"><span>${tieEquation}</span><strong>${tieSubstitution}</strong></div>
-            <div class="calc-line"><span>Ultimate tie capacity</span><strong>${format(calculation.numberOfTies, 0)} × ${format(windpost.config.tieStrength(section.type), 3)} = ${format(calculation.totalTiesCapacity, 3)} kN</strong></div>
+            <div class="calc-line"><span>Ultimate tie capacity</span><strong>${format(calculation.numberOfTies, 0)} × ${format(windpost.config.tieStrength(section.type, windpost.config.loadCaseOf(inputs.supportCondition, inputs.loadType)), 3)} = ${format(calculation.totalTiesCapacity, 3)} kN</strong></div>
           </div>
         </section>
 

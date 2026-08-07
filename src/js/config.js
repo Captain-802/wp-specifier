@@ -15,18 +15,83 @@
   // the U value rather than written out, so it follows any workbook change.
   const DU_TIE_SETS_PER_LEVEL = 2;
 
-  const DEFAULT_TIE_STRENGTH_KN = Object.freeze({
-    L: (P.tieStrength && P.tieStrength.L) ?? 2.25,
-    U: U_TIE_STRENGTH_KN,
-    DU: (P.tieStrength && P.tieStrength.DU) ??
-      DU_TIE_SETS_PER_LEVEL * U_TIE_STRENGTH_KN
+  const L_TIE_STRENGTH_KN = (P.tieStrength && P.tieStrength.L) ?? 2.25;
+
+  // ---------------------------------------------------------------------
+  // Tie strength grid.
+  //
+  // A tie level is a load path in series:
+  //
+  //   wind -> outer leaf -> EDC tie -> windpost -> inner tie -> inner leaf
+  //
+  // so the level is only as strong as its weaker end. Each leaf carries its
+  // own strength, per post type and per load case, matching the Ties sheet
+  // columns in the capacity workbook (U_SS, U_Cant, U_Point, L_*, DU_*).
+  //
+  //   level capacity = min(inner, outer) x sets per level
+  //
+  // Values are per SET. A DU carries two sets, so its level works out at
+  // twice a U's - which reproduces the previous single-value model exactly
+  // while the catalogue has inner and outer equal.
+  // ---------------------------------------------------------------------
+  const TIE_LOAD_CASES = Object.freeze(["SS", "Cant", "Point"]);
+  const TIE_LEAVES = Object.freeze(["inner", "outer"]);
+
+  const TIE_LOAD_CASE_LABELS = Object.freeze({
+    SS: "Simply supported", Cant: "Cantilever", Point: "Cantilever, top point load"
   });
 
-  // The names the drawings and schedules use for each post's inner-leaf tie,
-  // so the editor lists ties by the name the engineer sees on the output.
+  // The names the drawings and schedules use for each leaf's tie, so the
+  // editor lists ties by the name the engineer sees on the output.
+  const TIE_LEAF_LABELS = Object.freeze({
+    U: { inner: "U tie", outer: "EDC tie" },
+    L: { inner: "Shear tie", outer: "EDC tie" },
+    DU: { inner: "U tie", outer: "EDC tie" }
+  });
+
   const TIE_LABELS = Object.freeze({
     U: "U tie", L: "Shear tie", DU: "U tie (2 sets per level)"
   });
+
+  function setsPerLevel(type) {
+    return type === "DU" ? DU_TIE_SETS_PER_LEVEL : 1;
+  }
+
+  // Catalogue grid. Both leaves start from the published per-set figure for
+  // the post family; the workbook holds one column per post and load case.
+  function catalogueFor(type) {
+    return type === "L" ? L_TIE_STRENGTH_KN : U_TIE_STRENGTH_KN;
+  }
+
+  const GRID = (P.tieGrid && typeof P.tieGrid === "object") ? P.tieGrid : null;
+
+  const DEFAULT_TIE_GRID = Object.freeze(["U", "L", "DU"].reduce((posts, type) => {
+    posts[type] = Object.freeze(TIE_LOAD_CASES.reduce((cases, loadCase) => {
+      const supplied = GRID && GRID[type] && GRID[type][loadCase];
+      cases[loadCase] = Object.freeze({
+        inner: (supplied && supplied.inner) ?? catalogueFor(type),
+        outer: (supplied && supplied.outer) ?? catalogueFor(type)
+      });
+      return cases;
+    }, Object.create(null)));
+    return posts;
+  }, Object.create(null)));
+
+  // Per-level totals at catalogue values, kept for the engines and tests that
+  // ask for "the" tie strength of a post family.
+  const DEFAULT_TIE_STRENGTH_KN = Object.freeze(["U", "L", "DU"].reduce((all, type) => {
+    const g = DEFAULT_TIE_GRID[type].SS;
+    all[type] = Math.min(g.inner, g.outer) * setsPerLevel(type);
+    return all;
+  }, Object.create(null)));
+
+  // supportCondition + loadType as used by the selector -> grid column.
+  function loadCaseOf(supportCondition, loadType) {
+    if (supportCondition === "cantilever") {
+      return loadType === "tipPointLoad" ? "Point" : "Cant";
+    }
+    return "SS";
+  }
 
   // ---------------------------------------------------------------------
   // Design assumptions.
@@ -96,11 +161,16 @@
       const raw = global.localStorage && global.localStorage.getItem(OVERRIDE_STORAGE_KEY);
       if (!raw) return;
       const parsed = JSON.parse(raw);
-      TIE_TYPES.forEach((type) => {
-        if (Object.prototype.hasOwnProperty.call(parsed, type) && isValidStrength(parsed[type])) {
-          overrides[type] = Number(parsed[type]);
-        }
-      });
+      // Keys are "<post>.<loadCase>.<leaf>". Anything else is from an older
+      // build of the single-value model and is discarded rather than guessed.
+      TIE_TYPES.forEach((type) => TIE_LOAD_CASES.forEach((loadCase) => {
+        TIE_LEAVES.forEach((leaf) => {
+          const key = `${type}.${loadCase}.${leaf}`;
+          if (Object.prototype.hasOwnProperty.call(parsed, key) && isValidStrength(parsed[key])) {
+            overrides[key] = Number(parsed[key]);
+          }
+        });
+      }));
     } catch (error) {
       overrides = Object.create(null);
     }
@@ -218,25 +288,48 @@
     resetDesignValues();
   }
 
-  function tieStrength(type) {
-    if (Object.prototype.hasOwnProperty.call(overrides, type)) return overrides[type];
-    // A DU level is two U sets, so it follows an edited U unless the engineer
-    // has given DU a value of its own.
-    if (type === "DU" && Object.prototype.hasOwnProperty.call(overrides, "U")) {
-      return DU_TIE_SETS_PER_LEVEL * overrides.U;
-    }
-    return DEFAULT_TIE_STRENGTH_KN[type];
+  const gridKey = (type, loadCase, leaf) => `${type}.${loadCase}.${leaf}`;
+
+  // Strength of one tie at one leaf, for a post family and load case.
+  function tieLeafStrength(type, loadCase, leaf) {
+    const key = gridKey(type, loadCase, leaf);
+    if (Object.prototype.hasOwnProperty.call(overrides, key)) return overrides[key];
+    return DEFAULT_TIE_GRID[type][loadCase][leaf];
   }
 
-  function setTieStrength(type, value) {
-    if (!TIE_TYPES.includes(type) || !isValidStrength(value)) return false;
-    overrides[type] = Number(value);
+  function defaultLeafStrength(type, loadCase, leaf) {
+    return DEFAULT_TIE_GRID[type][loadCase][leaf];
+  }
+
+  // What a whole tie level resists: the weaker end of the load path, times
+  // the number of tie sets the post carries at that level.
+  function tieStrength(type, loadCase) {
+    const useCase = TIE_LOAD_CASES.includes(loadCase) ? loadCase : "SS";
+    return Math.min(
+      tieLeafStrength(type, useCase, "inner"),
+      tieLeafStrength(type, useCase, "outer")
+    ) * setsPerLevel(type);
+  }
+
+  function setTieStrength(type, loadCase, leaf, value) {
+    if (!TIE_TYPES.includes(type) || !TIE_LOAD_CASES.includes(loadCase) ||
+        !TIE_LEAVES.includes(leaf) || !isValidStrength(value)) {
+      return false;
+    }
+    overrides[gridKey(type, loadCase, leaf)] = Number(value);
     persistOverrides();
     return true;
   }
 
-  function clearTieStrength(type) {
-    delete overrides[type];
+  function clearTieStrength(type, loadCase, leaf) {
+    if (loadCase === undefined) {
+      // Clear every cell for the post family.
+      TIE_LOAD_CASES.forEach((c) => TIE_LEAVES.forEach((f) => {
+        delete overrides[gridKey(type, c, f)];
+      }));
+    } else {
+      delete overrides[gridKey(type, loadCase, leaf)];
+    }
     persistOverrides();
   }
 
@@ -245,23 +338,69 @@
     persistOverrides();
   }
 
-  function isTieStrengthCustom(type) {
+  // Narrows from "anything at all" down to one cell, so each argument left
+  // off widens the question rather than falling through to an undefined cell.
+  function isTieStrengthCustom(type, loadCase, leaf) {
     if (type === undefined) return TIE_TYPES.some((t) => isTieStrengthCustom(t));
-    return tieStrength(type) !== DEFAULT_TIE_STRENGTH_KN[type];
+    if (loadCase === undefined) {
+      return TIE_LOAD_CASES.some((c) => isTieStrengthCustom(type, c));
+    }
+    if (leaf === undefined) {
+      return TIE_LEAVES.some((f) => isTieStrengthCustom(type, loadCase, f));
+    }
+    return tieLeafStrength(type, loadCase, leaf) !== defaultLeafStrength(type, loadCase, leaf);
   }
 
+  // One row per editable cell: post family x load case x leaf.
   function listTieStrengths() {
-    return TIE_TYPES.map((type) => ({
-      type,
-      label: TIE_LABELS[type],
-      value: tieStrength(type),
-      defaultValue: DEFAULT_TIE_STRENGTH_KN[type],
-      custom: isTieStrengthCustom(type),
-      // DU is showing a value derived from an edited U rather than its own.
-      derived: type === "DU" &&
-        !Object.prototype.hasOwnProperty.call(overrides, "DU") &&
-        Object.prototype.hasOwnProperty.call(overrides, "U")
+    const rows = [];
+    TIE_TYPES.forEach((type) => {
+      TIE_LOAD_CASES.forEach((loadCase) => {
+        TIE_LEAVES.forEach((leaf) => {
+          rows.push({
+            type,
+            loadCase,
+            leaf,
+            label: TIE_LEAF_LABELS[type][leaf],
+            caseLabel: TIE_LOAD_CASE_LABELS[loadCase],
+            value: tieLeafStrength(type, loadCase, leaf),
+            defaultValue: defaultLeafStrength(type, loadCase, leaf),
+            custom: isTieStrengthCustom(type, loadCase, leaf),
+            setsPerLevel: setsPerLevel(type),
+            levelStrength: tieStrength(type, loadCase),
+            // Strictly weaker end only: when both match, neither is singled
+            // out, otherwise every catalogue row would carry the tag.
+            governs: tieLeafStrength(type, loadCase, leaf) <
+              tieLeafStrength(type, loadCase, leaf === "inner" ? "outer" : "inner")
+          });
+        });
+      });
+    });
+    return rows;
+  }
+
+  // Per-level totals for every post family and load case - what the panel
+  // and the report quote.
+  function listTieLevelStrengths() {
+    const rows = [];
+    TIE_TYPES.forEach((type) => TIE_LOAD_CASES.forEach((loadCase) => {
+      rows.push({
+        type,
+        loadCase,
+        caseLabel: TIE_LOAD_CASE_LABELS[loadCase],
+        label: TIE_LABELS[type],
+        inner: tieLeafStrength(type, loadCase, "inner"),
+        outer: tieLeafStrength(type, loadCase, "outer"),
+        setsPerLevel: setsPerLevel(type),
+        value: tieStrength(type, loadCase),
+        defaultValue: Math.min(
+          defaultLeafStrength(type, loadCase, "inner"),
+          defaultLeafStrength(type, loadCase, "outer")
+        ) * setsPerLevel(type),
+        custom: isTieStrengthCustom(type, loadCase)
+      });
     }));
+    return rows;
   }
 
   readStoredOverrides();
@@ -273,14 +412,23 @@
     DENSITY_KN_PER_M3: P.density_kN_m3 ?? 78.5,
     DU_TIE_SETS_PER_LEVEL,
     DEFAULT_TIE_STRENGTH_KN,
+    DEFAULT_TIE_GRID,
     TIE_LABELS,
+    TIE_LEAF_LABELS,
     TIE_TYPES,
+    TIE_LOAD_CASES,
+    TIE_LOAD_CASE_LABELS,
+    TIE_LEAVES,
+    loadCaseOf,
+    setsPerLevel,
     tieStrength,
+    tieLeafStrength,
     setTieStrength,
     clearTieStrength,
     resetTieStrengths,
     isTieStrengthCustom,
     listTieStrengths,
+    listTieLevelStrengths,
     DESIGN_DEFAULTS,
     DESIGN_KEYS,
     designValue,
