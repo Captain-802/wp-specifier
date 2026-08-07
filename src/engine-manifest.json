@@ -1,0 +1,103 @@
+{
+  "name": "Windpost + Baseplate Designer Modular Engine Build",
+  "version": "2026-07-26-v02",
+  "principle": "Calculations, geometry, drawing, workflow and UI are separated by task.",
+  "groups": {
+    "data": [
+      "js/config.js",
+      "js/data/windpost-parameters.js",
+      "js/data/l-section-database.js",
+      "js/data/u-section-database.js",
+      "js/data/standard-section-heights.js",
+      "js/data/section-profiles.js",
+      "js/data/tie-profiles.js",
+      "js/utils.js"
+    ],
+    "windpostAnalysis": [
+      "js/engines/secant-modulus-engine.js",
+      "js/engines/load-case-engine.js",
+      "js/engines/tie-capacity-engine.js",
+      "js/engines/result-selection-engine.js",
+      "js/engines/windpost-calculation-engine.js",
+      "js/engines/outer-tie-selection-engine.js",
+      "js/engines/automatic-selection-engine.js"
+    ],
+    "cantileverBaseplate": [
+      "js/engines/baseplate-config.js",
+      "js/engines/baseplate-bolt-engine.js",
+      "js/engines/baseplate-leff-engine.js",
+      "js/engines/baseplate-tstub-engine.js",
+      "js/engines/baseplate-stiffener-engine.js",
+      "js/engines/baseplate-shear-engine.js",
+      "js/engines/baseplate-check-engine.js",
+      "js/engines/baseplate-sizer-engine.js",
+      "js/engines/baseplate-design-engine.js"
+    ],
+    "simplySupportedBaseplate": [
+      "js/engines/simply-u-baseplate-standard-engine.js",
+      "js/engines/simply-l-baseplate-standard-engine.js"
+    ],
+    "selectorRouting": [
+      "js/engines/selector/selector-baseplate-routing-engine.js",
+      "js/engines/selector/baseplate-drawing-routing-engine.js"
+    ],
+    "workflow": [
+      "js/engines/workflow/design-transfer-engine.js",
+      "js/engines/workflow/project-file-engine.js",
+      "js/engines/workflow/revision-engine.js",
+      "js/engines/workflow/production-validation-engine.js",
+      "js/engines/workflow/task-cache-engine.js",
+      "js/engines/workflow/render-scheduler-engine.js",
+      "js/engines/workflow/safe-execution-engine.js"
+    ],
+    "drawingsAnd3d": [
+      "js/services/baseplate-svg-engine.js",
+      "js/services/drawing-consistency-engine.js",
+      "js/services/drawing-layout-engine.js",
+      "js/services/engineering-canvas-renderer.js",
+      "js/services/cad-layer-standard.js",
+      "js/services/baseplate-geometry-engine.js",
+      "js/services/baseplate-plan-engine.js",
+      "js/services/baseplate-section-engine.js",
+      "js/services/baseplate-drawing-service.js",
+      "js/services/u-baseplate-geometry-engine.js",
+      "js/services/u-baseplate-plan-engine.js",
+      "js/services/u-baseplate-section-engine.js",
+      "js/services/u-baseplate-drawing-service.js",
+      "js/services/simply-u-baseplate-geometry-engine.js",
+      "js/services/simply-u-baseplate-plan-engine.js",
+      "js/services/simply-u-baseplate-section-engine.js",
+      "js/services/simply-u-baseplate-drawing-service.js",
+      "js/services/simply-l-baseplate-geometry-engine.js",
+      "js/services/simply-l-baseplate-plan-engine.js",
+      "js/services/simply-l-baseplate-section-engine.js",
+      "js/services/simply-l-baseplate-drawing-service.js",
+      "js/services/l-section-orthographic-service.js",
+      "js/services/u-section-orthographic-service.js",
+      "js/services/windpost-approval-drawing-service.js",
+      "js/services/cavity-wall-3d-engine.js",
+      "js/services/l-cantilever-baseplate-prototype-service.js",
+      "js/services/cavity-wall-assembly-engine.js",
+      "js/services/cavity-wall-drawing-service.js",
+      "js/services/tie-prototype-geometry-engine.js",
+      "js/services/tie-prototype-drawing-service.js",
+      "js/services/tie-prototype-3d-engine.js",
+      "js/services/tie-wall-setup-engine.js",
+      "js/services/tie-wall-drawing-service.js",
+      "js/services/tie-wall-canvas-renderer.js",
+      "js/services/tie-wall-3d-engine.js"
+    ],
+    "reportsAndExports": [
+      "js/services/design-report-service.js",
+      "js/services/sheet-export-service.js",
+      "js/services/print-calibration-service.js"
+    ],
+    "uiControllers": [
+      "js/ui/app.js",
+      "js/ui/l-section-prototype-page.js",
+      "js/ui/print-calibration-page.js",
+      "js/ui/cavity-wall-page.js",
+      "js/ui/tie-prototype-page.js"
+    ]
+  }
+}

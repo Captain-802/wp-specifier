@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Folded L-Windpost Prototype</title>
+  <link rel="stylesheet" href="./css/l-section-prototype.css">
+</head>
+<body>
+  <header class="page-header">
+    <div>
+      <p>Detailing · production geometry and drawings</p>
+      <h1>Windpost detailing</h1>
+    </div>
+    <nav class="drawing-workflow" aria-label="Windpost workflow">
+      <a id="back-to-selector" href="./index.html">← Back to Selector</a>
+      <span aria-current="page">Detailing</span>
+    </nav>
+  </header>
+
+  <main>
+    <aside class="controls" aria-labelledby="controls-title">
+      <p class="eyebrow">Prototype controls</p>
+      <h2 id="controls-title">Select the section</h2>
+      <form id="prototype-form">
+        <label>
+          <span>Post type</span>
+          <select id="prototype-post-type">
+            <option value="L">L windpost</option>
+            <option value="U">U windpost</option>
+          </select>
+        </label>
+        <label>
+          <span>Support condition</span>
+          <select id="prototype-support">
+            <option value="cantilever">Cantilever</option>
+            <option value="simplySupported">Simply supported</option>
+          </select>
+        </label>
+        <label>
+          <span id="section-label">Section</span>
+          <select id="prototype-section"></select>
+        </label>
+        <label>
+          <span>Windpost height / length</span>
+          <span class="number-field">
+            <input id="prototype-length" type="number" min="300" max="12000" step="1" value="900">
+            <em>mm</em>
+          </span>
+        </label>
+        <label>
+          <span id="slot-offset-label">Slot centre from long-leg outer edge</span>
+          <span class="number-field">
+            <input
+              id="prototype-slot-offset"
+              type="number"
+              min="9"
+              step="1"
+              value="40"
+            >
+            <em>mm</em>
+          </span>
+        </label>
+        <label>
+          <span>First slot centre from base</span>
+          <span class="number-field">
+            <input
+              id="prototype-first-slot"
+              type="number"
+              min="25"
+              max="12000"
+              step="1"
+              value="225"
+            >
+            <em>mm</em>
+          </span>
+        </label>
+        <label>
+          <span>Vertical slot spacing</span>
+          <span class="number-field">
+            <input
+              id="prototype-slot-spacing"
+              type="number"
+              min="50"
+              max="12000"
+              step="1"
+              value="225"
+            >
+            <em>mm</em>
+          </span>
+        </label>
+        <label>
+          <span>Drawing colours</span>
+          <select id="prototype-palette">
+            <option value="colour">Coloured CAD layers</option>
+            <option value="mono">Monochrome</option>
+          </select>
+        </label>
+        <label>
+          <span>Cantilever load model</span>
+          <select id="prototype-load-type">
+            <option value="udl">Uniformly distributed load</option>
+            <option value="tipPointLoad">Top point load</option>
+          </select>
+        </label>
+        <button type="submit">Update section</button>
+      </form>
+    </aside>
+
+    <section class="viewer" aria-labelledby="viewer-title">
+      <div class="viewer-header">
+        <div>
+          <p class="eyebrow">Interactive 3D prototype</p>
+          <h2 id="viewer-title">True folded cross-section</h2>
+        </div>
+        <div class="viewer-actions">
+          <div
+            class="drawing-mode"
+            role="group"
+            aria-label="3D navigation mode"
+          >
+            <button
+              id="view-mode-orbit"
+              type="button"
+              aria-pressed="true"
+            >Orbit</button>
+            <button
+              id="view-mode-pan"
+              type="button"
+              aria-pressed="false"
+            >Pan</button>
+          </div>
+          <button id="reset-view" type="button">Reset view</button>
+        </div>
+      </div>
+      <canvas
+        id="prototype-canvas"
+        tabindex="0"
+        aria-label="Interactive three-dimensional folded L-windpost with its calculated cantilever baseplate, anchor holes and stiffener. Select Orbit or Pan, drag to move the view, and use the mouse wheel to zoom."
+      ></canvas>
+      <div class="viewer-help">
+        <span>Orbit: left-drag</span>
+        <span>Pan: select Pan, Shift-drag, middle-drag or right-drag</span>
+        <span>Wheel or +/− to zoom</span>
+        <span>Shift + arrows pan</span>
+      </div>
+    </section>
+
+    <section class="drawing" aria-labelledby="drawing-title">
+      <div class="viewer-header">
+        <div>
+          <p class="eyebrow">Client approval arrangement</p>
+          <h2 id="drawing-title">Windpost, cavity wall and paired ties</h2>
+        </div>
+        <div class="drawing-actions">
+          <div class="drawing-mode" role="group" aria-label="Drawing display">
+            <button
+              id="drawing-mode-hatch"
+              type="button"
+              aria-pressed="true"
+            >Hatched</button>
+            <button
+              id="drawing-mode-lines"
+              type="button"
+              aria-pressed="false"
+            >Lines only</button>
+          </div>
+          <button id="download-drawing" type="button">Download SVG</button>
+        </div>
+      </div>
+      <div
+        id="orthographic-drawing"
+        class="drawing-sheet"
+        aria-live="polite"
+      ></div>
+    </section>
+
+    <!--
+      Live calculated source used by both formal sheets. It remains rendered
+      off-screen so SVG measurements stay exact, but it is not a third page.
+    -->
+    <div class="production-source-only" aria-hidden="true">
+      <div
+        id="cantilever-baseplate-drawing"
+        class="baseplate-sheet"
+      ></div>
+    </div>
+
+    <section class="drawing" aria-labelledby="a4-sheet-title">
+      <div class="viewer-header">
+        <div>
+          <p class="eyebrow">Production output</p>
+          <h2 id="a4-sheet-title">A4 windpost production drawing</h2>
+        </div>
+        <div class="production-export-actions">
+          <a class="button-link" href="./print-calibration.html">
+            Print calibration
+          </a>
+          <button id="download-a4-sheet" type="button">Download A4 SVG</button>
+          <button id="download-a4-dxf" type="button">Download A4 DXF</button>
+          <button id="download-a4-pdf" type="button">Download A4 PDF</button>
+        </div>
+      </div>
+      <form
+        id="production-details-form"
+        class="production-details"
+        autocomplete="off"
+      >
+        <div class="production-details-heading">
+          <div>
+            <p class="eyebrow">Drawing-specific information</p>
+            <h3>Production details</h3>
+          </div>
+          <p>
+            Enter the information for this windpost. The preview and every
+            A4 export update automatically.
+          </p>
+        </div>
+        <div class="production-details-grid">
+          <label>
+            <span>Merchant</span>
+            <input id="production-merchant" type="text" maxlength="32">
+          </label>
+          <label>
+            <span>Product weight</span>
+            <input
+              id="production-weight"
+              type="text"
+              maxlength="16"
+              placeholder="e.g. 23.4 KG"
+            >
+          </label>
+          <label>
+            <span>Customer</span>
+            <input id="production-customer" type="text" maxlength="32">
+          </label>
+          <label>
+            <span>Detailer</span>
+            <input id="production-detailer" type="text" maxlength="24">
+          </label>
+          <label>
+            <span>Engineer</span>
+            <input id="production-engineer" type="text" maxlength="24">
+          </label>
+          <label>
+            <span>Checked by</span>
+            <input id="production-checked-by" type="text" maxlength="24">
+          </label>
+          <label>
+            <span>Drawing number</span>
+            <input
+              id="production-drawing-number"
+              type="text"
+              maxlength="16"
+              value="P1"
+            >
+          </label>
+          <label>
+            <span>Schedule</span>
+            <input id="production-schedule" type="text" maxlength="24">
+          </label>
+          <label>
+            <span>Drawing date</span>
+            <input id="production-date" type="date">
+          </label>
+          <label>
+            <span>KSSO</span>
+            <input id="production-ksso" type="text" maxlength="24">
+          </label>
+          <label>
+            <span>Manufactured site</span>
+            <input
+              id="production-manufactured-site"
+              type="text"
+              maxlength="28"
+            >
+          </label>
+          <label>
+            <span>Quantity</span>
+            <span class="number-field">
+              <input
+                id="production-quantity"
+                type="number"
+                min="1"
+                max="999"
+                step="1"
+                value="1"
+              >
+              <em>NO.</em>
+            </span>
+          </label>
+          <label>
+            <span>Revision</span>
+            <input
+              id="production-revision"
+              type="text"
+              maxlength="12"
+              value="P1"
+            >
+          </label>
+          <label>
+            <span>Revision issue</span>
+            <input
+              id="production-revision-issue"
+              type="text"
+              maxlength="48"
+              value="FIRST ISSUE"
+            >
+          </label>
+        </div>
+      </form>
+      <div
+        id="combined-a4-sheet"
+        class="drawing-sheet"
+        aria-live="polite"
+      ></div>
+    </section>
+  </main>
+
+  <script src="./js/data/windpost-parameters.js"></script>
+  <script src="./js/config.js"></script>
+  <script src="./js/data/l-section-database.js"></script>
+  <script src="./js/data/standard-section-heights.js"></script>
+  <script src="./js/data/u-section-database.js"></script>
+  <script src="./js/data/du-section-database.js"></script>
+  <script src="./js/data/tie-profiles.js"></script>
+  <script src="./js/engines/secant-modulus-engine.js"></script>
+  <script src="./js/engines/load-case-engine.js"></script>
+  <script src="./js/engines/tie-capacity-engine.js"></script>
+  <script src="./js/engines/result-selection-engine.js"></script>
+  <script src="./js/engines/windpost-calculation-engine.js"></script>
+  <script src="./js/engines/du-capacity-engine.js"></script>
+  <script src="./js/engines/baseplate-config.js"></script>
+  <script src="./js/engines/baseplate-bolt-engine.js"></script>
+  <script src="./js/engines/baseplate-leff-engine.js"></script>
+  <script src="./js/engines/baseplate-tstub-engine.js"></script>
+  <script src="./js/engines/baseplate-stiffener-engine.js"></script>
+  <script src="./js/engines/baseplate-shear-engine.js"></script>
+  <script src="./js/engines/baseplate-check-engine.js"></script>
+  <script src="./js/engines/baseplate-sizer-engine.js"></script>
+  <script src="./js/engines/baseplate-design-engine.js"></script>
+  <script src="./js/services/cad-layer-standard.js"></script>
+  <script src="./js/services/baseplate-svg-engine.js"></script>
+  <script src="./js/services/drawing-consistency-engine.js"></script>
+  <script src="./js/services/drawing-layout-engine.js"></script>
+  <script src="./js/services/engineering-canvas-renderer.js"></script>
+  <script src="./js/services/baseplate-geometry-engine.js"></script>
+  <script src="./js/services/baseplate-plan-engine.js"></script>
+  <script src="./js/services/baseplate-section-engine.js"></script>
+  <script src="./js/services/baseplate-drawing-service.js"></script>
+  <script src="./js/services/u-baseplate-geometry-engine.js"></script>
+  <script src="./js/services/u-baseplate-plan-engine.js"></script>
+  <script src="./js/services/u-baseplate-section-engine.js"></script>
+  <script src="./js/services/u-baseplate-drawing-service.js"></script>
+  <!-- U before L: the L standard engine reads the U standard at load time -->
+  <script src="./js/engines/simply-u-baseplate-standard-engine.js"></script>
+  <script src="./js/engines/simply-l-baseplate-standard-engine.js"></script>
+  <script src="./js/services/simply-u-baseplate-geometry-engine.js"></script>
+  <script src="./js/services/simply-u-baseplate-plan-engine.js"></script>
+  <script src="./js/services/simply-u-baseplate-section-engine.js"></script>
+  <script src="./js/services/simply-u-baseplate-drawing-service.js"></script>
+  <script src="./js/services/simply-l-baseplate-geometry-engine.js"></script>
+  <script src="./js/services/simply-l-baseplate-plan-engine.js"></script>
+  <script src="./js/services/simply-l-baseplate-section-engine.js"></script>
+  <script src="./js/services/simply-l-baseplate-drawing-service.js"></script>
+  <script src="./js/services/cavity-wall-3d-engine.js"></script>
+  <script src="./js/services/l-section-orthographic-service.js"></script>
+  <script src="./js/services/u-section-orthographic-service.js"></script>
+  <script src="./js/services/tie-prototype-geometry-engine.js"></script>
+  <script src="./js/services/tie-wall-setup-engine.js"></script>
+  <script src="./js/services/tie-wall-drawing-service.js"></script>
+  <script src="./js/services/windpost-approval-drawing-service.js"></script>
+  <script src="./js/services/l-cantilever-baseplate-prototype-service.js"></script>
+  <script src="./js/services/sheet-export-service.js"></script>
+  <script src="./js/services/print-calibration-service.js"></script>
+  <!-- small workflow engines: validated JSON transfer, caching and redraws -->
+  <script src="./js/engines/workflow/safe-execution-engine.js"></script>
+  <script src="./js/engines/workflow/design-transfer-engine.js"></script>
+  <script src="./js/engines/workflow/production-validation-engine.js"></script>
+  <script src="./js/engines/workflow/task-cache-engine.js"></script>
+  <script src="./js/engines/workflow/render-scheduler-engine.js"></script>
+  <script src="./js/ui/l-section-prototype-page.js"></script>
+</body>
+</html>

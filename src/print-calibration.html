@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Windpost A4 Print Calibration</title>
+  <link rel="stylesheet" href="./css/l-section-prototype.css">
+  <style>
+    body{background:#eef2f5}
+    .calibration-toolbar{max-width:920px;margin:18px auto;display:flex;
+      align-items:center;justify-content:space-between;gap:12px}
+    .calibration-toolbar h1{margin:0;font-size:20px}
+    .calibration-actions{display:flex;gap:8px;flex-wrap:wrap}
+    #calibration-sheet{width:min(794px,calc(100vw - 32px));margin:0 auto 30px;
+      background:#fff;box-shadow:0 5px 22px rgba(20,35,55,.16)}
+    #calibration-sheet svg{display:block;width:100%;height:auto}
+    @page{size:A4 portrait;margin:0}
+    @media print{
+      .calibration-toolbar{display:none!important}
+      body{margin:0;background:#fff}
+      #calibration-sheet{width:210mm;margin:0;box-shadow:none}
+      #calibration-sheet svg{width:210mm!important;height:297mm!important}
+    }
+  </style>
+</head>
+<body>
+  <header class="calibration-toolbar">
+    <div>
+      <p class="eyebrow">Production control</p>
+      <h1>A4 print calibration</h1>
+    </div>
+    <div class="calibration-actions">
+      <a href="./l-section-prototype.html">Back to detailing</a>
+      <button id="download-calibration" type="button">Download SVG</button>
+      <button id="print-calibration" type="button">Print at 100%</button>
+    </div>
+  </header>
+  <main id="calibration-sheet" aria-live="polite"></main>
+  <script src="./js/services/print-calibration-service.js"></script>
+  <script src="./js/ui/print-calibration-page.js"></script>
+</body>
+</html>

@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Automatic U and L windpost selection, capacity calculation and wall-tie schedule.">
+  <title>Windpost Select | Automatic Windpost Design</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='6' fill='%23102743'/%3E%3Cpath d='M14 15h8l6 30h8l6-30h8l-9 38H23z' fill='white'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./css/app.css">
+</head>
+<body>
+  <div class="top-rule" aria-hidden="true"></div>
+  <header class="site-header">
+    <div class="shell header-inner">
+      <a class="brand" href="#" aria-label="Windpost Select home">
+        <span class="brand-mark" aria-hidden="true">W</span>
+        <span>
+          <strong>Windpost Select</strong>
+          <small>Masonry support specification</small>
+        </span>
+      </a>
+      <div class="header-tools">
+        <nav class="app-tabs" aria-label="Windpost workflow">
+          <span class="app-tab is-active" aria-current="page">Selector</span>
+          <button
+            id="detailing-tab"
+            class="app-tab"
+            type="button"
+            disabled
+            title="Run a successful windpost selection first"
+          >Detailing</button>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="intro shell">
+      <div>
+        <p class="eyebrow">Automatic windpost specification</p>
+        <h1>Select a complete windpost system in one calculation.</h1>
+      </div>
+      <div class="intro-assurance" aria-label="Calculation features">
+        <span>Exact-height analysis</span>
+        <span>U &amp; L catalogues</span>
+        <span>EDC outer ties</span>
+      </div>
+    </section>
+
+    <div class="shell app-grid">
+      <form id="design-form" class="design-panel" novalidate>
+        <div class="panel-heading">
+          <div>
+            <p class="panel-kicker">Project inputs</p>
+            <h2>Windpost design brief</h2>
+          </div>
+          <span class="required-note">All dimensions in mm</span>
+        </div>
+
+        <section class="form-step" aria-labelledby="step-one-title">
+          <div class="step-heading">
+            <span>1</span>
+            <div><h3 id="step-one-title">Choose windpost type</h3><p>Select the required formed section family.</p></div>
+          </div>
+          <div class="choice-grid three">
+            <label class="choice-card">
+              <input type="radio" name="windpostType" value="U" checked>
+              <span class="choice-content">
+                <span class="shape-icon shape-u" aria-hidden="true"><i></i></span>
+                <span><strong>U-shaped post</strong><small>UP standard section range</small></span>
+                <b class="choice-tick">✓</b>
+              </span>
+            </label>
+            <label class="choice-card">
+              <input type="radio" name="windpostType" value="L">
+              <span class="choice-content">
+                <span class="shape-icon shape-l" aria-hidden="true"><i></i></span>
+                <span><strong>L-shaped post</strong><small>LP standard section range</small></span>
+                <b class="choice-tick">✓</b>
+              </span>
+            </label>
+            <label class="choice-card">
+              <input type="radio" name="windpostType" value="DU">
+              <span class="choice-content">
+                <span class="shape-icon shape-du" aria-hidden="true"><i></i><b></b></span>
+                <span><strong>DU-shaped post</strong><small>Two channels welded web to web</small></span>
+                <b class="choice-tick">✓</b>
+              </span>
+            </label>
+          </div>
+        </section>
+
+        <section class="form-step" aria-labelledby="step-two-title">
+          <div class="step-heading">
+            <span>2</span>
+            <div><h3 id="step-two-title">Choose support condition</h3><p>The load model and capacity equations update automatically.</p></div>
+          </div>
+          <div class="choice-grid two compact-choice">
+            <label class="choice-card">
+              <input type="radio" name="supportCondition" value="simplySupported" checked>
+              <span class="choice-content text-choice">
+                <span><strong>Simply supported</strong><small>Restrained at top and base</small></span>
+                <b class="choice-tick">✓</b>
+              </span>
+            </label>
+            <label class="choice-card">
+              <input type="radio" name="supportCondition" value="cantilever">
+              <span class="choice-content text-choice">
+                <span><strong>Cantilever</strong><small>Fixed at base, free at top</small></span>
+                <b class="choice-tick">✓</b>
+              </span>
+            </label>
+          </div>
+        </section>
+
+        <section class="form-step" aria-labelledby="step-three-title">
+          <div class="step-heading">
+            <span>3</span>
+            <div><h3 id="step-three-title">Load case and exact height</h3><p>The UDL input is the total ULS load acting on the complete post.</p></div>
+          </div>
+          <div class="choice-grid two compact-choice">
+            <label class="choice-card">
+              <input type="radio" name="loadType" value="udl" checked>
+              <span class="choice-content text-choice">
+                <span><strong>Total ULS UDL</strong><small>Total lateral load in kN</small></span>
+                <b class="choice-tick">✓</b>
+              </span>
+            </label>
+            <label id="point-load-choice" class="choice-card is-disabled" title="Available for cantilevers only">
+              <input type="radio" name="loadType" value="tipPointLoad" disabled>
+              <span class="choice-content text-choice">
+                <span><strong>Top point load</strong><small>Cantilever only</small></span>
+                <b class="choice-tick">✓</b>
+              </span>
+            </label>
+          </div>
+          <div class="field-grid single-after-choices">
+            <label class="field">
+              <span>Exact windpost height <b>*</b></span>
+              <span class="input-with-unit"><input id="height" type="number" value="2670" min="1" step="1" inputmode="decimal" required><em>mm</em></span>
+              <small>Any project height can be entered; no table rounding is used.</small>
+            </label>
+          </div>
+        </section>
+
+        <section class="form-step" aria-labelledby="step-four-title">
+          <div class="step-heading">
+            <span>4</span>
+            <div><h3 id="step-four-title">Choose how to design</h3><p>Automatically select a post or calculate a chosen catalogue section.</p></div>
+          </div>
+          <div class="segmented-control" role="radiogroup" aria-label="Design mode">
+            <label><input type="radio" name="designMode" value="automatic" checked><span>Enter required load</span></label>
+            <label><input type="radio" name="designMode" value="manual"><span>Choose a section</span></label>
+          </div>
+          <div id="automatic-input" class="conditional-block">
+            <label class="field featured-field">
+              <span id="required-load-label">Required total ULS UDL load <b>*</b></span>
+              <span class="input-with-unit"><input id="required-load" type="number" value="13" min="0.001" step="0.01" inputmode="decimal"><em>kN</em></span>
+              <small>The software selects the first available standard section with sufficient final capacity.</small>
+            </label>
+          </div>
+          <div id="manual-input" class="conditional-block hidden">
+            <label class="field featured-field">
+              <span>Catalogue windpost section <b>*</b></span>
+              <select id="section-select"></select>
+              <small>The result will show the maximum final ULS capacity at the exact entered height.</small>
+            </label>
+          </div>
+        </section>
+
+        <section class="form-step" aria-labelledby="step-five-title">
+          <div class="step-heading">
+            <span>5</span>
+            <div><h3 id="step-five-title">Enter wall construction</h3><p>Used to verify post placement and select the outer-leaf EDC tie.</p></div>
+          </div>
+          <div class="wall-fields">
+            <label class="field"><span>Inner leaf <b>*</b></span><span class="input-with-unit"><input id="inner-leaf" type="number" value="100" min="1" step="1" required><em>mm</em></span></label>
+            <div class="wall-arrow" aria-hidden="true">→</div>
+            <label class="field"><span>Cavity <b>*</b></span><span class="input-with-unit"><input id="cavity" type="number" value="150" min="1" step="1" required><em>mm</em></span></label>
+            <div class="wall-arrow" aria-hidden="true">→</div>
+            <label class="field"><span>Outer leaf <b>*</b></span><span class="input-with-unit"><input id="outer-leaf" type="number" value="100" min="1" step="1" required><em>mm</em></span></label>
+          </div>
+          <div class="wall-key">
+            <span><i class="key-inner"></i>Inner masonry</span>
+            <span><i class="key-cavity"></i>Cavity and post</span>
+            <span><i class="key-outer"></i>Outer masonry</span>
+          </div>
+        </section>
+
+        <details class="defaults-panel">
+          <summary><span>Design assumptions</span><small>Locked to the existing designer defaults</small></summary>
+          <div class="defaults-grid">
+            <div><span>Allowable stress</span><strong>127.27 N/mm²</strong></div>
+            <div><span>Initial E</span><strong>200 kN/mm²</strong></div>
+            <div><span>Secant f<sub>y</sub></span><strong>210 N/mm²</strong></div>
+            <div><span>Secant exponent</span><strong>n = 7</strong></div>
+            <div><span>U tie strength</span><strong data-tie-readout="U">1.713 kN</strong></div>
+            <div><span>L tie strength</span><strong data-tie-readout="L">2.250 kN</strong></div>
+            <div><span>DU tie strength</span><strong data-tie-readout="DU">3.426 kN</strong></div>
+            <div><span>First / standard spacing</span><strong>225 / 225 mm</strong></div>
+            <div><span>10 mm deflection cap</span><strong>Not applied</strong></div>
+          </div>
+          <div class="defaults-edit-row">
+            <button id="edit-tie-strengths" class="tie-edit-button" type="button">
+              <span aria-hidden="true">✎</span> Edit tie strengths
+            </button>
+            <span id="tie-strength-flag" class="tie-flag hidden">Edited — not catalogue values</span>
+          </div>
+        </details>
+
+        <div class="form-actions">
+          <button id="calculate-button" class="primary-button" type="submit">
+            <span>Run windpost selection</span><b aria-hidden="true">→</b>
+          </button>
+          <div class="project-file-actions" aria-label="Project file controls">
+            <button id="open-project-json" class="secondary-button" type="button">
+              Open project
+            </button>
+            <button id="save-project-json" class="secondary-button" type="button">
+              Save project JSON
+            </button>
+            <input
+              id="project-json-file"
+              class="visually-hidden"
+              type="file"
+              accept=".json,.windpost.json,application/json"
+            >
+          </div>
+          <output id="project-file-status" class="project-file-status"></output>
+          <p>The calculation runs locally in this browser.</p>
+        </div>
+      </form>
+
+      <aside id="result-panel" class="result-panel" aria-live="polite">
+        <div id="result-placeholder" class="result-placeholder">
+          <div class="placeholder-mark" aria-hidden="true"><span></span></div>
+          <p class="eyebrow">Design result</p>
+          <h2>Your windpost specification will appear here.</h2>
+          <p>Complete the five sections and run the selection to see the post, final capacity and supplied ties.</p>
+          <ul>
+            <li>First suitable standard section</li>
+            <li>Final governing ULS capacity</li>
+            <li>Inner and outer tie schedule</li>
+          </ul>
+        </div>
+        <div id="result-content" class="hidden"></div>
+      </aside>
+    </div>
+
+    <section id="detailed-section" class="shell detailed-section hidden">
+      <div class="detail-toolbar no-print">
+        <div><p class="eyebrow">Calculation record</p><h2>Detailed design calculation</h2></div>
+        <div class="toolbar-actions">
+          <button id="close-details" class="secondary-button" type="button">Hide calculation</button>
+          <button id="print-report" class="primary-button small" type="button">Download PDF</button>
+        </div>
+      </div>
+      <div id="detailed-report"></div>
+    </section>
+  </main>
+
+  <!-- Tie strength editor. Outside the design form: it carries its own form,
+       and a form inside a form is invalid. -->
+  <dialog id="tie-strength-dialog" class="tie-dialog" aria-labelledby="tie-dialog-title">
+    <form id="tie-strength-form" method="dialog">
+      <h2 id="tie-dialog-title">Tie strengths</h2>
+      <p class="tie-dialog-note">
+        Ultimate strength resisted at each tie level. A DU post carries two sets
+        of ties per level, so its value is normally twice the U tie.
+      </p>
+      <div id="tie-strength-rows" class="tie-rows"></div>
+      <p id="tie-strength-error" class="tie-dialog-error hidden" role="alert"></p>
+      <div class="tie-dialog-actions">
+        <button id="tie-strength-reset" class="secondary-button" type="button">Reset to catalogue</button>
+        <span class="tie-dialog-spacer"></span>
+        <button id="tie-strength-cancel" class="secondary-button" type="button">Cancel</button>
+        <button id="tie-strength-apply" class="primary-button small" type="button">Apply</button>
+      </div>
+    </form>
+  </dialog>
+
+  <footer class="site-footer">
+    <div class="shell footer-inner">
+      <div><strong>Windpost Select</strong><span>Automatic specification using the established local windpost engines.</span></div>
+      <span>Standalone · Offline · Exact-height calculation</span>
+    </div>
+  </footer>
+
+  <script src="./js/data/windpost-parameters.js"></script>
+  <script src="./js/config.js"></script>
+  <script src="./js/utils.js"></script>
+  <script src="./js/data/standard-section-heights.js"></script>
+  <script src="./js/data/u-section-database.js"></script>
+  <script src="./js/data/l-section-database.js"></script>
+  <script src="./js/data/du-section-database.js"></script>
+  <script src="./js/data/section-profiles.js"></script>
+  <script src="./js/engines/secant-modulus-engine.js"></script>
+  <script src="./js/engines/load-case-engine.js"></script>
+  <script src="./js/engines/tie-capacity-engine.js"></script>
+  <script src="./js/engines/result-selection-engine.js"></script>
+  <script src="./js/engines/windpost-calculation-engine.js"></script>
+  <script src="./js/engines/du-capacity-engine.js"></script>
+  <script src="./js/engines/outer-tie-selection-engine.js"></script>
+  <script src="./js/engines/automatic-selection-engine.js"></script>
+  <script src="./js/services/design-report-service.js"></script>
+  <!-- base plate design engines (small, single-purpose) -->
+  <script src="./js/engines/baseplate-config.js"></script>
+  <script src="./js/engines/baseplate-bolt-engine.js"></script>
+  <script src="./js/engines/baseplate-leff-engine.js"></script>
+  <script src="./js/engines/baseplate-tstub-engine.js"></script>
+  <script src="./js/engines/baseplate-stiffener-engine.js"></script>
+  <script src="./js/engines/baseplate-shear-engine.js"></script>
+  <script src="./js/engines/baseplate-check-engine.js"></script>
+  <script src="./js/engines/baseplate-sizer-engine.js"></script>
+  <script src="./js/engines/baseplate-design-engine.js"></script>
+  <!-- fixed standard base plate engine for simply-supported U-posts -->
+  <script src="./js/engines/simply-u-baseplate-standard-engine.js"></script>
+  <script src="./js/engines/simply-l-baseplate-standard-engine.js"></script>
+  <!-- base plate drawing engines -->
+  <script src="./js/services/cad-layer-standard.js"></script>
+  <script src="./js/services/baseplate-svg-engine.js"></script>
+  <script src="./js/services/drawing-consistency-engine.js"></script>
+  <script src="./js/services/drawing-layout-engine.js"></script>
+  <script src="./js/services/engineering-canvas-renderer.js"></script>
+  <script src="./js/services/baseplate-geometry-engine.js"></script>
+  <script src="./js/services/baseplate-plan-engine.js"></script>
+  <script src="./js/services/baseplate-section-engine.js"></script>
+  <script src="./js/services/baseplate-drawing-service.js"></script>
+  <!-- U-post base plate drawing engines (shared structural design/checks) -->
+  <script src="./js/services/u-baseplate-geometry-engine.js"></script>
+  <script src="./js/services/u-baseplate-plan-engine.js"></script>
+  <script src="./js/services/u-baseplate-section-engine.js"></script>
+  <script src="./js/services/u-baseplate-drawing-service.js"></script>
+  <!-- simply-supported U-post standard plan and side-view drawing engines -->
+  <script src="./js/services/simply-u-baseplate-geometry-engine.js"></script>
+  <script src="./js/services/simply-u-baseplate-plan-engine.js"></script>
+  <script src="./js/services/simply-u-baseplate-section-engine.js"></script>
+  <script src="./js/services/simply-u-baseplate-drawing-service.js"></script>
+  <!-- simply-supported L-post standard plan and side-view drawing engines -->
+  <script src="./js/services/simply-l-baseplate-geometry-engine.js"></script>
+  <script src="./js/services/simply-l-baseplate-plan-engine.js"></script>
+  <script src="./js/services/simply-l-baseplate-section-engine.js"></script>
+  <script src="./js/services/simply-l-baseplate-drawing-service.js"></script>
+  <!-- small workflow and selector-routing engines -->
+  <script src="./js/engines/workflow/safe-execution-engine.js"></script>
+  <script src="./js/engines/workflow/design-transfer-engine.js"></script>
+  <script src="./js/engines/workflow/project-file-engine.js"></script>
+  <script src="./js/engines/selector/selector-baseplate-routing-engine.js"></script>
+  <script src="./js/engines/selector/baseplate-drawing-routing-engine.js"></script>
+  <script src="./js/ui/app.js"></script>
+</body>
+</html>

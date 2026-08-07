@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Interactive L-windpost cavity-wall assembly with paired shear and EDC ties.">
+  <title>L-Windpost Cavity Wall Assembly</title>
+  <link rel="stylesheet" href="./css/cavity-wall.css">
+</head>
+<body>
+  <div class="top-rule" aria-hidden="true"></div>
+  <header class="assembly-header">
+    <div class="assembly-shell header-row">
+      <a class="assembly-brand" href="./index.html">
+        <span class="brand-mark" aria-hidden="true">L</span>
+        <span><strong>Cavity Wall Assembly</strong><small>Windpost Select technical model</small></span>
+      </a>
+      <div class="header-actions">
+        <span class="local-badge"><i></i>Local model</span>
+        <a class="header-link" href="./index.html">Back to selector</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="assembly-shell page-intro">
+      <div>
+        <p class="eyebrow">L-windpost construction detail</p>
+        <h1>See the post, masonry and every paired tie as one assembly.</h1>
+        <p class="intro-copy">The same selected section and wall geometry drive the interactive 3D model and all four dimensioned views.</p>
+      </div>
+      <div class="intro-tags" aria-label="Model features">
+        <span>10 × 50 R5 post slots</span>
+        <span>225 mm tie centres</span>
+        <span>Standard UK masonry</span>
+      </div>
+    </section>
+
+    <div class="assembly-shell workspace-grid">
+      <aside class="input-card" aria-labelledby="assembly-input-title">
+        <div class="card-heading">
+          <div><p class="eyebrow">Assembly inputs</p><h2 id="assembly-input-title">Selected construction</h2></div>
+          <span class="units-note">mm</span>
+        </div>
+
+        <form id="assembly-form">
+          <label class="field">
+            <span>L-windpost section</span>
+            <select id="assembly-section"></select>
+          </label>
+
+          <div class="field-grid two">
+            <label class="field">
+              <span>Support</span>
+              <select id="assembly-support">
+                <option value="simplySupported">Simply supported</option>
+                <option value="cantilever">Cantilever</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Post height</span>
+              <span class="with-unit"><input id="assembly-height" type="number" min="450" max="12000" step="1" value="2670"><em>mm</em></span>
+            </label>
+          </div>
+
+          <fieldset>
+            <legend>Wall construction</legend>
+            <label class="field">
+              <span>Inner block leaf</span>
+              <span class="with-unit"><input id="assembly-inner" type="number" min="90" max="300" step="1" value="100"><em>mm</em></span>
+            </label>
+            <label class="field">
+              <span>Clear cavity</span>
+              <span class="with-unit"><input id="assembly-cavity" type="number" min="40" max="450" step="1" value="150"><em>mm</em></span>
+            </label>
+            <label class="field">
+              <span>Outer brick leaf</span>
+              <span class="with-unit"><input id="assembly-outer" type="number" min="65" max="300" step=".5" value="102.5"><em>mm</em></span>
+            </label>
+          </fieldset>
+
+          <button class="primary-button" type="submit"><span>Update assembly</span><b aria-hidden="true">→</b></button>
+          <p id="assembly-status" class="form-status" role="status">Ready to generate.</p>
+        </form>
+
+        <dl id="assembly-spec" class="spec-list"></dl>
+      </aside>
+
+      <section class="viewer-card" aria-labelledby="viewer-title">
+        <div class="viewer-heading">
+          <div><p class="eyebrow">Interactive assembly</p><h2 id="viewer-title">Cavity-wall cutaway</h2></div>
+          <div class="viewer-actions">
+            <button id="reset-view" type="button">Reset view</button>
+            <button id="save-view" type="button">Save PNG</button>
+          </div>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="assembly-canvas" tabindex="0" aria-label="Interactive three-dimensional L-windpost cavity-wall model. Drag to orbit and use the mouse wheel to zoom."></canvas>
+          <div class="view-hint"><span>Drag to orbit</span><span>Wheel to zoom</span><span>Arrow keys supported</span></div>
+        </div>
+        <div class="visibility-controls" aria-label="Visible model layers">
+          <label><input type="checkbox" data-layer="inner" checked><span class="swatch block"></span>Inner block</label>
+          <label><input type="checkbox" data-layer="outer" checked><span class="swatch brick"></span>Outer brick</label>
+          <label><input type="checkbox" data-layer="ties" checked><span class="swatch tie"></span>Ties and slots</label>
+          <label><input type="checkbox" data-layer="concrete" checked><span class="swatch concrete"></span>Concrete</label>
+        </div>
+        <div id="metric-grid" class="metric-grid"></div>
+      </section>
+    </div>
+
+    <section class="assembly-shell drawing-section" aria-labelledby="drawing-title">
+      <div class="section-heading">
+        <div><p class="eyebrow">Dimensioned output</p><h2 id="drawing-title">Coordinated construction views</h2></div>
+        <div class="drawing-actions">
+          <button id="download-active-svg" type="button">Download active SVG</button>
+          <button id="print-drawings" type="button">Print drawings</button>
+        </div>
+      </div>
+
+      <div class="drawing-tabs" role="tablist" aria-label="Construction views">
+        <button id="tab-plan" role="tab" aria-selected="true" aria-controls="view-plan" data-view="plan">Plan</button>
+        <button id="tab-elevation" role="tab" aria-selected="false" aria-controls="view-elevation" data-view="elevation">Elevation</button>
+        <button id="tab-side" role="tab" aria-selected="false" aria-controls="view-side" data-view="side">Side view</button>
+        <button id="tab-isometric" role="tab" aria-selected="false" aria-controls="view-isometric" data-view="isometric">Isometric</button>
+      </div>
+
+      <div class="drawing-stage">
+        <div id="view-plan" class="drawing-view" role="tabpanel" aria-labelledby="tab-plan" data-drawing="plan"></div>
+        <div id="view-elevation" class="drawing-view hidden" role="tabpanel" aria-labelledby="tab-elevation" data-drawing="elevation"></div>
+        <div id="view-side" class="drawing-view hidden" role="tabpanel" aria-labelledby="tab-side" data-drawing="side"></div>
+        <div id="view-isometric" class="drawing-view hidden" role="tabpanel" aria-labelledby="tab-isometric" data-drawing="isometric"></div>
+      </div>
+    </section>
+
+    <section class="assembly-shell detail-section">
+      <div class="detail-card">
+        <p class="eyebrow">Locked fabrication geometry</p>
+        <h2>Shear-tie and slot definition</h2>
+        <div class="detail-grid">
+          <div><span>Post slots</span><strong>10 × 50 mm, R5 ends</strong></div>
+          <div><span>Shear tie</span><strong>168 × 10 × 1.5 mm</strong></div>
+          <div><span>Two-way projection</span><strong>84 mm each side</strong></div>
+          <div><span>Tie holes</span><strong>4 no. 6 × 10 mm, R3</strong></div>
+          <div><span>Hole positions</span><strong>10 and 25 mm from each end</strong></div>
+          <div><span>Central engagement</span><strong>7.6 mm notch + mirrored 11.17 mm</strong></div>
+        </div>
+      </div>
+      <div class="detail-card">
+        <p class="eyebrow">Masonry module</p>
+        <h2>Standard UK coursing</h2>
+        <div class="detail-grid">
+          <div><span>Facing brick</span><strong>215 × 102.5 × 65 mm</strong></div>
+          <div><span>Brick course</span><strong>75 mm incl. mortar</strong></div>
+          <div><span>Concrete block</span><strong>440 × 100 × 215 mm</strong></div>
+          <div><span>Block course</span><strong>225 mm incl. mortar</strong></div>
+          <div><span>First tie centre</span><strong>225 mm above baseplate</strong></div>
+          <div><span>Further tie centres</span><strong>225 mm c/c</strong></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="assembly-footer">
+    <div class="assembly-shell"><strong>Windpost Select</strong><span>Separate cavity-wall assembly page · Local and offline</span></div>
+  </footer>
+
+  <script src="./js/data/windpost-parameters.js"></script>
+  <script src="./js/config.js"></script>
+  <script src="./js/data/l-section-database.js"></script>
+  <script src="./js/engines/outer-tie-selection-engine.js"></script>
+  <script src="./js/engines/simply-u-baseplate-standard-engine.js"></script>
+  <script src="./js/engines/simply-l-baseplate-standard-engine.js"></script>
+  <script src="./js/services/cavity-wall-assembly-engine.js"></script>
+  <script src="./js/services/cavity-wall-drawing-service.js"></script>
+  <script src="./js/services/cavity-wall-3d-engine.js"></script>
+  <script src="./js/ui/cavity-wall-page.js"></script>
+</body>
+</html>

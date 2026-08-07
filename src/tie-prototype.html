@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Windpost Tie Prototype</title>
+  <link rel="stylesheet" href="./css/tie-prototype.css">
+</head>
+<body>
+  <header class="tie-header">
+    <div class="tie-brand">
+      <span class="tie-mark">W</span>
+      <div>
+        <strong>Windpost Detailing</strong>
+        <span>Parametric connection-tie prototype</span>
+      </div>
+    </div>
+    <a class="tie-back" href="./Windpost-Selector-Full.html">Back to Selector</a>
+  </header>
+
+  <main class="tie-shell">
+    <section class="tie-intro">
+      <div>
+        <p class="tie-eyebrow">SEPARATE FABRICATION PROTOTYPE</p>
+        <h1 id="tie-name">EDC25-100</h1>
+      </div>
+      <p id="tie-description">
+        A dimension-controlled prototype of the outer-leaf EDC tie. The first
+        issue intentionally omits the three holes, uses the confirmed overall
+        dimensions and shows the authorised assumed notch drops.
+      </p>
+    </section>
+
+    <section class="tie-toolbar" aria-label="Tie prototype controls">
+      <label class="tie-field">
+        <span>Tie profile</span>
+        <select id="tie-profile" aria-label="Tie profile"></select>
+      </label>
+      <div class="tie-field">
+        <span>CAD display</span>
+        <div class="tie-toggle" role="group" aria-label="CAD display mode">
+          <button id="tie-mode-hatch" class="is-active" type="button">Hatch</button>
+          <button id="tie-mode-lines" type="button">Lines only</button>
+        </div>
+      </div>
+      <button id="tie-download-svg" class="tie-action" type="button">Download SVG</button>
+    </section>
+
+    <section class="tie-grid">
+      <article class="tie-card">
+        <header class="tie-card-head">
+          <div>
+            <h2>Fabrication drawing</h2>
+            <p id="tie-size">108 × 18 × 1.5 mm</p>
+          </div>
+          <span id="tie-status" class="tie-status">Confirmed size · assumed drops</span>
+        </header>
+        <div id="tie-drawing" class="tie-drawing"></div>
+      </article>
+
+      <div class="tie-visual-column">
+        <article class="tie-card">
+          <header class="tie-card-head">
+            <div>
+              <h2>3D tie model</h2>
+              <p>Actual width-to-length and thickness proportions</p>
+            </div>
+            <button id="tie-reset-view" class="tie-reset" type="button">Reset view</button>
+          </header>
+          <div class="tie-canvas-wrap">
+            <canvas id="tie-3d-canvas" aria-label="Orbitable EDC tie model"></canvas>
+            <p class="tie-canvas-help">Drag to orbit · wheel to zoom · Shift-drag to pan</p>
+          </div>
+        </article>
+
+        <article class="tie-card">
+          <header class="tie-card-head">
+            <div>
+              <h2>Stored geometry</h2>
+              <p>No analysis or capacity calculation</p>
+            </div>
+          </header>
+          <dl class="tie-specs">
+            <div><dt>Overall length</dt><dd id="tie-length">108 mm</dd></div>
+            <div><dt>Width</dt><dd id="tie-width">18 mm</dd></div>
+            <div><dt>Thickness</dt><dd id="tie-thickness">1.5 mm</dd></div>
+            <div><dt>Engagement notch</dt><dd id="tie-notch">7.6 mm</dd></div>
+            <div><dt id="tie-tail-label">End portion</dt><dd id="tie-tail">11.17 mm</dd></div>
+            <div><dt id="tie-drops-label">Assumed notch drops</dt><dd id="tie-drops">1 + 1 mm</dd></div>
+            <div><dt>Holes</dt><dd id="tie-holes">Not shown</dd></div>
+          </dl>
+        </article>
+      </div>
+    </section>
+
+    <section class="wall-setup-section" aria-labelledby="wall-setup-title">
+      <div class="wall-setup-heading">
+        <div>
+          <p class="tie-eyebrow">MASONRY COORDINATION MODEL</p>
+          <h2 id="wall-setup-title">Inner leaf · cavity · outer leaf setup</h2>
+          <p>
+            External face datum with editable leaf and cavity dimensions.
+            The clear cavity is modelled as open space between the two leaves.
+          </p>
+        </div>
+        <button id="wall-reset-view" class="tie-reset" type="button">Reset wall view</button>
+      </div>
+
+      <div class="wall-controls" aria-label="Cavity wall setup controls">
+        <label class="tie-field">
+          <span>L windpost</span>
+          <select id="wall-windpost-section"></select>
+        </label>
+        <label class="tie-field">
+          <span>Outer leaf</span>
+          <select id="wall-outer-material">
+            <option value="brick">Facing brick</option>
+            <option value="denseBlock">Dense block</option>
+            <option value="aeratedBlock">Aerated block</option>
+          </select>
+        </label>
+        <label class="tie-field tie-number-field">
+          <span>Outer thickness (mm)</span>
+          <input id="wall-outer-thickness" type="number" min="65" max="300" step="0.5" value="102.5">
+        </label>
+        <label class="tie-field tie-number-field">
+          <span>Clear cavity (mm)</span>
+          <input id="wall-cavity-width" type="number" min="40" max="450" step="1" value="100">
+        </label>
+        <label class="tie-field">
+          <span>Inner leaf</span>
+          <select id="wall-inner-material">
+            <option value="aeratedBlock">Aerated block</option>
+            <option value="denseBlock">Dense block</option>
+            <option value="brick">Facing brick</option>
+          </select>
+        </label>
+        <label class="tie-field tie-number-field">
+          <span>Inner thickness (mm)</span>
+          <input id="wall-inner-thickness" type="number" min="75" max="300" step="0.5" value="100">
+        </label>
+        <label class="tie-field tie-number-field">
+          <span>Elevation height (mm)</span>
+          <input id="wall-elevation-height" type="number" min="450" max="6000" step="225" value="1800">
+        </label>
+        <div class="wall-datum">
+          <span>Wall datum</span>
+          <strong>Outer face = 0</strong>
+        </div>
+      </div>
+
+      <div class="wall-summary" aria-label="Calculated wall zones">
+        <div><span>Outer leaf</span><strong id="wall-outer-zone">0–102.5 mm</strong></div>
+        <div><span>Cavity</span><strong id="wall-cavity-zone">102.5–202.5 mm</strong></div>
+        <div><span>Inner leaf</span><strong id="wall-inner-zone">202.5–302.5 mm</strong></div>
+        <div><span>Total wall</span><strong id="wall-total-thickness">302.5 mm</strong></div>
+        <div><span>Windpost</span><strong id="wall-section-name">LP 125x70x4</strong></div>
+        <div><span>Paired outer tie</span><strong id="wall-edc-name">EDC25-150</strong></div>
+      </div>
+
+      <div class="wall-setup-grid">
+        <article class="tie-card">
+          <header class="tie-card-head">
+            <div>
+              <h2>Dimensioned wall plan</h2>
+              <p>Plan datum and coordinated masonry elevations</p>
+            </div>
+            <span class="tie-status">Standard UK masonry units</span>
+          </header>
+          <div id="tie-wall-drawing" class="wall-drawing"></div>
+        </article>
+
+        <article class="tie-card">
+          <header class="tie-card-head">
+            <div>
+              <h2>3D cavity-wall cutaway</h2>
+              <p>6 brick courses align with 2 block courses over 450 mm</p>
+            </div>
+          </header>
+          <div class="wall-canvas-wrap">
+            <canvas id="tie-wall-3d-canvas" aria-label="Orbitable cavity wall setup"></canvas>
+            <div class="wall-legend" aria-hidden="true">
+              <span><i class="is-brick"></i>Outer leaf</span>
+              <span><i class="is-cavity"></i>Clear cavity</span>
+              <span><i class="is-block"></i>Inner leaf</span>
+            </div>
+            <p class="tie-canvas-help">Drag to orbit · wheel to zoom · Shift-drag to pan</p>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <script src="./js/data/l-section-database.js"></script>
+  <script src="./js/data/tie-profiles.js"></script>
+  <script src="./js/services/tie-prototype-geometry-engine.js"></script>
+  <script src="./js/services/tie-prototype-drawing-service.js"></script>
+  <script src="./js/services/tie-prototype-3d-engine.js"></script>
+  <script src="./js/services/tie-wall-setup-engine.js"></script>
+  <script src="./js/services/tie-wall-drawing-service.js"></script>
+  <script src="./js/services/tie-wall-canvas-renderer.js"></script>
+  <script src="./js/services/tie-wall-3d-engine.js"></script>
+  <script src="./js/ui/tie-prototype-page.js"></script>
+</body>
+</html>

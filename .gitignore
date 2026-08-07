@@ -1,0 +1,15 @@
+# Visual-regression output, regenerated on every audit run.
+# The approved baselines in src/tests/visual-baselines/ ARE tracked.
+test-results/
+
+# OS / editor noise
+Thumbs.db
+desktop.ini
+.DS_Store
+*~
+*.bak
+
+# Excel lock files created while windpost-database.xlsx is open
+~$*.xlsx
+
+node_modules/

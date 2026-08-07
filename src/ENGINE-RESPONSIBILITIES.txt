@@ -1,0 +1,448 @@
+WINDPOST + BASEPLATE DESIGNER
+MODULAR ENGINE BUILD — 26 JULY 2026 V.02
+============================================================
+
+PURPOSE
+-------
+This folder is a separate modular copy of the proven Windpost Selector and
+Detailing software. The structural formulae, section databases, dimensions,
+drawing geometry, CAD layers and A4 production output are retained.
+
+The software is divided by responsibility. Calculation engines do not draw.
+Geometry engines do not select sections. Drawing engines do not calculate
+capacity. UI controllers only read controls, call engines and display results.
+
+The standalone launcher is generated from index.html by build-standalone.js.
+Edit the small source engines, run the tests, and then rebuild the standalone
+file. Do not hand-edit Windpost-Selector-Full.html.
+
+
+1. CONFIGURATION AND DATA ENGINES
+---------------------------------
+js/config.js
+  Stores global engineering conversion factors, material density, tie
+  strengths and fixed configuration values.
+
+js/data/windpost-parameters.js
+  Holds the generated design constants originating from the Excel database.
+
+js/data/l-section-database.js
+  Holds every permitted L-post catalogue section and its section properties.
+
+js/data/u-section-database.js
+  Holds every permitted U-post catalogue section and its section properties.
+
+js/data/standard-section-heights.js
+  Holds the standard reference heights used by catalogue and checking tools.
+
+js/data/section-profiles.js
+  Provides one common lookup interface for U and L sections and converts
+  stored catalogue properties into calculation-ready values.
+
+js/data/tie-profiles.js
+  Stores confirmed fabrication dimensions for the separate connection-tie
+  prototypes. It contains EDC25-100 through EDC25-375 with their stored actual
+  lengths and corrected connection ends, plus the 168 × 10 × 1.5 mm two-way
+  shear tie with its four R3-ended slots and mirrored centre engagement.
+
+js/utils.js
+  Contains shared number formatting and support/load label helpers.
+
+
+2. WINDPOST ANALYSIS AND SELECTION ENGINES
+------------------------------------------
+js/engines/secant-modulus-engine.js
+  Solves the stainless-steel secant modulus using the established material
+  model and proof-strength inputs.
+
+js/engines/load-case-engine.js
+  Applies the selected support and load arrangement and calculates the
+  corresponding windpost load effects.
+
+js/engines/tie-capacity-engine.js
+  Calculates the number of tie levels and their total design resistance.
+
+js/engines/result-selection-engine.js
+  Compares deflection, bending, tie and optional connection limits and returns
+  the governing ultimate design capacity and governing description.
+
+js/engines/windpost-calculation-engine.js
+  Coordinates the secant-modulus, load, deflection, bending and tie-capacity
+  calculations for one selected windpost.
+
+js/engines/outer-tie-selection-engine.js
+  Calculates post placement, cavity gap, inner tie type, outer EDC tie type and
+  outer-leaf embedment from the wall construction and selected section.
+
+js/engines/automatic-selection-engine.js
+  Evaluates the catalogue in order and selects the first suitable U or L
+  section. It also supports manual section checking.
+
+
+3. CANTILEVER BASEPLATE STRUCTURAL ENGINES
+------------------------------------------
+js/engines/baseplate-config.js
+  Stores fixed anchor, material, weld, plate and design configuration values
+  used by the cantilever baseplate checks.
+
+js/engines/baseplate-bolt-engine.js
+  Calculates RGM 12 bolt-group forces, lever arms and moment resistance.
+
+js/engines/baseplate-leff-engine.js
+  Calculates effective T-stub lengths for the relevant bolt layout.
+
+js/engines/baseplate-tstub-engine.js
+  Calculates the equivalent T-stub failure modes and governing tension
+  resistance.
+
+js/engines/baseplate-stiffener-engine.js
+  Calculates triangular stiffener height, section properties and resistance.
+
+js/engines/baseplate-shear-engine.js
+  Checks anchor shear and plate shear resistance.
+
+js/engines/baseplate-check-engine.js
+  Combines bolt, local plate bending, rigidity, T-stub, stiffener and shear
+  checks and returns utilisation and pass/fail results.
+
+js/engines/baseplate-sizer-engine.js
+  Searches the approved discrete plate, anchor-row and stiffener sizes until a
+  passing standard arrangement is found.
+
+js/engines/baseplate-design-engine.js
+  Public cantilever baseplate facade. It validates the requested actions,
+  calls the smaller checking/sizing engines and returns the final design.
+
+
+4. SIMPLY-SUPPORTED BASEPLATE ENGINES
+-------------------------------------
+js/engines/simply-u-baseplate-standard-engine.js
+  Produces the fixed simply-supported U-post baseplate arrangement and its
+  minimum edge-distance check.
+
+js/engines/simply-l-baseplate-standard-engine.js
+  Produces the fixed simply-supported L-post baseplate arrangement, including
+  the 160 mm plate rule for an 80 mm leg, and its edge-distance check.
+
+
+5. SELECTOR ROUTING ENGINES
+---------------------------
+js/engines/selector/selector-baseplate-routing-engine.js
+  Routes a selector result to the correct cantilever design engine or fixed
+  simply-supported U/L engine. This contains the selector-to-baseplate task
+  that was previously embedded inside the UI controller.
+
+js/engines/selector/baseplate-drawing-routing-engine.js
+  Selects the correct drawing service for cantilever U, cantilever L,
+  simply-supported U or simply-supported L baseplates.
+
+
+6. WORKFLOW, SPEED AND STABILITY ENGINES
+----------------------------------------
+js/engines/workflow/design-transfer-engine.js
+  Creates and validates a versioned JSON design snapshot. It transfers the
+  selected section, exact length, support, load, wall, slot schedule, capacity
+  and baseplate from Selector to Detailing. Query parameters remain the
+  fallback when browser storage is unavailable on file:// pages.
+
+js/engines/workflow/task-cache-engine.js
+  Provides a small bounded least-recently-used cache. Detailing reuses
+  unchanged orthographic and baseplate calculations instead of repeating them.
+
+js/engines/workflow/render-scheduler-engine.js
+  Debounces expensive A4 production-sheet rebuilding while the user types and
+  provides an immediate flush before SVG, DXF or PDF export.
+
+js/engines/workflow/safe-execution-engine.js
+  Records uncaught errors and promise failures and provides a protected
+  execution helper so one failed task can be reported without losing all
+  application state.
+
+
+7. SHARED BASEPLATE SVG AND CAD ENGINES
+---------------------------------------
+js/services/baseplate-svg-engine.js
+  Supplies the small SVG primitives for lines, rectangles, circles, leaders,
+  dimensions, CAD roles and text. Stacked extension lines can carry explicit
+  breaks so they never cross a lower dimension lane.
+
+js/services/engineering-canvas-renderer.js
+  Provides the full Selector and Detailing hybrid preview renderer. In hatch
+  mode it draws clipped steel, concrete and masonry fills on Canvas 2D while
+  keeping outlines, dimensions, text and annotations as SVG overlays. CAD line
+  mode and all downloaded/printed production files remain vector SVG.
+
+js/services/cad-layer-standard.js
+  Defines AutoCAD-style layer names, ACI colours, lineweights, linetypes and
+  monochrome/coloured plotting behaviour.
+
+js/services/baseplate-geometry-engine.js
+  Calculates cantilever L-post plan and side-view coordinates without drawing.
+
+js/services/baseplate-plan-engine.js
+  Draws the cantilever L-post baseplate plan from the calculated geometry.
+
+js/services/baseplate-section-engine.js
+  Draws the cantilever L-post baseplate side view, post continuation, concrete,
+  anchors, stiffener and dimensions.
+
+js/services/baseplate-drawing-service.js
+  Combines the L geometry, plan and side fragments into the complete SVG.
+
+js/services/u-baseplate-geometry-engine.js
+  Calculates cantilever U-post plate, U profile, bend-radius, anchor and
+  stiffener coordinates without drawing.
+
+js/services/u-baseplate-plan-engine.js
+  Draws the cantilever U-post plan, rounded profile, holes and non-crossing
+  dimension/leader lanes.
+
+js/services/u-baseplate-section-engine.js
+  Draws the cantilever U-post baseplate side view and sloping stiffener.
+
+js/services/u-baseplate-drawing-service.js
+  Combines the U geometry, plan and side fragments into the complete SVG.
+
+
+8. SIMPLY-SUPPORTED DRAWING ENGINES
+-----------------------------------
+js/services/simply-u-baseplate-geometry-engine.js
+  Calculates the fixed simply-supported U-post drawing coordinates.
+
+js/services/simply-u-baseplate-plan-engine.js
+  Draws the fixed U-post plan with two anchors, no stiffener and standard
+  numeric dimensions.
+
+js/services/simply-u-baseplate-section-engine.js
+  Draws the fixed U-post side view, concrete and continuation break.
+
+js/services/simply-u-baseplate-drawing-service.js
+  Combines the simply-supported U plan and side view into one SVG.
+
+js/services/simply-l-baseplate-geometry-engine.js
+  Calculates the fixed simply-supported L-post drawing coordinates.
+
+js/services/simply-l-baseplate-plan-engine.js
+  Draws the fixed L-post plan with two anchors and no stiffener.
+
+js/services/simply-l-baseplate-section-engine.js
+  Draws the fixed L-post side view, concrete and continuation break.
+
+js/services/simply-l-baseplate-drawing-service.js
+  Combines the simply-supported L plan and side view into one SVG.
+
+
+9. WINDPOST ORTHOGRAPHIC AND 3D ENGINES
+---------------------------------------
+js/services/l-section-orthographic-service.js
+  Calculates the folded L-section blank, bend allowance, fold line, slot
+  schedule, top section and projected elevations, then produces the technical
+  drawing SVG.
+
+js/services/u-section-orthographic-service.js
+  Calculates the folded U-section blank, two bends, flange slot schedule,
+  section and projected elevations, then produces the technical drawing SVG.
+
+js/services/cavity-wall-3d-engine.js
+  Builds rounded L/U profile meshes, true empty slots, baseplate and stiffener
+  meshes and provides the on-demand canvas orbit/pan/zoom renderer.
+
+js/services/l-cantilever-baseplate-prototype-service.js
+  Connects the selected U/L post and support condition to the same proven
+  baseplate engines and converts the result into CAD-print drawing geometry.
+
+
+10. CAVITY-WALL ASSEMBLY ENGINES
+--------------------------------
+js/services/cavity-wall-assembly-engine.js
+  Defines masonry sizes, shear-tie geometry, tie schedule and cavity-wall
+  assembly model data.
+
+js/services/cavity-wall-drawing-service.js
+  Produces dimensioned plan/elevation cavity-wall and tie-detail SVG drawings.
+
+js/services/tie-prototype-geometry-engine.js
+  Derives the EDC tie outline and engagement datums from the stored profile.
+
+js/services/tie-prototype-drawing-service.js
+  Produces the dimensioned CAD plan and true-thickness side elevation.
+
+js/services/tie-prototype-3d-engine.js
+  Extrudes the same 2D outline into an orbitable, zoomable and pannable model.
+
+js/services/tie-wall-setup-engine.js
+  Owns the external-to-internal wall datum, editable leaf/cavity zones,
+  standard UK brick/block coursing, selected L-section placement and paired
+  shear/EDC tie reach used by the tie prototype wall setup.
+
+js/services/tie-wall-drawing-service.js
+  Draws the wall plan, separate dimensions and coordinated outer/inner masonry
+  elevations in both CAD hatch and line-only modes.
+
+js/services/tie-wall-canvas-renderer.js
+  Renders realistic brick, block and mortar textures beneath the SVG drawing
+  in hatch mode. Every material texture is clipped to its masonry unit so
+  raster shading cannot bleed beyond the wall outline.
+
+js/services/tie-wall-3d-engine.js
+  Renders the two masonry leaves as separate coursed assemblies, keeps the
+  cavity clear and provides orbit, zoom, pan and reset-view interaction.
+
+js/ui/cavity-wall-page.js
+  Controller for the separate cavity-wall assembly page and interactive view.
+
+
+11. REPORT AND EXPORT ENGINES
+-----------------------------
+js/services/design-report-service.js
+  Builds the detailed design calculation report from a selector result.
+
+js/services/sheet-export-service.js
+  Flattens the rendered A4 SVG and exports the same geometry to layered DXF or
+  PDF without altering the drawing.
+
+js/services/drawing-layout-engine.js
+  Detects dimension-text collisions in the rendered SVG and assigns separate
+  annotation lanes before the same geometry is reused by A4 and exports.
+
+js/services/drawing-consistency-engine.js
+  Signs the geometry shared by Canvas hatch fills and SVG linework, then
+  verifies that the hybrid preview layers remain aligned.
+
+js/services/windpost-approval-drawing-service.js
+  Composes the client-approval A3 arrangement from the confirmed orthographic
+  windpost elevations and the existing cavity-wall plan/vertical-section model.
+  It intentionally excludes the flat blank, which remains available only to
+  the separate A4 production drawing.
+
+js/services/print-calibration-service.js
+  Generates the physical 210 x 297 mm print-control sheet with a true
+  100 x 100 mm check square, lineweights, hatch and text samples.
+
+js/engines/workflow/project-file-engine.js
+  Owns the versioned .windpost.json format, validation, download, open and
+  recoverable browser draft storage for Selector and Detailing projects.
+
+js/engines/workflow/revision-engine.js
+  Normalises, replaces and bounds the recorded drawing revision history.
+
+js/engines/workflow/production-validation-engine.js
+  Runs the pre-issue checks for section, length, slots, baseplate, A4 layout,
+  invalid coordinates, annotation lanes and Canvas/SVG consistency.
+
+12. UI CONTROLLERS (NO ENGINEERING FORMULAE)
+--------------------------------------------
+js/ui/app.js
+  Selector-page controller. Reads inputs, calls selection/routing engines,
+  displays results, enables Detailing and starts report/download actions.
+
+js/ui/l-section-prototype-page.js
+  Detailing-page controller. Calls orthographic, baseplate, cache, scheduler,
+  3D and export engines and composes the fixed A4 production sheet. It also
+  coordinates the editable title block and silent export validation.
+
+js/ui/print-calibration-page.js
+  Displays, downloads and prints the exact-size A4 calibration sheet.
+
+js/ui/tie-prototype-page.js
+  Controller for the separate tie-prototype page, CAD mode, SVG download and
+  3D navigation.
+
+
+13. BUILD, DATABASE AND TEST TOOLS
+----------------------------------
+build-standalone.js
+  Inlines the modular Selector CSS and scripts into Windpost-Selector-Full.html.
+
+tools/build-database.js
+  Reads the approved workbook and regenerates JavaScript database files.
+
+tools/init-workbook.js
+  Creates/initialises the workbook structure used by the database build.
+
+tests/run-tests.js
+  Tests section selection, material constants, ties and selector/detailing
+  transfer.
+
+tests/baseplate-tests.js
+  Tests all four baseplate routes and locks the approved drawing conventions.
+
+tests/l-section-prototype-tests.js
+  Tests folded geometry, slots, 3D baseplate, A4 composition and CAD output.
+
+tests/windpost-approval-drawing-tests.js
+  Verifies that the client approval sheet replaces the flat blank with the
+  selected wall plan and vertical cavity-wall arrangement, while the temporary
+  A4 production source retains its fabrication blank.
+
+tests/cavity-wall-assembly-tests.js
+  Tests the cavity-wall model, masonry geometry and tie definitions.
+
+tests/outer-tie-table-tests.js
+  Tests outer EDC tie selection and embedment values.
+
+tests/parapet-tests.js
+  Tests cantilever/parapet tie count and capacity behaviour.
+
+tests/random-tests.js
+  Runs broader randomised calculation sanity checks.
+
+tests/tie-naming-tests.js
+  Locks the confirmed U-tie, shear-tie and EDC naming.
+
+tests/modular-engine-tests.js
+  Tests the validated JSON design handoff, bounded drawing cache, debounced
+  renderer, safe execution wrapper, and selector/drawing routing engines.
+
+tests/tie-prototype-tests.js
+  Locks all 12 EDC25 profiles, actual lengths, connection datums, no-hole rule,
+  long-tie drawing fit and CAD modes. It also locks the shear-tie dimensions,
+  four slots, mirrored centre geometry and its plan/detail/side drawing.
+
+tests/production-workflow-tests.js
+  Tests project JSON, revision replacement/bounds, the exact 100 mm calibration
+  square and production-validation failure/pass behaviour.
+
+tools/run-visual-regression.ps1
+  Uses installed Chrome through Playwright to rasterise six fixed A4 cases:
+  the shallowest cantilever L and U sections at both 900 mm and 6000 mm, plus
+  simply-supported L and U left-datum sheets. It compares their complete PNG
+  output byte-for-byte with the stored approved baselines.
+
+RUN-VISUAL-REGRESSION.cmd
+  One-click visual-regression audit for production drawing changes.
+
+
+SAFE CHANGE PROCEDURE
+---------------------
+1. Change only the engine responsible for the required task.
+2. Run node tests/baseplate-tests.js.
+3. Run node tests/l-section-prototype-tests.js.
+4. Run node tests/run-tests.js and the remaining specialist tests.
+5. Run node build-standalone.js.
+6. Confirm Windpost-Selector-Full.html contains the new engine.
+7. Open OPEN-WINDPOST-SELECTOR.cmd.
+
+This separation is intended to prevent a drawing-only change from altering
+structural selection logic, and to prevent a calculation change from silently
+changing fabrication geometry.
+
+
+VERIFIED BUILD RECORD — 26 JULY 2026
+------------------------------------
+All eleven regression suites passed, including the 1,600-case random
+engineering audit and the five production-workflow checks. All 78 application
+JavaScript files passed syntax checking. The established selection and
+baseplate formula engines remain unchanged.
+
+Six deterministic A4 raster baselines are stored, including LP 125x70x4 and
+UP 55x60x4 at both 900 mm and 6000 mm and the simply-supported left-datum
+details. A second Chrome/Playwright run matched all baselines byte-for-byte.
+A live 6000 mm Chrome audit also reported
+zero production errors, zero annotation warnings, matched Canvas/SVG geometry
+signatures and valid coordinates.
+
+The rebuilt Windpost-Selector-Full.html contains the new selector project-file,
+geometry-signature and automatic annotation-lane engines. Detailing remains a
+separate same-tab page and now adds project JSON, revision history, pre-issue
+validation, print calibration and multi-sheet batch output.
