@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Automatic U and L windpost selection, capacity calculation and wall-tie schedule.">
+  <meta name="description" content="Automatic U, L, DU and I windpost selection, capacity calculation, wall-tie schedule, connections, bolts and weights.">
   <title>Windpost Select | Automatic Windpost Design</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='6' fill='%23102743'/%3E%3Cpath d='M14 15h8l6 30h8l6-30h8l-9 38H23z' fill='white'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="./css/app.css">
@@ -42,7 +42,7 @@
       </div>
       <div class="intro-assurance" aria-label="Calculation features">
         <span>Exact-height analysis</span>
-        <span>U &amp; L catalogues</span>
+        <span>U, L, DU &amp; I catalogues</span><span>Connections &amp; bolts</span>
         <span>EDC outer ties</span>
       </div>
     </section>
@@ -62,13 +62,13 @@
             <span>1</span>
             <div><h3 id="step-one-title">Choose windpost type</h3><p>Select the required formed section family.</p></div>
           </div>
-          <div class="choice-grid three">
+          <div class="choice-grid four">
             <label class="choice-card">
               <input type="radio" name="windpostType" value="U" checked>
               <span class="choice-content">
                 <span class="shape-icon shape-u" aria-hidden="true"><i></i></span>
                 <span><strong>U-shaped post</strong><small>UP standard section range</small></span>
-                <b class="choice-tick">✓</b>
+                <b class="choice-tick">&#10003;</b>
               </span>
             </label>
             <label class="choice-card">
@@ -76,15 +76,23 @@
               <span class="choice-content">
                 <span class="shape-icon shape-l" aria-hidden="true"><i></i></span>
                 <span><strong>L-shaped post</strong><small>LP standard section range</small></span>
-                <b class="choice-tick">✓</b>
+                <b class="choice-tick">&#10003;</b>
+              </span>
+            </label>
+            <label class="choice-card" title="DU range · simply supported only">
+              <input type="radio" name="windpostType" value="DU">
+              <span class="choice-content">
+                <span class="shape-icon shape-du" aria-hidden="true"><i></i><i></i></span>
+                <span><strong>DU-shaped post</strong><small>Two channels welded web to web</small></span>
+                <b class="choice-tick">&#10003;</b>
               </span>
             </label>
             <label class="choice-card">
-              <input type="radio" name="windpostType" value="DU">
+              <input type="radio" name="windpostType" value="I">
               <span class="choice-content">
-                <span class="shape-icon shape-du" aria-hidden="true"><i></i><b></b></span>
-                <span><strong>DU-shaped post</strong><small>Two channels welded web to web</small></span>
-                <b class="choice-tick">✓</b>
+                <span class="shape-icon shape-i" aria-hidden="true"><i></i></span>
+                <span><strong>I (flat plate) post</strong><small>In the inner leaf &middot; simply supported only</small></span>
+                <b class="choice-tick">&#10003;</b>
               </span>
             </label>
           </div>
@@ -103,7 +111,7 @@
                 <b class="choice-tick">✓</b>
               </span>
             </label>
-            <label class="choice-card">
+            <label id="cantilever-choice" class="choice-card">
               <input type="radio" name="supportCondition" value="cantilever">
               <span class="choice-content text-choice">
                 <span><strong>Cantilever</strong><small>Fixed at base, free at top</small></span>
@@ -187,24 +195,72 @@
           </div>
         </section>
 
-        <details class="defaults-panel">
-          <summary><span>Design assumptions</span><small>Catalogue values — editable</small></summary>
-          <div class="defaults-grid">
-            <div><span>Allowable stress</span><strong data-design-readout="fy">127.27 N/mm²</strong></div>
-            <div><span>Initial E</span><strong data-design-readout="e">200 kN/mm²</strong></div>
-            <div><span>Secant f<sub>y</sub></span><strong data-design-readout="secantFy">210 N/mm²</strong></div>
-            <div><span>Secant exponent</span><strong data-design-readout="secantN">n = 7</strong></div>
-            <div><span>U tie strength</span><strong data-tie-readout="U">1.713 kN</strong></div>
-            <div><span>L tie strength</span><strong data-tie-readout="L">2.250 kN</strong></div>
-            <div><span>DU tie strength</span><strong data-tie-readout="DU">3.426 kN</strong></div>
-            <div><span>First / standard spacing</span><strong data-design-readout="spacingPair">225 / 225 mm</strong></div>
-            <div><span>10 mm deflection cap</span><strong data-design-readout="apply10mmLimit">Not applied</strong></div>
+        <section class="form-step" aria-labelledby="step-six-title">
+          <div class="step-heading">
+            <span>6</span>
+            <div><h3 id="step-six-title">Head and base fixings</h3><p>Choose what the post fixes to. The connection code, bolt family and bolt SKU follow from the connection library.</p></div>
           </div>
-          <div class="defaults-edit-row">
-            <button id="edit-assumptions" class="tie-edit-button" type="button">
-              <span aria-hidden="true">✎</span> Edit design assumptions
-            </button>
-            <span id="assumptions-flag" class="tie-flag hidden">Edited — not catalogue values</span>
+          <div class="field-grid two-col">
+            <label class="field">
+              <span>Head fixing</span>
+              <select id="head-fixing"></select>
+              <small id="head-fixing-note"></small>
+            </label>
+            <label class="field">
+              <span>Head bolt family</span>
+              <select id="head-bolt-family"></select>
+            </label>
+            <label class="field">
+              <span>Base fixing</span>
+              <select id="base-fixing"></select>
+              <small id="base-fixing-note"></small>
+            </label>
+            <label class="field">
+              <span>Base bolt family</span>
+              <select id="base-bolt-family"></select>
+            </label>
+          </div>
+        </section>
+
+        <section class="form-step" aria-labelledby="step-seven-title">
+          <div class="step-heading">
+            <span>7</span>
+            <div><h3 id="step-seven-title">Quantities and special connections</h3><p>A special connection replaces the library weight and bolt count with the values entered here.</p></div>
+          </div>
+          <div class="field-grid two-col">
+            <label class="field"><span>Nos of similar posts</span><span class="input-with-unit"><input id="posts-count" type="number" value="1" min="1" step="1"><em>Nos</em></span></label>
+            <label class="field"><span>No of deliveries</span><span class="input-with-unit"><input id="deliveries" type="number" value="1" min="1" step="1"><em>Nos</em></span></label>
+            <label class="field"><span>Debonding sleeves (shear ties)</span><select id="debonding-sleeve"><option value="yes">Yes - 1 per shear tie</option><option value="no">No</option></select></label>
+          </div>
+          <div class="special-grid">
+            <div class="special-row is-off" id="special-head-row">
+              <label class="check"><input id="special-head" type="checkbox"><span>Special head connection</span></label>
+              <label class="field"><span>Weight</span><span class="input-with-unit"><input id="special-head-weight" type="number" value="0" min="0" step="0.001"><em>kg</em></span></label>
+              <label class="field"><span>Material</span><select id="special-head-material"><option>TIMBER</option><option>CONCRETE</option><option>STEEL</option></select></label>
+              <label class="field"><span>Bolt SKU</span><select id="special-head-sku"></select></label>
+              <label class="field"><span>No of bolts</span><span class="input-with-unit"><input id="special-head-bolts" type="number" value="0" min="0" step="1"><em>Nos</em></span></label>
+            </div>
+            <div class="special-row is-off" id="special-base-row">
+              <label class="check"><input id="special-base" type="checkbox"><span>Special base connection</span></label>
+              <label class="field"><span>Weight</span><span class="input-with-unit"><input id="special-base-weight" type="number" value="0" min="0" step="0.001"><em>kg</em></span></label>
+              <label class="field"><span>Material</span><select id="special-base-material"><option>TIMBER</option><option>CONCRETE</option><option>STEEL</option></select></label>
+              <label class="field"><span>Bolt SKU</span><select id="special-base-sku"></select></label>
+              <label class="field"><span>No of bolts</span><span class="input-with-unit"><input id="special-base-bolts" type="number" value="0" min="0" step="1"><em>Nos</em></span></label>
+            </div>
+          </div>
+        </section>
+
+        <details class="defaults-panel">
+          <summary><span>Design assumptions</span><small>Locked to the existing designer defaults</small></summary>
+          <div class="defaults-grid">
+            <div><span>Allowable stress</span><strong>127.27 N/mm²</strong></div>
+            <div><span>Initial E</span><strong>200 kN/mm²</strong></div>
+            <div><span>Secant f<sub>y</sub></span><strong>210 N/mm²</strong></div>
+            <div><span>Secant exponent</span><strong>n = 7</strong></div>
+            <div><span>U / DU tie strength</span><strong>1.713 kN</strong></div>
+            <div><span>L / I tie strength</span><strong>2.250 kN</strong></div>
+            <div><span>First / standard spacing</span><strong>225 / 225 mm</strong></div>
+            <div><span>10 mm deflection cap</span><strong>Not applied</strong></div>
           </div>
         </details>
 
@@ -241,6 +297,7 @@
             <li>First suitable standard section</li>
             <li>Final governing ULS capacity</li>
             <li>Inner and outer tie schedule</li>
+            <li>Connection codes, bolt SKUs and weights</li>
           </ul>
         </div>
         <div id="result-content" class="hidden"></div>
@@ -259,38 +316,6 @@
     </section>
   </main>
 
-  <!-- Tie strength editor. Outside the design form: it carries its own form,
-       and a form inside a form is invalid. -->
-  <dialog id="assumptions-dialog" class="tie-dialog" aria-labelledby="assumptions-title">
-    <form id="assumptions-form" method="dialog">
-      <h2 id="assumptions-title">Design assumptions</h2>
-      <p class="tie-dialog-note">
-        Every calculation on this page runs on these values. Anything changed
-        from the catalogue is flagged on the design brief and in the report.
-      </p>
-
-      <div class="tie-dialog-scroll">
-        <h3 class="tie-group-title">Material and spacing</h3>
-        <div id="design-rows" class="tie-rows"></div>
-
-        <h3 class="tie-group-title">Tie strengths</h3>
-        <p class="tie-group-note">
-          Ultimate strength resisted at each tie level. A DU post carries two
-          sets of ties per level, so its value is normally twice the U tie.
-        </p>
-        <div id="tie-rows" class="tie-rows"></div>
-      </div>
-
-      <p id="assumptions-error" class="tie-dialog-error hidden" role="alert"></p>
-      <div class="tie-dialog-actions">
-        <button id="assumptions-reset" class="secondary-button" type="button">Reset to catalogue</button>
-        <span class="tie-dialog-spacer"></span>
-        <button id="assumptions-cancel" class="secondary-button" type="button">Cancel</button>
-        <button id="assumptions-apply" class="primary-button small" type="button">Apply</button>
-      </div>
-    </form>
-  </dialog>
-
   <footer class="site-footer">
     <div class="shell footer-inner">
       <div><strong>Windpost Select</strong><span>Automatic specification using the established local windpost engines.</span></div>
@@ -300,20 +325,25 @@
 
   <script src="./js/data/windpost-parameters.js"></script>
   <script src="./js/config.js"></script>
+  <script src="./js/engines/fold-width-engine.js"></script>
   <script src="./js/utils.js"></script>
   <script src="./js/data/standard-section-heights.js"></script>
   <script src="./js/data/u-section-database.js"></script>
   <script src="./js/data/l-section-database.js"></script>
   <script src="./js/data/du-section-database.js"></script>
+  <script src="./js/data/i-section-database.js"></script>
+  <script src="./js/data/connections-database.js"></script>
+  <script src="./js/data/standard-base-plate-types.js"></script>
+  <script src="./js/data/du-slab-face-plates.js"></script>
   <script src="./js/data/section-profiles.js"></script>
   <script src="./js/engines/secant-modulus-engine.js"></script>
   <script src="./js/engines/load-case-engine.js"></script>
   <script src="./js/engines/tie-capacity-engine.js"></script>
   <script src="./js/engines/result-selection-engine.js"></script>
   <script src="./js/engines/windpost-calculation-engine.js"></script>
-  <script src="./js/engines/du-capacity-engine.js"></script>
   <script src="./js/engines/outer-tie-selection-engine.js"></script>
   <script src="./js/engines/automatic-selection-engine.js"></script>
+  <script src="./js/engines/connection-selection-engine.js"></script>
   <script src="./js/services/design-report-service.js"></script>
   <!-- base plate design engines (small, single-purpose) -->
   <script src="./js/engines/baseplate-config.js"></script>
@@ -330,7 +360,10 @@
   <script src="./js/engines/simply-l-baseplate-standard-engine.js"></script>
   <!-- base plate drawing engines -->
   <script src="./js/services/cad-layer-standard.js"></script>
+  <script src="./js/services/dxf-r2000-writer.js"></script>
+  <script src="./js/services/sheet-export-service.js"></script>
   <script src="./js/services/baseplate-svg-engine.js"></script>
+  <script src="./js/services/du-slab-face-drawing-service.js"></script>
   <script src="./js/services/drawing-consistency-engine.js"></script>
   <script src="./js/services/drawing-layout-engine.js"></script>
   <script src="./js/services/engineering-canvas-renderer.js"></script>

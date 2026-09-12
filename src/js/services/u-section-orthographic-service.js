@@ -303,6 +303,10 @@
       ? "url(#steel-section-hatch)"
       : "#fff";
     const length_mm = Math.max(300, Math.min(12000, Number(requestedLength_mm) || 900));
+    // Fold width per the approved workbook (shared engine). The drawn blank
+    // is the geometric development (web a, two flanges b); the two differ
+    // for a != b and the production validation says so.
+    const foldWidth = windpost.foldWidth ? windpost.foldWidth.describe(section) : null;
     const blank = calculateBlank(section, options && options.kFactor);
     const slot = createSlotGeometry(SLOT_SPEC);
     const slotPlacement = calculateSlotPlacement(
@@ -467,6 +471,7 @@
           .bend-line{stroke:#000;stroke-width:.25;stroke-dasharray:2 1}
           .section-size{font:700 3.6px "Arial Narrow",Arial,sans-serif;fill:#000}
           .view-title{font:700 4px "Arial Narrow",Arial,sans-serif;fill:#000;letter-spacing:.18px}
+          .fold-width{font:700 2.6px Arial,sans-serif;fill:#000}
           .sheet-title{font:700 5px "Arial Narrow",Arial,sans-serif;fill:#000}
           .sheet-subtitle{font:3.2px "Arial Narrow",Arial,sans-serif;fill:#000}
           .dimension-line{stroke:#000;stroke-width:.25;marker-start:url(#orthographic-dimension-arrow);marker-end:url(#orthographic-dimension-arrow)}
@@ -548,6 +553,7 @@
         data-k-factor="${number(blank.kFactor)}"
       >
         <text class="view-title" x="${number(flatBlankElevation.x)}" y="${number(flatBlankElevation.y - 5)}">FLAT BLANK ELEVATION</text>
+        <text class="fold-width" data-cad="text" x="${number(flatBlankElevation.x)}" y="${number(flatBlankElevation.y - 1.2)}">FOLD WIDTH ${foldWidth ? number(foldWidth.value_mm) : number(blank.blankLength_mm)} mm</text>
         <rect class="blank-fill" x="${number(flatBlankElevation.x)}" y="${number(flatBlankElevation.y)}" width="${number(flatBlankElevation.width)}" height="${number(flatBlankElevation.height)}"/>
         <line
           class="bend-line"
@@ -607,6 +613,7 @@
       sheetScale,
       length_mm,
       blank,
+      foldWidth,
       slot,
       slotPlacement,
       // Zone views for the combined sheet, in left-to-right sheet order.

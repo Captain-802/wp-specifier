@@ -14,6 +14,7 @@
     // part of them. Red separates it from every angle.
     stiffener: "#c0392b",
     plate: "#75838f",
+    anchor: "#4f5b66",
     tie: "#2e8393",
     shear: "#145d75",
     concrete: "#d4d5d2",
@@ -293,7 +294,7 @@
     // On the plate the U stands wholly in the cavity: its flanges are centred
     // across the plate width and its front face sits the wall clearance back
     // from the inner-leaf datum at y = 0.
-    const mapRawPoint = ([rawX, rawY]) => {
+    const mapRawPoint = settings.transform ? settings.transform : ([rawX, rawY]) => {
       if (baseplateAligned) {
         return [
           rawX - profile.b_mm / 2 + originX,
@@ -488,6 +489,48 @@
       )
     );
     return plate;
+  }
+
+  // Regular prism (cylinder / hex) standing on z0, radius r, height h.
+  function prismFaces(cx, cy, z0, h, r, segments, pointsOut, facesOut, shadeTop) {
+    const base = pointsOut.length;
+    for (let ring = 0; ring < 2; ring += 1) {
+      for (let index = 0; index < segments; index += 1) {
+        const angle = (index / segments) * Math.PI * 2;
+        pointsOut.push([cx + r * Math.cos(angle), cy + r * Math.sin(angle), z0 + ring * h]);
+      }
+    }
+    facesOut.push({ indexes: [...Array(segments).keys()].reverse().map(i => base + i), shade: -.2 });
+    facesOut.push({ indexes: [...Array(segments).keys()].map(i => base + segments + i), shade: shadeTop == null ? .25 : shadeTop });
+    for (let index = 0; index < segments; index += 1) {
+      const next = (index + 1) % segments;
+      facesOut.push({
+        indexes: [base + index, base + next, base + segments + next, base + segments + index],
+        shade: .18 * Math.cos((index / segments) * Math.PI * 2 - .7) - .02
+      });
+    }
+  }
+
+  // RGM anchors in every plate hole: washer, hexagon head and the exposed
+  // shank above the head. One scene item so the scene structure stays
+  // post / baseplate / stiffener / anchors.
+  function anchorBolts(geometry) {
+    const points = [];
+    const faces = [];
+    const shank = geometry.holeDiameter_mm - 2;            // 12 for a 14 hole
+    geometry.anchorCentres_mm.forEach(anchor => {
+      prismFaces(anchor.x, anchor.y, 0, 3, shank, 16, points, faces, .3);        // washer
+      prismFaces(anchor.x, anchor.y, 3, 0.65 * shank, shank * 0.95, 6, points, faces, .22); // nut / head
+      prismFaces(anchor.x, anchor.y, 3 + 0.65 * shank, 0.35 * shank, shank / 2, 12, points, faces, .3); // shank end
+    });
+    return {
+      type: "mesh",
+      points,
+      faces,
+      color: PALETTE.anchor,
+      alpha: 1,
+      group: "anchors"
+    };
   }
 
   function extrudedSidePlate(profileYZ, x0, thickness, color, group) {
@@ -706,6 +749,52 @@
     });
   }
 
+  // DU on the slab faces: the two plates (DU-B2 at the foot, DU-T2 at the
+  // head) stand on the inner-leaf face (y = 0), 6 thick towards the cavity;
+  // the post's near flange face bears on them. The post end sits 8 mm inside
+  // the plate edge, so the plates run from z = -8 to 142 and from
+  // length - 142 to length + 8. Two M12 anchors per plate at the slot centres.
+  const DU_FACE = Object.freeze({ clearance_mm: 6, inset_mm: 8 });
+  function prototypeDuFacePlates(section, design, length_mm) {
+    const plates = windpost.duSlabFacePlates;
+    if (!plates) return null;
+    const fromDesign = design && design.facePlates;
+    const bottom = (fromDesign && fromDesign.bottom) || plates.geometryFor("DU-B2", section);
+    const top = (fromDesign && fromDesign.top) || plates.geometryFor("DU-T2", section);
+    if (!bottom || !top) return null;
+    const plate = (g, z0) => Object.freeze({
+      code: g.code,
+      length_mm: g.plateLength_mm,
+      height_mm: g.plateHeight_mm,
+      thickness_mm: g.plateThickness_mm,
+      z0_mm: z0,
+      z1_mm: z0 + g.plateHeight_mm,
+      anchorX_mm: Object.freeze(g.slotCentres_mm.map(x => x - g.plateLength_mm / 2)),
+      anchorZ_mm: z0 + g.plateHeight_mm / 2,
+      slotWidth_mm: g.slotWidth_mm,
+      slotLength_mm: g.slotLength_mm
+    });
+    const foot = plate(bottom, -DU_FACE.inset_mm);
+    const head = plate(top, length_mm + DU_FACE.inset_mm - top.plateHeight_mm);
+    return Object.freeze({
+      datum: "inner-leaf-concrete-edge",
+      facePlate: true,
+      clearance_mm: DU_FACE.clearance_mm,
+      bottom: foot,
+      top: head,
+      startY_mm: -DU_FACE.clearance_mm,
+      endY_mm: 0,
+      overallLength_mm: foot.length_mm,
+      width_mm: foot.height_mm,
+      thickness_mm: foot.thickness_mm,
+      holeDiameter_mm: foot.slotWidth_mm,
+      rowCentres_mm: Object.freeze([foot.anchorZ_mm]),
+      columnCentres_mm: foot.anchorX_mm,
+      anchorCentres_mm: Object.freeze(foot.anchorX_mm.map(x => Object.freeze({ x, y: foot.anchorZ_mm }))),
+      stiffener: null
+    });
+  }
+
   function sectionPrototypeModel(
     section,
     length_mm,
@@ -714,14 +803,33 @@
   ) {
     const length = Math.max(300, Math.min(12000, Number(length_mm) || 1200));
     const isU = section && section.type === "U";
-    const profile = isU ? foldedUProfile(section) : foldedLProfile(section);
+    const isDU = section && section.type === "DU";
+    const profile = isU || isDU ? foldedUProfile(section) : foldedLProfile(section);
     const isStandard = Boolean(baseplateDesign) &&
       baseplateDesign.anchorFromConcreteEdge != null;
-    const baseplate = isStandard
-      ? prototypeSimpleBaseplateGeometry(section, baseplateDesign, isU)
-      : isU
-        ? prototypeUBaseplateGeometry(section, baseplateDesign)
-        : prototypeBaseplateGeometry(section, baseplateDesign);
+    const baseplate = isDU
+      ? (baseplateDesign ? prototypeDuFacePlates(section, baseplateDesign, length) : null)
+      : isStandard
+        ? prototypeSimpleBaseplateGeometry(section, baseplateDesign, isU)
+        : isU
+          ? prototypeUBaseplateGeometry(section, baseplateDesign)
+          : prototypeBaseplateGeometry(section, baseplateDesign);
+    if (isDU) {
+      return {
+        prototypeOnly: true,
+        type: "DU",
+        section,
+        length_mm: length,
+        wallLength_mm: 2 * profile.b_mm,
+        totalWallDepth_mm: profile.a_mm,
+        profile,
+        slotPlacement: normalisePrototypeUSlot(profile, length, requestedSlotPlacement),
+        baseplate,
+        viewCentre: Object.freeze({ x: 0, y: -(DU_FACE.clearance_mm + profile.a_mm / 2), z: length / 2 }),
+        viewWidth_mm: (baseplate ? baseplate.overallLength_mm : 2 * profile.b_mm) + profile.a_mm + 60,
+        tieSchedule: { count: 0 }
+      };
+    }
     return {
       prototypeOnly: true,
       type: isU ? "U" : "L",
@@ -774,7 +882,51 @@
     return points;
   }
 
+  // A horizontal M12 anchor showing on the plate face: washer, hex head and
+  // shank end built as a vertical prism and turned to point into the slab (+y).
+  function facePlateAnchors(plate, clearance) {
+    const points = [];
+    const faces = [];
+    const shank = 12;
+    // built upright in one local array (prismFaces indexes from its length),
+    // then every point is turned so the prism axis runs into the slab (+y)
+    const local = [];
+    plate.anchorX_mm.forEach(x => {
+      prismFaces(x, plate.anchorZ_mm, 0, 3, shank, 16, local, faces, .3);
+      prismFaces(x, plate.anchorZ_mm, 3, 0.65 * shank, shank * 0.95, 6, local, faces, .22);
+      prismFaces(x, plate.anchorZ_mm, 3 + 0.65 * shank, 0.35 * shank, shank / 2, 12, local, faces, .3);
+    });
+    local.forEach(([px, py, pz]) => points.push([px, -clearance - pz, py]));
+    return { type: "mesh", points, faces, color: PALETTE.anchor, alpha: 1, group: "anchors" };
+  }
+
+  function buildDuScene(model) {
+    const clearance = DU_FACE.clearance_mm;
+    // channel 1 to -x, channel 2 to +x; webs back to back at x = 0; the near
+    // flanges at y = -clearance bear on the plate face
+    const left = ([rawX, rawY]) => [-rawX, -clearance - rawY];
+    const right = ([rawX, rawY]) => [rawX, -clearance - rawY];
+    const posts = [left, right].map(transform => foldedUMesh(model.section, model.length_mm, {
+      transform, arcSegments: 32, group: "post", slotCuts: model.slotPlacement
+    }));
+    const scene = posts.slice();
+    const plates = model.baseplate;
+    if (!plates || !plates.facePlate) return scene;
+    [plates.bottom, plates.top].forEach(plate => {
+      const box = cuboid(-plate.length_mm / 2, -clearance, plate.z0_mm, plate.length_mm, clearance, plate.height_mm, PALETTE.plate, .98, "baseplate");
+      box.planeSides = { plate: -1 };
+      scene.unshift(box);
+      const anchors = facePlateAnchors(plate, clearance);
+      anchors.planeSides = { plate: 1 };
+      scene.push(anchors);
+    });
+    posts.forEach(post => { post.planeSides = { plate: 1 }; });
+    model.sortPlanes = [{ id: "plate", normal: [0, -1, 0] }];
+    return scene;
+  }
+
   function buildSectionScene(model) {
+    if (model.type === "DU") return buildDuScene(model);
     const postMesh = model.type === "U" ? foldedUMesh : foldedLMesh;
     const scene = [
       postMesh(model.section, model.length_mm, {
@@ -787,7 +939,22 @@
     ];
     if (!model.baseplate) return scene;
 
-    scene.unshift(plateWithCircularHoles(model.baseplate));
+    // Draw-order planes (see Viewer.draw): the plate top separates the plate
+    // from everything mounted on it; the post face the stiffener bears on
+    // separates the post from the stiffener. Each item records which side
+    // of each plane it lies on, so the painter's sort never has to guess at
+    // the junctions.
+    const postPlane = model.type === "U"
+      ? { id: "post", normal: [0, 1, 0] }        // U: stiffener in front of the flange face (y = -clearance)
+      : { id: "post", normal: [1, 0, 0] };       // L: stiffener beside the long leg (x = t/2)
+    scene[0].planeSides = { plate: 1, post: -1 };
+    const plate = plateWithCircularHoles(model.baseplate);
+    plate.planeSides = { plate: -1 };
+    scene.unshift(plate);
+    const anchors = anchorBolts(model.baseplate);
+    anchors.planeSides = { plate: 1 };
+    scene.push(anchors);
+    model.sortPlanes = [{ id: "plate", normal: [0, 0, 1] }, postPlane];
     const stiffener = model.baseplate.stiffener;
     if (!stiffener) return scene;          // standard simply-supported base
     // A flat top only exists where the taper starts behind the post face; with
@@ -799,14 +966,66 @@
       ...(hasFlatTop ? [[stiffener.flatEndY_mm, stiffener.height_mm]] : []),
       [stiffener.endY_mm, 0]
     ];
-    scene.push(extrudedSidePlate(
+    const stiffenerMesh = extrudedSidePlate(
       stiffenerProfile,
       stiffener.x0_mm,
       stiffener.thickness_mm,
       PALETTE.stiffener,
       "stiffener"
-    ));
+    );
+    stiffenerMesh.planeSides = { plate: 1, post: 1 };
+    scene.push(stiffenerMesh);
     return scene;
+  }
+
+  // Painter's-algorithm helper: a tall extrusion face (one quad the full post
+  // height) has its centroid far from anything near the base, so the sort
+  // misjudges it against the base plate, stiffener and anchors. Cut such
+  // faces into short slices along the extrusion axis (z) so each slice sorts
+  // on its own local depth. Slot holes stay whole inside one slice.
+  const SLICE_LENGTH_MM = 150;
+  function sliceFace(points3d, holes3d, sliceLength) {
+    const step = sliceLength || SLICE_LENGTH_MM;
+    if (points3d.length !== 4) return null;
+    let order = [0, 1, 2, 3];
+    const z = index => points3d[index][2];
+    if (!(Math.abs(z(0) - z(1)) < 1e-6 && Math.abs(z(2) - z(3)) < 1e-6)) {
+      if (Math.abs(z(1) - z(2)) < 1e-6 && Math.abs(z(3) - z(0)) < 1e-6) order = [1, 2, 3, 0];
+      else return null;
+    }
+    const [a, b, c, d] = order.map(index => points3d[index]);   // a,b at z0; c,d at z1 (d above a, c above b)
+    const z0 = a[2], z1 = c[2];
+    const span = z1 - z0;
+    if (Math.abs(span) <= step * 1.5) return null;
+    const direction = span > 0 ? 1 : -1;
+    const count = Math.ceil(Math.abs(span) / step);
+    let bounds = [];
+    for (let index = 1; index < count; index += 1) bounds.push(z0 + direction * index * step);
+    const holeRanges = (holes3d || []).map(hole => {
+      const zs = hole.map(point => point[2]);
+      return [Math.min(...zs), Math.max(...zs)];
+    });
+    bounds = bounds.map(bound => {
+      const hit = holeRanges.find(([lo, hi]) => bound > lo && bound < hi);
+      return hit ? hit[1] + 0.5 * direction : bound;
+    }).filter(bound => direction > 0 ? bound > z0 && bound < z1 : bound < z0 && bound > z1);
+    bounds = [...new Set(bounds)].sort((p, q) => direction * (p - q));
+    const stops = [z0, ...bounds, z1];
+    const lerp = (from, to, zz) => {
+      const ratio = (zz - from[2]) / (to[2] - from[2]);
+      return [from[0] + (to[0] - from[0]) * ratio, from[1] + (to[1] - from[1]) * ratio, zz];
+    };
+    const slices = [];
+    for (let index = 0; index < stops.length - 1; index += 1) {
+      const za = stops[index], zb = stops[index + 1];
+      const quad = [lerp(a, d, za), lerp(b, c, za), lerp(b, c, zb), lerp(a, d, zb)];
+      const inside = (holes3d || []).filter(hole => {
+        const mid = hole.reduce((sum, point) => sum + point[2], 0) / hole.length;
+        return direction > 0 ? mid >= za && mid < zb : mid <= za && mid > zb;
+      });
+      slices.push({ points: quad, holes: inside });
+    }
+    return slices;
   }
 
   function slot(pointA, pointB, width, plane, group) {
@@ -989,12 +1208,30 @@
     return scene;
   }
 
+  // The camera starts on the cavity side, front-left and above, the way the
+  // product renders show a windpost: outer leaf cut away in front, post in the
+  // cavity, inner leaf and slab behind.
+  const DEFAULT_VIEW = Object.freeze({ azimuth: Math.PI + 0.62, elevation: 0.42 });
+
+  function escapeHtml(value) {
+    return String(value == null ? "" : value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;");
+  }
+
   class CavityRenderer {
     constructor(canvas) {
       this.canvas = canvas;
-      this.ctx = canvas.getContext("2d");
-      this.azimuth = -0.82;
-      this.elevation = 0.48;
+      // WebGL (depth buffer, shadows, materials) when the browser has it; the
+      // 2D painter otherwise. A canvas can hold only one kind of context, so
+      // the 2D context is created only when WebGL is refused.
+      const glFactory = windpost.windpostGlRenderer;
+      this.gl = glFactory && windpost.sceneMesh ? glFactory.create(canvas) : null;
+      this.ctx = this.gl ? null : canvas.getContext("2d");
+      this.azimuth = DEFAULT_VIEW.azimuth;
+      this.elevation = DEFAULT_VIEW.elevation;
       this.zoom = 1;
       this.panX = 0;
       this.panY = 0;
@@ -1003,6 +1240,12 @@
       this.dragging = false;
       this.lastPoint = null;
       this.options = { inner: true, outer: true, ties: true, concrete: true };
+      // Cavity-wall context drawn around a prototype post in the WebGL path.
+      this.context = { showWall: true, wall: null, supportCondition: "cantilever" };
+      this.sceneVersion = 0;
+      this.geometryKey = null;
+      this.geometry = null;
+      this.badge = null;
       this.setInteractionMode("orbit");
       this.installInteraction();
       this.resizeObserver = typeof ResizeObserver !== "undefined"
@@ -1124,6 +1367,7 @@
     setModel(model) {
       this.model = model;
       this.scene = buildScene(model);
+      this.sceneVersion += 1;
       this.draw();
     }
 
@@ -1135,6 +1379,14 @@
         baseplateDesign
       );
       this.scene = buildSectionScene(this.model);
+      this.sceneVersion += 1;
+      this.draw();
+    }
+
+    // Wall context for the WebGL picture: { showWall, wall: { innerLeaf-
+    // Thickness_mm, cavityWidth_mm, outerLeafThickness_mm }, supportCondition }.
+    setContext(partial) {
+      this.context = Object.assign({}, this.context, partial || {});
       this.draw();
     }
 
@@ -1146,12 +1398,117 @@
     }
 
     reset() {
-      this.azimuth = -0.82;
-      this.elevation = 0.48;
+      this.azimuth = DEFAULT_VIEW.azimuth;
+      this.elevation = DEFAULT_VIEW.elevation;
       this.zoom = 1;
       this.panX = 0;
       this.panY = 0;
       this.draw();
+    }
+
+    // The section badge is painted on the canvas in the 2D path; WebGL has no
+    // text, so it is an HTML overlay laid over the canvas instead.
+    ensureBadge() {
+      if (this.badge || typeof document === "undefined") return null;
+      const parent = this.canvas.parentNode;
+      if (!parent || !parent.insertBefore) return null;
+      const badge = document.createElement("div");
+      badge.className = "viewer-badge";
+      badge.setAttribute("aria-hidden", "true");
+      parent.insertBefore(badge, this.canvas.nextSibling);
+      this.badge = badge;
+      return badge;
+    }
+
+    badgeText() {
+      const model = this.model;
+      const subtitle = model.prototypeOnly
+        ? model.baseplate && model.baseplate.facePlate
+          ? `${model.baseplate.bottom.code} ${model.baseplate.bottom.length_mm} × ${model.baseplate.bottom.height_mm} × ${model.baseplate.bottom.thickness_mm} · ${model.baseplate.top.code} ${model.baseplate.top.length_mm} × ${model.baseplate.top.height_mm} × ${model.baseplate.top.thickness_mm} mm`
+        : model.baseplate
+          ? `${Math.round(model.baseplate.overallLength_mm)} × ${model.baseplate.width_mm} × ${model.baseplate.thickness_mm} mm baseplate · ${model.baseplate.anchorCentres_mm.length} × Ø${model.baseplate.holeDiameter_mm}`
+          : `${model.profile.a_mm} × ${model.profile.b_mm} × ${model.profile.t_mm} mm · Ri ${model.profile.innerRadius_mm} mm`
+        : `${model.tieSchedule.count} paired tie levels · drag to orbit`;
+      return { title: model.section.name, subtitle };
+    }
+
+    updateBadge() {
+      const badge = this.ensureBadge();
+      if (!badge) return;
+      const text = this.badgeText();
+      badge.innerHTML = `<strong>${escapeHtml(text.title)}</strong><span>${escapeHtml(text.subtitle)}</span>`;
+      badge.style.top = `${(this.canvas.offsetTop || 0) + 18}px`;
+    }
+
+    // Camera direction in model space, shared by both renderers.
+    viewDirection() {
+      return [
+        Math.sin(this.azimuth) * Math.cos(this.elevation),
+        Math.cos(this.azimuth) * Math.cos(this.elevation),
+        Math.sin(this.elevation)
+      ];
+    }
+
+    drawGl() {
+      const meshEngine = windpost.sceneMesh;
+      const key = [
+        this.sceneVersion,
+        JSON.stringify(this.context),
+        JSON.stringify(this.options)
+      ].join("|");
+      if (this.geometryKey !== key) {
+        const visibleScene = this.scene.filter(item => this.visible(item));
+        this.geometry = meshEngine.build(visibleScene, this.model, this.context);
+        this.gl.setGeometry(this.geometry);
+        this.geometryKey = key;
+      }
+      const bounds = this.geometry.bounds;
+      const width = this.canvas.width;
+      const height = this.canvas.height;
+      const aspect = width / Math.max(1, height);
+      const fovY = 24 * Math.PI / 180;
+      const halfTan = Math.tan(fovY / 2);
+      const extentZ = bounds.max[2] - bounds.min[2];
+      const extentXY = Math.max(bounds.max[0] - bounds.min[0], bounds.max[1] - bounds.min[1]);
+      const distance = Math.max(
+        extentZ * 1.12 / (2 * halfTan),
+        extentXY * 0.62 / (2 * halfTan * aspect),
+        bounds.radius * 1.2
+      ) / this.zoom;
+      const target = bounds.centre;
+      const direction = this.viewDirection();
+      const eye = [
+        target[0] + direction[0] * distance,
+        target[1] + direction[1] * distance,
+        target[2] + direction[2] * distance
+      ];
+      // Studio light fixed to the camera: upper-left-front, so every orbit is lit.
+      const forward = [-direction[0], -direction[1], -direction[2]];
+      let right = [forward[1], -forward[0], 0];
+      const rightLength = Math.hypot(right[0], right[1]) || 1;
+      right = [right[0] / rightLength, right[1] / rightLength, 0];
+      const up = [
+        right[1] * forward[2] - right[2] * forward[1],
+        right[2] * forward[0] - right[0] * forward[2],
+        right[0] * forward[1] - right[1] * forward[0]
+      ];
+      const mix = (a, b, c) => [
+        right[0] * a + up[0] * b + direction[0] * c,
+        right[1] * a + up[1] * b + direction[1] * c,
+        right[2] * a + up[2] * b + direction[2] * c
+      ];
+      const ratio = Math.min(2, global.devicePixelRatio || 1);
+      this.gl.render({
+        eye,
+        target,
+        fovY,
+        near: Math.max(1, distance * 0.04),
+        far: distance * 6 + bounds.radius * 4,
+        pan: [2 * this.panX * ratio / Math.max(1, width), -2 * this.panY * ratio / Math.max(1, height)],
+        lightDir: mix(-0.42, 0.72, 0.55),
+        fillDir: mix(0.75, 0.15, 0.35)
+      });
+      this.updateBadge();
     }
 
     visible(item) {
@@ -1216,6 +1573,10 @@
 
     draw() {
       if (!this.model || !this.scene) return;
+      if (this.gl) {
+        this.drawGl();
+        return;
+      }
       const ctx = this.ctx;
       const width = this.canvas.width;
       const height = this.canvas.height;
@@ -1250,31 +1611,59 @@
       // say. sin(elevation) carries the z term of the depth, so its sign is
       // that side. Faces still sort on depth WITHIN each band.
       const above = Math.sin(this.elevation) >= 0 ? 1 : -1;
+      // Camera direction in model space = gradient of the depth term.
+      const viewDir = [
+        Math.sin(this.azimuth) * Math.cos(this.elevation),
+        Math.cos(this.azimuth) * Math.cos(this.elevation),
+        Math.sin(this.elevation)
+      ];
+      const planes = this.model.sortPlanes || [{ id: "plate", normal: [0, 0, 1] }];
+      const planeSign = planes.map(plane => {
+        const dot = plane.normal[0] * viewDir[0] + plane.normal[1] * viewDir[1] + plane.normal[2] * viewDir[2];
+        return dot >= 0 ? 1 : -1;
+      });
+      const bandsFor = item => planes.map((plane, index) => {
+        const side = item.planeSides && item.planeSides[plane.id] != null
+          ? item.planeSides[plane.id]
+          : (plane.id === "plate" ? (item.group === "baseplate" ? -1 : 1) : 0);
+        return side * planeSign[index];
+      });
+      const compareBands = (a, b) => {
+        for (let index = 0; index < a.length; index += 1) {
+          if (a[index] !== b[index]) return a[index] - b[index];
+        }
+        return 0;
+      };
+      void above;
       this.scene.filter(item => this.visible(item)).forEach(item => {
         if (item.type === "slot") {
           slots.push(item);
           return;
         }
-        const band = (item.group === "baseplate" ? 0 : 1) * above;
-        item.faces.forEach(face => {
-          const points = face.indexes.map(index =>
-            this.project(item.points[index], scale, width, height)
-          );
-          const holes = (face.holes || []).map(hole =>
+        const bands = bandsFor(item);
+        const pushFace = (points3d, holes3d, face) => {
+          const points = points3d.map(point => this.project(point, scale, width, height));
+          const holes = (holes3d || []).map(hole =>
             hole.map(point => this.project(point, scale, width, height))
           );
           faces.push({
             points,
             holes,
-            band,
+            bands,
             depth: points.reduce((sum, point) => sum + point.depth, 0) / points.length,
             color: shade(item.color, face.shade, item.alpha),
             outline: shade(item.color, -.34, Math.min(1, item.alpha + .08)),
             group: item.group
           });
+        };
+        item.faces.forEach(face => {
+          const points3d = face.indexes.map(index => item.points[index]);
+          const slices = item.group === "post" ? sliceFace(points3d, face.holes) : null;
+          if (slices) slices.forEach(slice => pushFace(slice.points, slice.holes, face));
+          else pushFace(points3d, face.holes, face);
         });
       });
-      faces.sort((a, b) => (a.band - b.band) || (a.depth - b.depth));
+      faces.sort((a, b) => compareBands(a.bands, b.bands) || (a.depth - b.depth));
 
       faces.forEach(face => {
         ctx.beginPath();
@@ -1335,6 +1724,8 @@
 
     destroy() {
       if (this.resizeObserver) this.resizeObserver.disconnect();
+      if (this.gl) this.gl.destroy();
+      if (this.badge && this.badge.parentNode) this.badge.parentNode.removeChild(this.badge);
     }
   }
 

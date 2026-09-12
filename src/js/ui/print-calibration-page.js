@@ -16,7 +16,31 @@
     global.setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 
+  // The page opens in its own tab from the Detailing page, so "Back" closes
+  // the tab (or steps back) rather than loading a fresh Detailing page that
+  // would show the default design instead of the handed-over one.
+  function bindBackLink() {
+    const back = document.querySelector(".calibration-actions a");
+    if (!back) return;
+    if (/Windpost-PrintCalibration-Full\.html$/i.test(
+      decodeURIComponent((global.location && global.location.pathname) || ""))) {
+      back.href = "./Windpost-Detailing-Full.html";
+    }
+    back.addEventListener("click", event => {
+      event.preventDefault();
+      if (global.history.length > 1) {
+        global.history.back();
+        return;
+      }
+      global.close();
+      global.setTimeout(() => {
+        if (!global.closed) global.location.href = back.getAttribute("href");
+      }, 300);
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", () => {
+    bindBackLink();
     document.getElementById("calibration-sheet").innerHTML =
       windpost.printCalibrationService.sheet();
     document.getElementById("print-calibration").addEventListener(

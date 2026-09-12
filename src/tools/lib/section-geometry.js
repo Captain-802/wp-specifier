@@ -54,56 +54,6 @@ function calculateGeometrySection(shape, aInput, bInput, tInput, rInput, sharpEd
     return { valid: true, area, ixx, zxx: Math.min(zTop, zBottom), ybar, zTop, zBottom };
   }
 
-  // DU = two U channels welded WEB TO WEB (webs in hard contact, no spacer).
-  // The pair is symmetric about the weld plane, so:
-  //   Ixx  = 2 x Ixx of one channel   (both share the same horizontal axis)
-  //   Iyy  = 2 x Iy of one channel measured about the weld plane x = 0
-  // a and b stay the SINGLE channel's dimensions, exactly as ordered; the
-  // assembled post is a deep, and 2b wide, with a 2t web.
-  if (shape === "DU") {
-    const single = calculateGeometrySection("U", a, b, t, r, sharpEdges);
-    if (!single.valid) {
-      return invalidResult(single.error.replace("U-section", "DU-section"));
-    }
-
-    // Second moment of ONE channel about the weld plane (x = 0, the outer
-    // face of its web). Same component build-up as the U above, but taking
-    // x from the web face instead of y from the base.
-    let iyAboutWeb;
-    if (sharpEdges) {
-      const web = a * Math.pow(t, 3) / 3;                        // 0 -> t
-      const flange = t * (Math.pow(b, 3) - Math.pow(t, 3)) / 3;  // t -> b
-      iyAboutWeb = web + 2 * flange;
-    } else {
-      const R = r + t;
-      const hw = a - 2 * R;
-      const web = hw * Math.pow(t, 3) / 3;                       // 0 -> t
-      const flange = t * (Math.pow(b, 3) - Math.pow(R, 3)) / 3;  // R -> b
-      const Ac = (Math.PI / 4) * (Math.pow(R, 2) - Math.pow(r, 2));
-      const rbar = (4 / (3 * Math.PI)) *
-        (Math.pow(R, 3) - Math.pow(r, 3)) / (Math.pow(R, 2) - Math.pow(r, 2));
-      // A quarter annulus is symmetric about its 45 degree line, so its
-      // centroidal second moment is the same about either axis.
-      const Ic = (Math.PI / 16) * (Math.pow(R, 4) - Math.pow(r, 4)) -
-        Ac * Math.pow(rbar, 2);
-      const corner = Ic + Ac * Math.pow(R - rbar, 2);
-      iyAboutWeb = web + 2 * flange + 2 * corner;
-    }
-
-    const area = 2 * single.area;
-    const ixx = 2 * single.ixx;
-    const iyy = 2 * iyAboutWeb;
-    const ybar = a / 2;                       // symmetric about mid depth
-    const zTop = ixx / (a - ybar);
-    const zBottom = ixx / ybar;
-    return {
-      valid: true, area, ixx, iyy,
-      zxx: Math.min(zTop, zBottom), ybar, zTop, zBottom,
-      zyy: iyy / b,                           // extreme fibre at x = +/- b
-      overallWidth: 2 * b, webThickness: 2 * t
-    };
-  }
-
   if (shape === "L") {
     if (sharpEdges) {
       if (a <= t || b <= t) return invalidResult("Invalid sharp L-section geometry.");

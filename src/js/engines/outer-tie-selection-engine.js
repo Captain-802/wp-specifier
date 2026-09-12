@@ -62,29 +62,27 @@
   // The inner-leaf tie type depends on the windpost: a U post is tied back with
   // a U tie; an L post (built into the inner leaf) uses a shear tie.
   function innerTieFor(type) {
-    if (type === "U" || type === "DU") {
-      // A DU has two channels, so every level takes two sets of ties — inner
-      // AND outer. Quantities are reported as the true tie count rather than
-      // "n levels (2 sets)", so a schedule can be read straight off.
-      const sets = setsPerLevel(type);
+    if (type === "U") {
       return {
         name: "U tie",
-        note: `${WALL_DEFAULTS.uTieActualLength_mm} mm long; ` +
-          `${WALL_DEFAULTS.uTieInnerEmbedment_mm} mm embedment` +
-          (sets > 1 ? `; ${sets} per level` : ""),
+        note: `${WALL_DEFAULTS.uTieActualLength_mm} mm long; ${WALL_DEFAULTS.uTieInnerEmbedment_mm} mm embedment`,
+        actualLength_mm: WALL_DEFAULTS.uTieActualLength_mm,
+        embedment_mm: WALL_DEFAULTS.uTieInnerEmbedment_mm,
+        postClearance_mm: WALL_DEFAULTS.uInnerClearance_mm
+      };
+    }
+    if (type === "DU") {
+      return {
+        name: "U tie",
+        note: `2 per level; ${WALL_DEFAULTS.uTieActualLength_mm} mm long; ${WALL_DEFAULTS.uTieInnerEmbedment_mm} mm embedment`,
         actualLength_mm: WALL_DEFAULTS.uTieActualLength_mm,
         embedment_mm: WALL_DEFAULTS.uTieInnerEmbedment_mm,
         postClearance_mm: WALL_DEFAULTS.uInnerClearance_mm
       };
     }
     if (type === "L") return { name: "Shear tie", note: "for the inner leaf" };
+    if (type === "I") return { name: "Shear tie", note: "post built into the inner leaf" };
     return { name: WALL_DEFAULTS.innerTieDescription, note: "" };
-  }
-
-  // Ties fitted at each level, per post type. A DU is two channels welded web
-  // to web and each takes its own inner and outer tie.
-  function setsPerLevel(type) {
-    return type === "DU" ? 2 : 1;
   }
 
   function invalidResult(reason, partial = {}) {
@@ -114,9 +112,34 @@
     let outerGap_mm = 0;
     let placementDescription = "";
 
-    // A DU is two channels welded web to web. It stands wholly in the cavity
-    // exactly as a U does — the pairing doubles the width along the wall, not
-    // the depth across the cavity — so the placement rule is the U's.
+    if (section.type === "I") {
+      // An I post is a flat plate built into the inner leaf: it does not
+      // enter the cavity, needs no outer-leaf tie and has no cavity check.
+      const innerTie = innerTieFor("I");
+      return {
+        valid: true,
+        suitable: true,
+        reason: "Post built into the inner leaf; no cavity placement or outer tie required.",
+        innerTie: innerTie.name,
+        innerTieNote: innerTie.note,
+        innerTieActualLength_mm: null,
+        innerTieEmbedment_mm: null,
+        innerTiePostClearance_mm: null,
+        outerTie: "None",
+        selectedTieLength_mm: null,
+        actualTieLength_mm: null,
+        tieConnectionLength_mm: TIE_CONNECTION_LENGTH_MM,
+        requiredActualLength_mm: null,
+        outerEmbedment_mm: null,
+        outerGap_mm: null,
+        postProjectionIntoCavity_mm: 0,
+        placementDescription: "built into the inner leaf (no cavity projection)",
+        innerLeafThickness_mm: innerLeaf,
+        cavityWidth_mm: cavity,
+        outerLeafThickness_mm: outerLeaf
+      };
+    }
+
     if (section.type === "U" || section.type === "DU") {
       postProjectionIntoCavity_mm = postDepth;
       outerGap_mm = cavity - WALL_DEFAULTS.uInnerClearance_mm - postProjectionIntoCavity_mm;
@@ -196,9 +219,6 @@
       reason: "Wall geometry and outer tie are suitable.",
       innerTie: innerTie.name,
       innerTieNote: innerTie.note,
-      // Ties at each level, inner and outer alike: 2 for a DU, 1 otherwise.
-      // Multiply the tie-level count by this to get the scheduled quantity.
-      tieSetsPerLevel: setsPerLevel(section.type),
       innerTieActualLength_mm: innerTie.actualLength_mm ?? null,
       innerTieEmbedment_mm: innerTie.embedment_mm ?? null,
       innerTiePostClearance_mm: innerTie.postClearance_mm ?? null,
@@ -218,7 +238,6 @@
   }
 
   windpost.outerTieSelectionEngine = Object.freeze({
-    setsPerLevel,
     EDC_TIE_LENGTHS_MM,
     TIE_LIST,
     WALL_DEFAULTS,

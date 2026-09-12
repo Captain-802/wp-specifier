@@ -73,7 +73,7 @@ function buildSections(rows, type, sheetName) {
     const g = calculateGeometrySection(shape, a, b, t, innerRadius, sharp);
     if (!g.valid) { fail(`${line} (${name}): invalid geometry — ${g.error}`); return; }
 
-    const section = {
+    out.push({
       type, shape, name,
       a_mm: a, b_mm: b, t_mm: t,
       innerRadius_mm: round6(innerRadius),
@@ -84,15 +84,7 @@ function buildSections(rows, type, sheetName) {
       zTop_mm3: round6(g.zTop),
       zBottom_mm3: round6(g.zBottom),
       zxx_mm3: round6(g.zxx)
-    };
-    if (type === "DU") {
-      section.overallDepth_mm = round6(a);
-      section.overallWidth_mm = round6(g.overallWidth);
-      section.webThickness_mm = round6(g.webThickness);
-      section.iyy_mm4 = round6(g.iyy);
-      section.zyy_mm3 = round6(g.zyy);
-    }
-    out.push(section);
+    });
   });
   if (!out.length) fail(`${sheetName}: no valid sections found.`);
   return out;
@@ -167,57 +159,21 @@ const HEADER = (name) =>
   `// To change ${name}, edit the workbook and run UPDATE-FROM-EXCEL.cmd.\n`;
 
 function sectionLiteral(s) {
-  const lines = [
+  return [
     "      {",
     `        type: ${JSON.stringify(s.type)},`,
     `        shape: ${JSON.stringify(s.shape)},`,
     `        name: ${JSON.stringify(s.name)},`,
     `        a_mm: ${s.a_mm}, b_mm: ${s.b_mm}, t_mm: ${s.t_mm},`,
-    `        innerRadius_mm: ${s.innerRadius_mm}, outerRadius_mm: ${s.outerRadius_mm},`
-  ];
-  // A DU is an assembled pair, so its overall size and web are not a/b/t.
-  if (s.type === "DU") {
-    lines.push(
-      `        channels: 2, weld: "web-to-web",`,
-      `        overallDepth_mm: ${s.overallDepth_mm}, overallWidth_mm: ${s.overallWidth_mm},`,
-      `        webThickness_mm: ${s.webThickness_mm},`
-    );
-  }
-  lines.push(
+    `        innerRadius_mm: ${s.innerRadius_mm}, outerRadius_mm: ${s.outerRadius_mm},`,
     `        crossSectionalArea_mm2: ${s.crossSectionalArea_mm2},`,
     `        centroidY_mm: ${s.centroidY_mm},`,
-    `        ixx_mm4: ${s.ixx_mm4},`
-  );
-  if (s.type === "DU") lines.push(`        iyy_mm4: ${s.iyy_mm4},`);
-  lines.push(
+    `        ixx_mm4: ${s.ixx_mm4},`,
     `        zTop_mm3: ${s.zTop_mm3},`,
     `        zBottom_mm3: ${s.zBottom_mm3},`,
-    `        zxx_mm3: ${s.zxx_mm3}`
-  );
-  if (s.type === "DU") {
-    lines[lines.length - 1] += ",";
-    lines.push(`        zyy_mm3: ${s.zyy_mm3}`);
-  }
-  lines.push("      }");
-  return lines.join("\n");
-}
-
-function emitDuDatabase(sections) {
-  return `${HEADER("the DU sections")}(function initialiseStandardDuSectionDatabase(global) {
-  "use strict";
-
-  // A DU post is TWO U channels welded web to web. a_mm/b_mm/t_mm are the
-  // SINGLE channel; overallWidth_mm and webThickness_mm describe the pair.
-  // It carries two sets of ties per level — see DEFAULT_TIE_STRENGTH_KN.DU.
-  const windpost = global.Windpost = global.Windpost || {};
-
-  const sections = Object.freeze([
-${sections.map(sectionLiteral).join(",\n")}
-  ].map((section) => Object.freeze(section)));
-
-  windpost.duSectionDatabase = Object.freeze({ sections });
-})(window);
-`;
+    `        zxx_mm3: ${s.zxx_mm3}`,
+    "      }"
+  ].join("\n");
 }
 
 function emitHeights(heights) {
@@ -324,10 +280,6 @@ if (!fs.existsSync(workbookPath)) {
 const wb = XLSX.read(fs.readFileSync(workbookPath), { type: "buffer" });
 const uSections = buildSections(readSheet(wb, "U_Sections"), "U", "U_Sections");
 const lSections = buildSections(readSheet(wb, "L_Sections"), "L", "L_Sections");
-// DU_Sections is optional so an older workbook still builds.
-const duSections = wb.Sheets.DU_Sections
-  ? buildSections(readSheet(wb, "DU_Sections"), "DU", "DU_Sections")
-  : [];
 const heights = numberList(readSheet(wb, "Heights"), "standard_height_mm", "Heights");
 const ties = buildTies(readSheet(wb, "Ties"));
 const constants = buildConstants(readSheet(wb, "Constants"));
@@ -342,9 +294,6 @@ if (errors.length) {
 const writes = [
   ["js/data/standard-section-heights.js", emitHeights(heights)],
   ["js/data/u-section-database.js", emitUDatabase(uSections)],
-  ...(duSections.length
-    ? [["js/data/du-section-database.js", emitDuDatabase(duSections)]]
-    : []),
   ["js/data/l-section-database.js", emitLDatabase(lSections)],
   ["js/data/windpost-parameters.js", emitParameters(constants, ties)]
 ];

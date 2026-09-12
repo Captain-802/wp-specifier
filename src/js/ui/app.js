@@ -22,10 +22,16 @@
           this.updateConditionalInputs();
           this.invalidateResult();
         }));
-      this.form.querySelectorAll('input[type="number"], select').forEach((input) => {
+      this.form.querySelectorAll('input[type="number"], input[type="checkbox"], select').forEach((input) => {
         input.addEventListener("input", () => this.invalidateResult());
         input.addEventListener("change", () => this.invalidateResult());
       });
+      ["head", "base"].forEach((end) => {
+        document.getElementById(`${end}-fixing`).addEventListener("change", () => this.populateBoltFamilies(end));
+        document.getElementById(`special-${end}`).addEventListener("change", () => this.updateSpecialRows());
+      });
+      this.populateSpecialSkus();
+      this.updateSpecialRows();
       document.getElementById("close-details").addEventListener("click", () => this.hideDetails());
       document.getElementById("print-report").addEventListener("click", () => this.downloadPdf());
       this.detailingTab.addEventListener("click", () => this.openDetailing());
@@ -45,276 +51,6 @@
       });
       this.setDetailingAvailable(false);
       this.updateConditionalInputs();
-      this.initTieStrengthEditor();
-    },
-
-    // --- Design assumptions editor -------------------------------------
-    // Covers the material and spacing constants and the tie strengths.
-    // Everything reads through config.designValue / config.tieStrength, so an
-    // edit here reaches the capacity, the detailed report and the baseplate
-    // check together. Tie strengths are per tie LEVEL.
-
-    initTieStrengthEditor() {
-      this.tieDialog = document.getElementById("assumptions-dialog");
-      const openButton = document.getElementById("edit-assumptions");
-      if (!this.tieDialog || !openButton) return;
-      this.designRows = document.getElementById("design-rows");
-      this.tieRows = document.getElementById("tie-rows");
-      this.tieError = document.getElementById("assumptions-error");
-
-      openButton.addEventListener("click", () => this.openTieStrengthEditor());
-      document.getElementById("assumptions-cancel")
-        .addEventListener("click", () => this.tieDialog.close());
-      document.getElementById("assumptions-apply")
-        .addEventListener("click", () => this.applyTieStrengths());
-      document.getElementById("assumptions-reset").addEventListener("click", () => {
-        windpost.config.resetAllAssumptions();
-        this.renderTieStrengthRows();
-        this.afterTieStrengthChange();
-      });
-      // Enter in any field applies rather than silently dismissing the dialog.
-      document.getElementById("assumptions-form").addEventListener("submit", (event) => {
-        event.preventDefault();
-        this.applyTieStrengths();
-      });
-
-      this.refreshTieStrengthReadouts();
-    },
-
-    openTieStrengthEditor() {
-      this.renderTieStrengthRows();
-      this.setTieStrengthError("");
-      if (typeof this.tieDialog.showModal === "function") this.tieDialog.showModal();
-      else this.tieDialog.setAttribute("open", "");
-      const first = this.designRows.querySelector("input");
-      if (first) { first.focus(); if (first.select) first.select(); }
-    },
-
-    renderTieStrengthRows() {
-      this.designRows.innerHTML = windpost.config.listDesignValues().map((item) => {
-        const id = `design-${item.key}`;
-        const control = item.type === "boolean"
-          ? `<span class="tie-row-check">
-               <input id="${id}" data-design-key="${item.key}" type="checkbox"
-                      ${item.value ? "checked" : ""}>
-               <span class="tie-row-unit">${item.value ? "Applied" : "Not applied"}</span>
-             </span>`
-          : `<span class="tie-row-input">
-               <input id="${id}" data-design-key="${item.key}" type="number"
-                      step="${item.decimals ? Math.pow(10, -item.decimals).toFixed(item.decimals) : "1"}"
-                      min="${item.min}" max="${item.max}"
-                      value="${this.number(item.value, item.decimals)}">
-               <span class="tie-row-unit">${this.escape(item.unit)}</span>
-             </span>`;
-        const note = item.type === "boolean"
-          ? this.escape(item.hint)
-          : `${this.escape(item.hint)} · catalogue ${this.number(item.defaultValue, item.decimals)} ${item.unit}`.trim();
-        return `
-          <div class="tie-row">
-            <label for="${id}">
-              <span class="tie-row-name">${item.label}</span>
-              <span class="tie-row-meta">${note}</span>
-            </label>
-            ${control}
-          </div>`;
-      }).join("");
-
-      // Laid out like the workbook's Ties sheet: one column per post family
-      // and load case, one row per tie on the load path, and a computed row
-      // showing what the weaker of the two leaves gives that level.
-      const config = windpost.config;
-      const columns = [];
-      config.TIE_TYPES.forEach((type) => config.TIE_LOAD_CASES.forEach((loadCase) => {
-        columns.push({ type, loadCase });
-      }));
-
-      const shortCase = { SS: "SS", Cant: "Cant", Point: "Point" };
-      const groupHead = config.TIE_TYPES.map((type) =>
-        `<th colspan="${config.TIE_LOAD_CASES.length}" class="tie-group-head">${type} post</th>`).join("");
-      const caseHead = columns.map((c) =>
-        `<th class="tie-case-head">${shortCase[c.loadCase]}</th>`).join("");
-
-      const cellFor = (type, loadCase, leaf) => {
-        const value = config.tieLeafStrength(type, loadCase, leaf);
-        const custom = config.isTieStrengthCustom(type, loadCase, leaf);
-        return `<td><input type="number" step="0.001" min="0"
-          class="${custom ? "is-custom" : ""}"
-          data-tie-type="${type}" data-tie-case="${loadCase}" data-tie-leaf="${leaf}"
-          aria-label="${type} post ${loadCase} ${leaf} tie"
-          value="${this.number(value, 3)}"></td>`;
-      };
-
-      const leafRow = (leaf, name, note) => `
-        <tr>
-          <th scope="row"><span class="tie-table-name">${name}</span><span class="tie-table-note">${note}</span></th>
-          ${columns.map((c) => cellFor(c.type, c.loadCase, leaf)).join("")}
-        </tr>`;
-
-      this.tieRows.innerHTML = `
-        <div class="tie-table-wrap">
-          <table class="tie-table">
-            <thead>
-              <tr><th rowspan="2" class="tie-table-corner">Tie</th>${groupHead}</tr>
-              <tr>${caseHead}</tr>
-            </thead>
-            <tbody>
-              ${leafRow("inner", "Inner tie", "U tie / Shear tie")}
-              ${leafRow("outer", "EDC tie", "outer leaf")}
-              <tr class="tie-table-total">
-                <th scope="row"><span class="tie-table-name">Level capacity</span><span class="tie-table-note">min of the two × sets</span></th>
-                ${columns.map((c) => `<td data-tie-total="${c.type}.${c.loadCase}"></td>`).join("")}
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <p class="tie-group-note">All values in kN, per tie set. A DU carries two
-          sets per level, so its level capacity is twice the weaker leaf.</p>`;
-
-      // Keep the computed row live while the engineer is still typing.
-      this.tieRows.querySelectorAll("input[data-tie-type]").forEach((input) => {
-        input.addEventListener("input", () => this.refreshTieTableTotals());
-      });
-      this.refreshTieTableTotals();
-    },
-
-    refreshTieTableTotals() {
-      const config = windpost.config;
-      const read = (type, loadCase, leaf) => {
-        const input = this.tieRows.querySelector(
-          `input[data-tie-type="${type}"][data-tie-case="${loadCase}"][data-tie-leaf="${leaf}"]`
-        );
-        const value = input ? Number(input.value) : NaN;
-        return Number.isFinite(value) ? value : null;
-      };
-      this.tieRows.querySelectorAll("[data-tie-total]").forEach((cell) => {
-        const [type, loadCase] = cell.dataset.tieTotal.split(".");
-        const inner = read(type, loadCase, "inner");
-        const outer = read(type, loadCase, "outer");
-        if (inner === null || outer === null) { cell.textContent = "—"; return; }
-        cell.textContent = this.number(Math.min(inner, outer) * config.setsPerLevel(type), 3);
-      });
-      // Mark the weaker leaf so the governing end is obvious at a glance.
-      config.TIE_TYPES.forEach((type) => config.TIE_LOAD_CASES.forEach((loadCase) => {
-        const inner = read(type, loadCase, "inner");
-        const outer = read(type, loadCase, "outer");
-        config.TIE_LEAVES.forEach((leaf) => {
-          const input = this.tieRows.querySelector(
-            `input[data-tie-type="${type}"][data-tie-case="${loadCase}"][data-tie-leaf="${leaf}"]`
-          );
-          if (!input || inner === null || outer === null) return;
-          const mine = leaf === "inner" ? inner : outer;
-          input.classList.toggle("governs", mine < Math.max(inner, outer));
-        });
-      }));
-    },
-
-    setTieStrengthError(message) {
-      this.tieError.textContent = message;
-      this.tieError.classList.toggle("hidden", !message);
-    },
-
-    applyTieStrengths() {
-      const config = windpost.config;
-      const tieInputs = [...this.tieRows.querySelectorAll("input[data-tie-type]")];
-      const designInputs = [...this.designRows.querySelectorAll("input[data-design-key]")];
-
-      const badTies = tieInputs.filter((input) => {
-        const value = Number(input.value);
-        const ok = input.value.trim() !== "" && Number.isFinite(value) && value >= 0 && value <= 1000;
-        input.classList.toggle("is-invalid", !ok);
-        return !ok;
-      });
-      const badDesign = designInputs.filter((input) => {
-        if (input.type === "checkbox") return false;
-        const value = Number(input.value);
-        const ok = input.value.trim() !== "" && Number.isFinite(value) &&
-          value >= Number(input.min) && value <= Number(input.max);
-        input.classList.toggle("is-invalid", !ok);
-        return !ok;
-      });
-
-      if (badDesign.length) {
-        const meta = badDesign[0];
-        this.setTieStrengthError(`Enter a value between ${meta.min} and ${meta.max}.`);
-        meta.focus();
-        return;
-      }
-      if (badTies.length) {
-        this.setTieStrengthError("Enter a tie strength between 0 and 1000 kN.");
-        badTies[0].focus();
-        return;
-      }
-
-      // Writing back the catalogue value clears the override rather than
-      // pinning it, so DU can resume following U and the badge clears.
-      designInputs.forEach((input) => {
-        const key = input.dataset.designKey;
-        const value = input.type === "checkbox" ? input.checked : Number(input.value);
-        if (value === config.DESIGN_DEFAULTS[key]) config.clearDesignValue(key);
-        else config.setDesignValue(key, value);
-      });
-      tieInputs.forEach((input) => {
-        const { tieType, tieCase, tieLeaf } = input.dataset;
-        const value = Number(input.value);
-        if (value === config.DEFAULT_TIE_GRID[tieType][tieCase][tieLeaf]) {
-          config.clearTieStrength(tieType, tieCase, tieLeaf);
-        } else {
-          config.setTieStrength(tieType, tieCase, tieLeaf, value);
-        }
-      });
-
-      this.setTieStrengthError("");
-      this.tieDialog.close();
-      this.afterTieStrengthChange();
-    },
-
-    afterTieStrengthChange() {
-      this.refreshTieStrengthReadouts();
-      // A displayed capacity computed on the old assumptions would now be
-      // wrong, so recompute it if one is on screen; otherwise just clear it.
-      const showing = !document.getElementById("result-content").classList.contains("hidden");
-      if (showing) this.calculate();
-      else this.invalidateResult();
-    },
-
-    refreshTieStrengthReadouts() {
-      const config = windpost.config;
-      const setCell = (selector, text, custom) => {
-        const cell = document.querySelector(selector);
-        if (!cell) return;
-        cell.textContent = text;
-        cell.classList.toggle("is-custom", Boolean(custom));
-      };
-
-      // The panel quotes the simply-supported level value for each family;
-      // the dialog carries the per-load-case detail.
-      config.listTieLevelStrengths()
-        .filter((level) => level.loadCase === "SS")
-        .forEach((level) => {
-          setCell(
-            `[data-tie-readout="${level.type}"]`,
-            `${this.number(level.value, 3)} kN`,
-            config.isTieStrengthCustom(level.type)
-          );
-        });
-      config.listDesignValues().forEach((item) => {
-        if (item.key === "firstTieSpacing" || item.key === "standardTieSpacing") return;
-        const text = item.type === "boolean"
-          ? (item.value ? "Applied" : "Not applied")
-          : item.key === "secantN"
-            ? `n = ${this.number(item.value, item.decimals)}`
-            : `${this.number(item.value, item.decimals)} ${item.unit}`.trim();
-        setCell(`[data-design-readout="${item.key}"]`, text, item.custom);
-      });
-      // The panel shows the two spacings in one cell.
-      setCell(
-        '[data-design-readout="spacingPair"]',
-        `${this.number(config.designValue("firstTieSpacing"), 0)} / ${this.number(config.designValue("standardTieSpacing"), 0)} mm`,
-        config.isDesignCustom("firstTieSpacing") || config.isDesignCustom("standardTieSpacing")
-      );
-
-      const flag = document.getElementById("assumptions-flag");
-      if (flag) flag.classList.toggle("hidden", !config.isAnyAssumptionCustom());
     },
 
     setProjectStatus(message, failed) {
@@ -378,6 +114,7 @@
       document.getElementById("outer-leaf").value =
         wall.outerLeafThickness_mm || 100;
       this.updateConditionalInputs();
+      this.restoreConnectionInputs(options.connections || {});
       const select = document.getElementById("section-select");
       if (Array.from(select.options).some(option =>
           option.value === options.selectedSectionName)) {
@@ -394,10 +131,18 @@
 
     updateConditionalInputs() {
       const type = this.selectedValue("windpostType");
-      const support = this.selectedValue("supportCondition");
       const mode = this.selectedValue("designMode");
       const pointInput = document.querySelector('input[name="loadType"][value="tipPointLoad"]');
       const pointChoice = document.getElementById("point-load-choice");
+      const cantileverInput = document.querySelector('input[name="supportCondition"][value="cantilever"]');
+      const cantileverChoice = document.getElementById("cantilever-choice");
+      const cantileverAllowed = windpost.sectionProfileEngine.supportsCantilever(type);
+      cantileverInput.disabled = !cantileverAllowed;
+      if (cantileverChoice) cantileverChoice.classList.toggle("is-disabled", !cantileverAllowed);
+      if (!cantileverAllowed && cantileverInput.checked) {
+        document.querySelector('input[name="supportCondition"][value="simplySupported"]').checked = true;
+      }
+      const support = this.selectedValue("supportCondition");
 
       pointInput.disabled = support !== "cantilever";
       pointChoice.classList.toggle("is-disabled", support !== "cantilever");
@@ -412,6 +157,173 @@
       document.getElementById("automatic-input").classList.toggle("hidden", mode !== "automatic");
       document.getElementById("manual-input").classList.toggle("hidden", mode !== "manual");
       this.populateSections(type, support);
+      this.populateFixings(type, support);
+    },
+
+    // ---- connections form ------------------------------------------------
+    populateFixings(type, support) {
+      const engine = windpost.connectionSelectionEngine;
+      if (!engine) return;
+      const fill = (select, items, keepValue) => {
+        const previous = keepValue ? select.value : "";
+        select.innerHTML = items.map((item) =>
+          `<option value="${this.escape(item.value)}">${this.escape(item.label)}</option>`).join("");
+        if (items.some((item) => item.value === previous)) select.value = previous;
+      };
+      const head = document.getElementById("head-fixing");
+      const base = document.getElementById("base-fixing");
+      const headNote = document.getElementById("head-fixing-note");
+      const baseNote = document.getElementById("base-fixing-note");
+      if (support === "cantilever") {
+        fill(head, [{ value: "", label: engine.NOT_APPLICABLE }], false);
+        fill(base, [{ value: "", label: engine.CANTILEVER_BASE_AUTO }], false);
+        head.disabled = true; base.disabled = true;
+        headNote.textContent = "A cantilever post has no head connection.";
+        baseNote.textContent = "Standard plate type (U-A to U-G / L-A to L-G) chosen by the base moment; anchors RGM 12.";
+      } else {
+        const heads = engine.listFixings(type, support, "top");
+        const bases = engine.listFixings(type, support, "bottom");
+        fill(head, heads.map((c) => ({ value: c.description, label: `${c.description.trim()}  (${c.code})` })), true);
+        fill(base, bases.map((c) => ({ value: c.description, label: `${c.description.trim()}  (${c.code})` })), true);
+        head.disabled = false; base.disabled = false;
+        headNote.textContent = type === "I" ? "I-post connections are copies of the U-post library pending confirmation." : "";
+        baseNote.textContent = type === "I" ? "I-post connections are copies of the U-post library pending confirmation." : "";
+      }
+      this.populateBoltFamilies("head");
+      this.populateBoltFamilies("base");
+    },
+
+    populateBoltFamilies(end) {
+      const engine = windpost.connectionSelectionEngine;
+      const type = this.selectedValue("windpostType");
+      const support = this.selectedValue("supportCondition");
+      const select = document.getElementById(`${end}-bolt-family`);
+      const previous = select.value;
+      let families = [];
+      if (support === "cantilever") {
+        families = end === "head" ? [] : [engine.BOLT_FAMILIES.RGM];
+      } else {
+        const fixing = document.getElementById(`${end}-fixing`).value;
+        const connection = engine.findConnection(type, support, end === "head" ? "top" : "bottom", fixing);
+        families = connection ? engine.boltFamiliesFor(connection.materialClass) : [];
+      }
+      select.innerHTML = families.map((f) => `<option value="${this.escape(f)}">${this.escape(f)}</option>`).join("") ||
+        `<option value="">${end === "head" ? "Not applicable" : "RGM BOLTS"}</option>`;
+      if (families.includes(previous)) select.value = previous;
+      select.disabled = families.length <= 1;
+    },
+
+    populateSpecialSkus() {
+      const db = windpost.connectionsDatabase;
+      const skus = (db && db.boltSkus ? db.boltSkus : []).map((row) => row.sku);
+      ["special-head-sku", "special-base-sku"].forEach((id) => {
+        const select = document.getElementById(id);
+        select.innerHTML = skus.map((sku) => `<option value="${this.escape(sku)}">${this.escape(sku)}</option>`).join("");
+      });
+    },
+
+    updateSpecialRows() {
+      ["head", "base"].forEach((end) => {
+        const on = document.getElementById(`special-${end}`).checked;
+        document.getElementById(`special-${end}-row`).classList.toggle("is-off", !on);
+      });
+    },
+
+    readConnectionInputs() {
+      const value = (id) => document.getElementById(id).value;
+      const number = (id) => Number(document.getElementById(id).value);
+      const checked = (id) => document.getElementById(id).checked;
+      return {
+        headFixing: value("head-fixing"),
+        baseFixing: value("base-fixing"),
+        headBoltFamily: value("head-bolt-family"),
+        baseBoltFamily: value("base-bolt-family"),
+        postsCount: number("posts-count"),
+        deliveries: number("deliveries"),
+        debondingSleeve: value("debonding-sleeve") === "yes",
+        special: {
+          head: { enabled: checked("special-head"), weight_kg: number("special-head-weight"), material: value("special-head-material"), sku: value("special-head-sku"), bolts: number("special-head-bolts") },
+          base: { enabled: checked("special-base"), weight_kg: number("special-base-weight"), material: value("special-base-material"), sku: value("special-base-sku"), bolts: number("special-base-bolts") }
+        }
+      };
+    },
+
+    restoreConnectionInputs(c) {
+      const set = (id, v) => { const el = document.getElementById(id); if (el && v !== undefined && v !== null) el.value = v; };
+      set("head-fixing", c.headFixing); set("base-fixing", c.baseFixing);
+      this.populateBoltFamilies("head"); this.populateBoltFamilies("base");
+      set("head-bolt-family", c.headBoltFamily); set("base-bolt-family", c.baseBoltFamily);
+      set("posts-count", c.postsCount); set("deliveries", c.deliveries);
+      set("debonding-sleeve", c.debondingSleeve === false ? "no" : "yes");
+      const special = c.special || {};
+      ["head", "base"].forEach((end) => {
+        const sp = special[end] || {};
+        document.getElementById(`special-${end}`).checked = Boolean(sp.enabled);
+        set(`special-${end}-weight`, sp.weight_kg); set(`special-${end}-material`, sp.material);
+        set(`special-${end}-sku`, sp.sku); set(`special-${end}-bolts`, sp.bolts);
+      });
+      this.updateSpecialRows();
+    },
+
+    selectConnections(design) {
+      const engine = windpost.connectionSelectionEngine;
+      if (!engine || !design || !design.selected) return null;
+      const selected = design.selected;
+      return engine.select({
+        ...this.readConnectionInputs(),
+        type: design.inputs.type,
+        supportCondition: design.inputs.supportCondition,
+        loadType: design.inputs.loadType,
+        length_mm: design.inputs.length_mm,
+        section: selected.section,
+        finalCapacity_kN: selected.finalCapacity_kN,
+        numberOfTies: selected.calculation.numberOfTies
+      });
+    },
+
+    connectionsBlockHtml(c) {
+      if (!c) return "";
+      const n = (v, d = 3) => this.number(v, d);
+      const e = (v) => this.escape(v);
+      const row = (label, head, base) => `<tr><td>${label}</td><td>${head}</td><td>${base}</td></tr>`;
+      const headNa = !c.head.applicable;
+      const plate = c.base.plate;
+      const plateRows = plate && Number.isFinite(plate.capacity_kNm)
+        ? `<div><dt>Base moment (${e(plate.loadModel)})</dt><dd>${n(c.base.moment_kNm, 3)} kNm &le; ${n(plate.capacity_kNm, 3)} kNm</dd></div>
+           <div><dt>Plate type ${e(plate.code)}</dt><dd>${n(plate.plateLength_mm, 0)} &times; ${plate.plateWid_mm} &times; ${plate.plateThk_mm} mm, stiffener ${plate.stiffThk_mm} mm</dd></div>
+           <div><dt>Plate + stiffener weight</dt><dd>${n(plate.plateKg, 2)} + ${n(plate.stiffKg, 2)} = ${n(plate.totalKg, 2)} kg</dd></div>`
+        : (plate ? `<div><dt>Base plate</dt><dd>Special design (moment ${n(c.base.moment_kNm, 3)} kNm beyond the standard types)</dd></div>` : "");
+      const warnings = c.warnings.length ? `<p style="color:#b3261e;margin:6px 0 0;font-size:12px">${c.warnings.map(e).join(" ")}</p>` : "";
+      const notes = (c.notes || []).length ? `<p style="color:#8a5a00;margin:6px 0 0;font-size:12px">${c.notes.map(e).join(" ")}</p>` : "";
+      return `<section class="result-block">
+          <h3>Connections and bolts</h3>
+          <table class="conn-table">
+            <thead><tr><th></th><th>Head</th><th>Base</th></tr></thead>
+            <tbody>
+              ${row("Fixing", headNa ? "Not applicable (cantilever)" : e(c.head.description.trim()), e(c.base.description.trim()))}
+              ${row("Connection code", headNa ? "&mdash;" : e(c.head.code), e(c.base.code || "&mdash;"))}
+              ${row("Post bolts", headNa ? "&mdash;" : e(c.head.postBolt), e(c.base.postBolt))}
+              ${row("Connection bolts", headNa ? "&mdash;" : `${e(c.head.boltSku)}${c.head.special ? " (special)" : ""}`, `${e(c.base.boltSku)}${c.base.special ? " (special)" : ""}`)}
+              ${row("Bolt family", headNa ? "&mdash;" : e(c.head.boltFamily), e(c.base.boltFamily))}
+              ${row("No. of bolts", headNa ? "&mdash;" : n(c.head.boltCount, 0), n(c.base.boltCount, 0))}
+              ${row("Connection weight", headNa ? "&mdash;" : n(c.head.weight_kg, 3) + " kg", n(c.base.weight_kg, 3) + " kg")}
+            </tbody>
+          </table>
+          ${plateRows ? `<dl class="result-list">${plateRows}</dl>` : ""}
+          ${warnings}${notes}
+        </section>
+        <section class="result-block">
+          <h3>Weights</h3>
+          <dl class="result-list">
+            <div><dt>Fold (blank) width</dt><dd>${n(c.post.blankWidth_mm, 2)} mm</dd></div>
+            <div><dt>Windpost self weight (${n(c.post.kgPerMetre, 3)} kg/m)</dt><dd>${n(c.post.weight_kg, 3)} kg</dd></div>
+            <div><dt>Head connection${c.head.special ? " (special)" : ""}</dt><dd>${n(c.head.weight_kg, 3)} kg</dd></div>
+            <div><dt>Base connection${c.base.special ? " (special)" : ""}</dt><dd>${n(c.base.weight_kg, 3)} kg</dd></div>
+            <div><dt>Ties per post</dt><dd>${n(c.ties.innerCount, 0)} inner${c.ties.outerCount ? ` + ${n(c.ties.outerCount, 0)} outer` : ""}${c.ties.debondingSleeves ? ` + ${n(c.ties.debondingSleeves, 0)} sleeves` : ""}</dd></div>
+          </dl>
+          <div class="weight-total"><span>Total weight per post</span><span>${n(c.totalWeightPerPost_kg, 3)} kg</span></div>
+          <div class="weight-total" style="border-top:0;padding-top:2px;font-weight:600"><span>${n(c.postsCount, 0)} posts &middot; ${n(c.deliveries, 0)} deliveries</span><span>${n(c.totalWeightAllPosts_kg, 3)} kg</span></div>
+        </section>`;
     },
 
     populateSections(type, support) {
@@ -438,7 +350,8 @@
           innerLeafThickness_mm: Number(document.getElementById("inner-leaf").value),
           cavityWidth_mm: Number(document.getElementById("cavity").value),
           outerLeafThickness_mm: Number(document.getElementById("outer-leaf").value)
-        }
+        },
+        connections: this.readConnectionInputs()
       };
     },
 
@@ -450,7 +363,8 @@
       const snapshot = windpost.designTransferEngine.snapshot(
         design,
         this.lastBaseplate,
-        global.location
+        global.location,
+        this.lastConnections
       );
       let storage = null;
       try { storage = global.sessionStorage; } catch (error) { storage = null; }
@@ -463,22 +377,27 @@
       const design = available ? this.lastDesign : null;
       const selected = design && design.selected;
       const section = selected && selected.section;
-      // A DU selects and calculates, but the baseplate detail and the folded
-      // drawings for a welded pair do not exist yet, so Detailing stays shut
-      // rather than opening onto a sheet it cannot draw.
-      const detailingReady = section && section.type !== "DU";
-      this.detailingTab.disabled = !detailingReady;
-      this.detailingTab.title = !section
-        ? "Run a successful windpost selection first"
-        : section.type === "DU"
-          ? "Production drawings are not available for DU posts yet — " +
-            "the baseplate detail is still to be defined"
-          : `Open production drawings for ${section.name}`;
+      const drawable = section && (section.type === "U" || section.type === "L" || section.type === "DU");
+      const engine = windpost.designTransferEngine;
+      const transferable = Boolean(drawable && engine && engine.validate(
+        engine.snapshot(design, this.lastBaseplate, global.location, this.lastConnections)
+      ));
+      this.detailingTab.disabled = !transferable;
+      this.detailingTab.title = transferable
+        ? `Open production drawings for ${section.name}`
+        : drawable
+          ? "Production drawings cover post heights of 300 to 12000 mm"
+          : (section ? "Production drawings are available for U, L and DU posts" : "Run a successful windpost selection first");
     },
 
     openDetailing() {
       const href = this.detailingHref(this.lastDesign);
-      if (href) global.location.href = href;
+      if (!href) return;
+      // Lets the Detailing page's "Back to Selector" use history.back() only
+      // when it really was reached from here (an iframe shares the joint
+      // session history with its host page).
+      try { global.sessionStorage.setItem("windpost.detailing.fromSelector", "1"); } catch (error) { /* storage blocked */ }
+      global.location.href = href;
     },
 
     calculate() {
@@ -502,6 +421,7 @@
       if (!this.lastDesign && document.getElementById("result-content").classList.contains("hidden")) return;
       this.lastDesign = null;
       this.lastBaseplate = null;
+      this.lastConnections = null;
       this.setDetailingAvailable(false);
       document.getElementById("result-content").classList.add("hidden");
       document.getElementById("result-placeholder").classList.remove("hidden");
@@ -512,9 +432,14 @@
       const selected = design.selected;
       const { section, calculation, wall } = selected;
       const isAutomatic = design.mode === "automatic";
-      const bp = this.designBasePlate(design);
+      // Connections first: the drawn base plate depends on the base fixing.
+      const connections = this.selectConnections(design);
+      this.lastConnections = connections;
+      const bp = this.designBasePlate(design, connections);
       this.lastBaseplate = bp;
       this.setDetailingAvailable(true);
+      const perLevel = (windpost.config.TIES_PER_LEVEL || {})[section.type] || 1;
+      const isIPost = section.type === "I";
       const utilisation = isAutomatic ? selected.utilizationPercent : null;
       const utilisationWidth = utilisation === null ? 100 : Math.min(100, Math.max(0, utilisation));
       const alternatives = design.alternatives.length
@@ -533,8 +458,8 @@
         <div class="result-top">
           <div class="status-row"><span class="result-status">${isAutomatic ? "Suitable" : "Calculated"}</span><span class="result-mode">${isAutomatic ? "Automatic selection" : "Selected-section check"}</span></div>
           <div class="result-section-name">
-            <div class="result-shape"><span class="shape-icon shape-${section.type.toLowerCase()}"><i></i>${section.type === "DU" ? "<b></b>" : ""}</span></div>
-            <div><h2>${this.escape(section.name)}</h2><p>${section.type}-shaped windpost · ${this.supportLabel(design.inputs.supportCondition)} · ${this.number(design.inputs.length_mm, 0)} mm</p></div>
+            <div class="result-shape"><span class="shape-icon shape-${section.type.toLowerCase()}">${section.type === "DU" ? "<i></i><i></i>" : "<i></i>"}</span></div>
+            <div><h2>${this.escape(section.name)}</h2><p>${this.escape(this.familyLabel(section.type))} · ${this.supportLabel(design.inputs.supportCondition)} · ${this.number(design.inputs.length_mm, 0)} mm</p></div>
           </div>
         </div>
         <div class="capacity-hero">
@@ -557,20 +482,22 @@
           <section class="result-block">
             <h3>Supply with this post</h3>
             <div class="tie-callout">
-              <div class="tie-card"><span>Inner leaf</span><strong>${this.number(calculation.numberOfTies * (wall.tieSetsPerLevel || 1), 0)} no. ${this.escape(wall.innerTie)}</strong><small>${this.escape(wall.innerTieNote || "")}</small></div>
-              <div class="tie-card"><span>Outer leaf</span><strong>${this.number(calculation.numberOfTies * (wall.tieSetsPerLevel || 1), 0)} no. ${this.escape(wall.outerTie)}</strong><small>${this.number(wall.outerEmbedment_mm, 1)} mm embedment</small></div>
+              <div class="tie-card"><span>Inner leaf</span><strong>${this.number(calculation.numberOfTies * perLevel, 0)} no. ${this.escape(wall.innerTie)}</strong><small>${this.escape(wall.innerTieNote || "")}</small></div>
+              <div class="tie-card"><span>Outer leaf</span><strong>${isIPost ? "None" : `${this.number(calculation.numberOfTies * perLevel, 0)} no. ${this.escape(wall.outerTie)}`}</strong><small>${isIPost ? "post within the inner leaf" : `${this.number(wall.outerEmbedment_mm, 1)} mm embedment`}</small></div>
             </div>
             <dl class="result-list">
-              <div><dt>Clear gap to outer leaf</dt><dd>${this.number(wall.outerGap_mm, 1)} mm</dd></div>
+              <div><dt>Clear gap to outer leaf</dt><dd>${isIPost ? "n/a" : `${this.number(wall.outerGap_mm, 1)} mm`}</dd></div>
               <div><dt>Post placement</dt><dd>${this.escape(wall.placementDescription)}</dd></div>
               <div><dt>Wall construction</dt><dd>${this.number(wall.innerLeafThickness_mm, 0)} / ${this.number(wall.cavityWidth_mm, 0)} / ${this.number(wall.outerLeafThickness_mm, 0)} mm</dd></div>
             </dl>
           </section>
           ${alternatives}
-          ${bp ? this.basePlateBlockHtml(bp) : this.basePlateHintHtml(design)}
+          ${this.connectionsBlockHtml(connections)}
+          ${this.duConnectionDrawingsHtml(section, connections)}
+          ${bp ? this.basePlateBlockHtml(bp) : this.basePlateHintHtml(design, connections)}
           ${bp && bp.ok ? this.basePlateDrawingHtml(bp) : ""}
           <div class="result-actions">
-            ${section.type === "L" ? `<a class="secondary-button" href="./cavity-wall-assembly.html" target="_blank" rel="noopener" id="open-cavity-wall">Open cavity-wall assembly</a>` : ""}
+            ${section.type === "L" ? `<a class="secondary-button" href="${this.cavityWallPage()}" target="_blank" rel="noopener" id="open-cavity-wall">Open cavity-wall assembly</a>` : ""}
             <button class="secondary-button" type="button" id="view-calculation">View calculations</button>
             <button class="primary-button small" type="button" id="download-pdf">Download PDF</button>
           </div>
@@ -585,6 +512,7 @@
       document.getElementById("download-pdf").addEventListener("click", () => this.downloadPdf());
       const svgBtn = document.getElementById("download-bp-svg");
       if (svgBtn) svgBtn.addEventListener("click", () => this.downloadSvg());
+      this.bindDuConnectionDownloads(section, connections);
       const baseplatePreview = document.getElementById("baseplate-drawing-preview");
       if (baseplatePreview && windpost.drawingLayoutEngine) {
         const root = baseplatePreview.querySelector("svg");
@@ -595,7 +523,7 @@
           steel: false
         });
       }
-      document.getElementById("detailed-report").innerHTML = buildReport(design) + (bp ? this.basePlateReportHtml(bp) : "");
+      document.getElementById("detailed-report").innerHTML = buildReport(design, connections) + (bp ? this.basePlateReportHtml(bp) : "") + this.duConnectionReportHtml(section, connections);
       document.getElementById("detailed-section").classList.add("hidden");
       this.scrollResultIntoView();
     },
@@ -629,7 +557,35 @@
       // Reveal the report, then open the browser's print dialog. Choosing
       // "Save as PDF" there produces the A4 report (see the print stylesheet).
       this.showDetails(false);
+      // Inside a sandboxed embed (the Google Sites page) window.print() is
+      // ignored, so the report opens in its own tab, which is not sandboxed,
+      // and prints from there.
+      if (this.isEmbedded()) {
+        this.printInNewTab();
+        return;
+      }
       global.print();
+    },
+
+    isEmbedded() {
+      try { return global.self !== global.top; } catch (error) { return true; }
+    },
+
+    printInNewTab() {
+      const report = document.getElementById("detailed-section");
+      if (!report) return;
+      const styles = Array.from(document.querySelectorAll("style"))
+        .map(style => style.textContent).join("\n");
+      const html = `<!doctype html><html lang="en-GB"><head><meta charset="utf-8">` +
+        `<title>${this.escape(document.title)}</title><style>${styles}</style>` +
+        `<style>body{background:#fff;margin:0;padding:16px}.detailed-section{display:block}</style></head>` +
+        `<body>${report.outerHTML}` +
+        `<script>window.addEventListener("load",function(){setTimeout(function(){window.print()},400)})<\/script>` +
+        `</body></html>`;
+      const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+      const popup = global.open(url, "_blank");
+      if (!popup) global.print();
+      global.setTimeout(() => URL.revokeObjectURL(url), 60000);
     },
 
     scrollResultIntoView() {
@@ -638,15 +594,26 @@
       }
     },
 
-    designBasePlate(design) {
-      return windpost.selectorBaseplateRoutingEngine.design(design);
+    designBasePlate(design, connections) {
+      return windpost.selectorBaseplateRoutingEngine.design(design, connections);
     },
 
-    basePlateHintHtml(design) {
+    basePlateHintHtml(design, connections) {
       const inputs = design.inputs || {};
       const section = design.selected && design.selected.section;
       if (inputs.supportCondition === "cantilever" && section &&
           (section.type === "L" || section.type === "U")) return "";
+      const base = connections && connections.base;
+      if (base && base.code && inputs.supportCondition === "simplySupported" && section &&
+          (section.type === "L" || section.type === "U") && !base.standardPlate) {
+        const plateFixing = section.type === "U" ? "U POST TO CONCRETE TOP (U-B3)" : "L POST TO CONCRETE TOP (L-B2)";
+        return `<section class="result-block"><h3>Base plate</h3>
+          <p style="color:#5b636c;margin:0">The selected base fixing <strong>${this.escape(base.description || base.code)} (${this.escape(base.libraryCode || base.code)})</strong> has no drawn base-plate detail; its weight and bolts are listed under Connections. The standard concrete-top plate (${this.escape(section.type === "U" ? "U-B3A / U-B3B" : "L-B2A / L-B2B")}) is drawn when <strong>${this.escape(plateFixing)}</strong> is selected as the base fixing.</p></section>`;
+      }
+      if (section && (section.type === "DU" || section.type === "I")) {
+        return `<section class="result-block"><h3>Base plate</h3>
+          <p style="color:#5b636c;margin:0">The simply-supported ${this.escape(section.type)} post uses the standard base plate of the connection library (weight shown under Connections). No drawn plate is generated for this family.</p></section>`;
+      }
       return `<section class="result-block"><h3>Base plate design</h3>
           <p style="color:#5b636c;margin:0">Fixed standard base‑plate details are generated for <strong>simply-supported U‑ and L‑posts</strong>. Automatic designed baseplates are generated for <strong>cantilever U‑ and L‑posts</strong>.</p></section>`;
     },
@@ -678,7 +645,9 @@
         return `<section class="result-block">
             <h3>Simply-supported ${this.escape(bp.postType)}-post base plate <span style="float:right;font-size:.8em;color:${colour}">${r.pass ? "PASS" : "FAIL"}</span></h3>
             <dl class="result-list">
+              ${d.typeCode ? `<div><dt>Standard type</dt><dd>${this.escape(d.typeCode)} — ${this.escape(d.typeTitle || "")}</dd></div>` : ""}
               <div><dt>Base plate</dt><dd>${overall} × ${d.B} × ${d.tp} mm</dd></div>
+              ${d.edgeConstant ? `<div><dt>Concrete edge to bolts (B)</dt><dd>${d.edgeConstant} − ${this.number(bp.section.a_mm, 0)} = ${d.anchorFromConcreteEdge} mm</dd></div>` : ""}
               <div><dt>Left portion</dt><dd>${leftFormula}</dd></div>
               <div><dt>Right portion</dt><dd>${d.anchorFromConcreteEdge} mm to anchor line + ${d.rightEndDistance} mm to plate end = ${d.plateLen} mm</dd></div>
               <div><dt>Anchors — RGM 12</dt><dd>2 no. · Ø${d.holeDia} holes · ${d.w} mm c/c · ${d.sideEdge} mm side edges</dd></div>
@@ -695,12 +664,43 @@
           <h3>Base plate design <span style="float:right;font-size:.8em;color:${colour}">${pass ? "PASS" : "FAIL"} · ${this.number(r.govUtil * 100, 1)}%</span></h3>
           <dl class="result-list">
             <div><dt>Base moment (${this.escape(bp.loadModel)})</dt><dd>${this.number(bp.moment, 2)} kNm</dd></div>
+            <div><dt>Basis</dt><dd>${this.escape(this.basePlateBasisText(bp))}</dd></div>
             <div><dt>Base plate</dt><dd>${d.plateLen} × ${d.B} × ${d.tp} mm</dd></div>
             <div><dt>Anchors — RGM 12</dt><dd>${d.nRow} rows × ${d.nCol} cols (${d.nRow * d.nCol} no.) · edge ${d.edge} · pitch ${d.pitch}</dd></div>
-            <div><dt>Stiffener (triangular)</dt><dd>${d.tw} mm thick × ${d.hUp} mm high</dd></div>
+            <div><dt>Stiffener (triangular)</dt><dd>${d.tw} mm thick × ${d.hUp} mm high${bp.stiffenerRaisedFrom_mm ? ` (standard ${bp.stiffenerRaisedFrom_mm} mm raised)` : ""}</dd></div>
             <div><dt>Governing check</dt><dd>${this.escape(this.basePlateGovName(r.util))} — ${this.number(r.govUtil * 100, 1)}%</dd></div>
+            ${this.basePlateStandardRowHtml(bp)}
           </dl>
         </section>`;
+    },
+
+    basePlateBasisText(bp) {
+      if (!bp) return "";
+      if (bp.basis === "standard") return `Standard plate type ${bp.standardType} verified by the full check set`;
+      if (bp.basis === "standard (stiffener raised)") return `Standard plate type ${bp.standardType}; stiffener raised to pass the base + stiffener bending check`;
+      if (bp.basis && bp.basis.startsWith("auto (standard")) return `Auto-sized: standard type ${bp.standardType} fails a check (see below)`;
+      if (bp.basis === "auto (beyond standard types)") return "Auto-sized: moment beyond the standard plate types (special design)";
+      return "Auto-sized";
+    },
+
+    basePlateStandardRowHtml(bp) {
+      const s = bp && bp.standardComparison;
+      if (!s || !s.design) return "";
+      const sd = s.design, sr = s.results;
+      const same = bp.basis === "standard";
+      const status = sr.pass ? "PASS" : `FAIL — ${this.escape(this.basePlateGovName(sr.util))} ${this.number(sr.govUtil * 100, 0)}%`;
+      return `<div><dt>Standard type ${this.escape(s.code)} (≤ ${this.number(s.capacity_kNm, 3)} kNm)</dt><dd>${sd.plateLen} × ${sd.B} × ${sd.tp} mm · ${sd.nRow * sd.nCol} bolts · stiffener ${sd.tw} × ${sd.hUp} — ${same ? "adopted" : status}</dd></div>`;
+    },
+
+    duConnectionReportHtml(section, connections) {
+      const codes = this.duConnectionCodes(section, connections);
+      if (!codes.length) return "";
+      return codes.map(code => {
+        let svg = "";
+        try { svg = this.connectionDrawingSvg(code, section); } catch (err) { return ""; }
+        const what = "DU post to concrete slab face";
+        return `<section class="report-section"><h3>Connection ${this.escape(code)} — ${what}</h3><div style="background:#fff">${svg}</div></section>`;
+      }).join("");
     },
 
     basePlateReportHtml(bp) {
@@ -728,7 +728,7 @@
         `<tr><td>${name}</td><td>${detail}</td><td style="text-align:right">${this.number(util * 100, 1)}%</td><td style="text-align:right;color:${util <= 1 ? "#137a3e" : "#b3261e"}">${util <= 1 ? "PASS" : "FAIL"}</td></tr>`;
       return `<section class="report-block" style="margin-top:1.5rem">
           <h3>Base plate design — cantilever ${this.escape(bp.postType || "")}-post (RGM 12)</h3>
-          <p style="font-size:.85em;color:#5b636c">Hybrid method: CED own logic + EC3-1-8 equivalent T-stub (SCI P291). Base moment M = ${this.escape(bp.loadModel)} = ${this.number(bp.W, 2)} kN × ${this.number(bp.H, 3)} m = <strong>${this.number(bp.moment, 3)} kNm</strong>. Plate ${d.plateLen}×${d.B}×${d.tp}, stiffener ${d.tw}×${d.hUp} (triangular), ${d.nRow * d.nCol} × RGM 12 (edge ${d.edge}, pitch ${d.pitch}).</p>
+          <p style="font-size:.85em;color:#5b636c">Hybrid method: CED own logic + EC3-1-8 equivalent T-stub (SCI P291). Base moment M = ${this.escape(bp.loadModel)} = ${this.number(bp.W, 2)} kN × ${this.number(bp.H, 3)} m = <strong>${this.number(bp.moment, 3)} kNm</strong>. Plate ${d.plateLen}×${d.B}×${d.tp}, stiffener ${d.tw}×${d.hUp} (triangular), ${d.nRow * d.nCol} × RGM 12 (edge ${d.edge}, pitch ${d.pitch}). ${this.escape(this.basePlateBasisText(bp))}.${bp.standardComparison && bp.standardComparison.design ? ` Standard type ${this.escape(bp.standardComparison.code)}: ${bp.standardComparison.design.plateLen}×${bp.standardComparison.design.B}×${bp.standardComparison.design.tp}, ${bp.standardComparison.design.nRow * 2} bolts, stiffener ${bp.standardComparison.design.tw}×${bp.standardComparison.design.hUp} — ${bp.standardComparison.results.pass ? "passes" : "fails " + this.escape(this.basePlateGovName(bp.standardComparison.results.util)) + " at " + this.number(bp.standardComparison.results.govUtil * 100, 0) + "%"}.` : ""}</p>
           <table style="width:100%;border-collapse:collapse;font-size:.9em">
             <thead><tr style="border-bottom:2px solid #333"><th style="text-align:left">Check</th><th style="text-align:left">Detail</th><th style="text-align:right">Util.</th><th style="text-align:right">Status</th></tr></thead>
             <tbody>
@@ -742,6 +742,83 @@
             </tbody>
           </table>
         </section>`;
+    },
+
+    // Connections with their own detail sheets are drawn whenever they are
+    // the selected head or base fixing: DU-T2 / DU-B2 (slab face).
+    connectionDrawingServices() {
+      return {
+        "DU-T2": windpost.duSlabFaceDrawing,
+        "DU-B2": windpost.duSlabFaceDrawing
+      };
+    },
+
+    duConnectionCodes(section, connections) {
+      if (!section || !connections) return [];
+      const services = this.connectionDrawingServices();
+      return [connections.head, connections.base]
+        .filter(c => c && c.applicable && services[c.code])
+        .map(c => c.code);
+    },
+
+    connectionDrawingSvg(code, section) {
+      return this.connectionDrawingServices()[code].draw(code, section).svg;
+    },
+
+    duConnectionDrawingsHtml(section, connections) {
+      const codes = this.duConnectionCodes(section, connections);
+      if (!codes.length) return "";
+      return codes.map(code => {
+        let svg = "";
+        try { svg = this.connectionDrawingSvg(code, section); }
+        catch (err) { return `<section class="result-block"><h3>${this.escape(code)} drawing</h3><p>Drawing unavailable: ${this.escape(err.message)}</p></section>`; }
+        const which = /-T/.test(code) ? "Head" : "Base";
+        const what = "DU post to concrete slab face";
+        return `<section class="result-block">
+          <h3>${which} connection ${this.escape(code)} — ${what}</h3>
+          <div id="du-drawing-${this.escape(code)}" class="du-connection-drawing" style="overflow-x:auto;border:1px solid #e2e6ea;border-radius:8px;background:#fff;padding:6px">${svg}</div>
+          <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+            <button class="secondary-button" type="button" data-du-download="svg" data-du-code="${this.escape(code)}">Download ${this.escape(code)} (SVG)</button>
+            <button class="secondary-button" type="button" data-du-download="dxf" data-du-code="${this.escape(code)}">Download ${this.escape(code)} (DXF)</button>
+          </div>
+        </section>`;
+      }).join("");
+    },
+
+    bindDuConnectionDownloads(section, connections) {
+      const codes = this.duConnectionCodes(section, connections);
+      if (!codes.length) return;
+      document.querySelectorAll("[data-du-download]").forEach(button => {
+        button.addEventListener("click", () => {
+          const code = button.getAttribute("data-du-code");
+          const kind = button.getAttribute("data-du-download");
+          const name = `${code}-${String(section.name || "DU").replace(/\s+/g, "-")}`;
+          if (kind === "svg") {
+            const svg = this.connectionDrawingSvg(code, section);
+            this.saveBlob(new Blob([svg], { type: "image/svg+xml" }), `${name}.svg`);
+            return;
+          }
+          const holder = document.getElementById(`du-drawing-${code}`);
+          const root = holder && holder.querySelector("svg");
+          if (!root || !windpost.sheetExport) return;
+          try {
+            const sheet = windpost.sheetExport.flatten(root);
+            const text = windpost.sheetExport.toDxf(sheet);
+            const bytes = new Uint8Array(text.length);
+            for (let i = 0; i < text.length; i += 1) bytes[i] = text.charCodeAt(i) & 0xff;
+            this.saveBlob(new Blob([bytes], { type: "image/vnd.dxf" }), `${name}.dxf`);
+          } catch (err) {
+            this.reportStatus(`The DXF could not be written: ${err.message}`);
+          }
+        });
+      });
+    },
+
+    saveBlob(blob, filename) {
+      const url = URL.createObjectURL(blob), a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
     },
 
     basePlateDrawingService(bp) {
@@ -774,6 +851,19 @@
       a.href = url;
       a.download = "baseplate-" + String((bp.section && bp.section.name) || "design").replace(/\s+/g, "-") + ".svg";
       document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    },
+
+    reportStatus(message) {
+      const status = document.getElementById("project-file-status");
+      if (status) status.textContent = message;
+      else console.error(message);
+    },
+
+    // The assembly page ships under its built name beside the built Selector.
+    cavityWallPage() {
+      return this.selectorFileName() === "Windpost-Selector-Full.html"
+        ? "./Windpost-CavityWall-Full.html"
+        : "./cavity-wall-assembly.html";
     },
 
     openCavityWallAssembly(design, bp) {
@@ -826,19 +916,30 @@
       } catch (error) {
         // Query parameters below still transfer the essential geometry.
       }
+      // Everything the page needs travels in the URL: the new tab may not
+      // share this frame's localStorage (storage is partitioned inside an
+      // embedded page), so the designed plate must not depend on it.
       const query = new URLSearchParams({
         section: section.name,
         height: String(payload.length_mm),
         support: payload.supportCondition,
+        load: String(payload.loadType || ""),
+        capacity: String(payload.finalCapacity_kN || ""),
         inner: String(payload.wall.innerLeafThickness_mm),
         cavity: String(payload.wall.cavityWidth_mm),
         outer: String(payload.wall.outerLeafThickness_mm)
       });
-      return `./cavity-wall-assembly.html?${query.toString()}`;
+      if (baseplate) query.set("bp", JSON.stringify(baseplate));
+      return `${this.cavityWallPage()}?${query.toString()}`;
     },
 
     supportLabel(value) {
       return value === "cantilever" ? "Cantilever" : "Simply supported";
+    },
+
+    familyLabel(type) {
+      const families = windpost.sectionProfileEngine.FAMILIES || {};
+      return families[type] ? families[type].label : `${type}-shaped windpost`;
     },
 
     number(value, decimals = 2) {

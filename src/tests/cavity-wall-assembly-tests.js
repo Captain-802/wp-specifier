@@ -13,6 +13,7 @@ context.window.window = context.window;
   "js/config.js",
   "js/data/l-section-database.js",
   "js/engines/outer-tie-selection-engine.js",
+  "js/data/standard-base-plate-types.js",
   "js/engines/simply-u-baseplate-standard-engine.js",
   "js/engines/simply-l-baseplate-standard-engine.js",
   "js/services/cavity-wall-assembly-engine.js",

@@ -61,7 +61,7 @@
     };
 
     g.push(T(PX(PL0), planTop - 57, "U-POST BASE — PLAN", 9.5, C.INK, "start", true));
-    g.push(cad("steelCut", R(PX(PL0), planTop, totX, B, "none", C.INK, 0.7)));
+    g.push(cad("steelFace", R(PX(PL0), planTop, totX, B, "none", C.INK, 0.7)));
     // The wall is tagged so a composed sheet can drop it and show the
     // connection on its own; the full drawing keeps it.
     g.push(`<g data-a4-hide="wall">` +
@@ -78,8 +78,9 @@
     rows.forEach(rx => cols.forEach(cy => {
       const hx = PX(rx), hy = PY(cy);
       g.push(Ci(hx, hy, hole / 2, C.HOLEF, C.INK, 0.6));
-      g.push(L(hx - hole * 0.85, hy, hx + hole * 0.85, hy, C.DIM, 0.25, "3,1.5"));
-      g.push(L(hx, hy - hole * 0.85, hx, hy + hole * 0.85, C.DIM, 0.25, "3,1.5"));
+      g.push(cad("centre",                                                            // bolt centre-lines
+        L(hx - hole * 0.85, hy, hx + hole * 0.85, hy, C.DIM, 0.25, "3,1.5") +
+        L(hx, hy - hole * 0.85, hx, hy + hole * 0.85, C.DIM, 0.25, "3,1.5")));
     }));
 
     // All horizontal dimensions use the left plate edge as one fabrication

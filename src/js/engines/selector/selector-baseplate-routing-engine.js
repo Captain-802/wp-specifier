@@ -3,10 +3,24 @@
 
   const windpost = global.Windpost = global.Windpost || {};
 
-  function design(selection) {
+  // The concrete-top plate (U-B3A/B, L-B2A/B) is drawn only when that base
+  // fixing is the one selected (owner: "drawings as per this when these
+  // connections are selected"). Without a connections result (headless
+  // callers) the plate is still designed.
+  function plateFixingSelected(connections) {
+    if (!connections || !connections.base) return true;
+    return Boolean(connections.base.standardPlate);
+  }
+
+  function design(selection, connections) {
     const inputs = (selection && selection.inputs) || {};
     const selected = selection && selection.selected;
     const section = selected && selected.section;
+    // DU and I posts use the standard simply-supported plate of the connection
+    // library (weights and bolts come from connectionSelectionEngine); no
+    // drawn plate is generated for them.
+    if (section && (section.type === "DU" || section.type === "I")) return null;
+    if (inputs.supportCondition === "simplySupported" && !plateFixingSelected(connections)) return null;
     const isSimplySupportedU = inputs.supportCondition === "simplySupported" &&
       section && section.type === "U";
     if (isSimplySupportedU && windpost.simplyUBaseplateStandard) {
@@ -29,7 +43,7 @@
       M_kNm: M,
       W_kN: W,
       H_m: H,
-      B: 220
+      family: section.type
     });
     out.loadModel = isPoint ? "W·H (tip point load)" : "W·H / 2 (UDL)";
     out.W = W;
@@ -39,5 +53,5 @@
     return out;
   }
 
-  windpost.selectorBaseplateRoutingEngine = Object.freeze({ design });
+  windpost.selectorBaseplateRoutingEngine = Object.freeze({ design, plateFixingSelected });
 })(typeof window !== "undefined" ? window : globalThis);

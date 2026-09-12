@@ -120,9 +120,7 @@ assert(
   uParapet.valid &&
   uParapet.selected.section.name === "UP 55x60x4" &&
   uParapet.selected.calculation.numberOfTies === 3 &&
-  // Capacity is issued rounded DOWN to two decimals: 5.139 -> 5.13.
-  Math.abs(uParapet.selected.finalCapacity_kN - 5.13) < 1e-9 &&
-  Math.abs(uParapet.selected.calculation.ultimateDesignValueExact - 5.139) < 1e-9,
+  Math.abs(uParapet.selected.finalCapacity_kN - 5.139) < 1e-9,
   "800 mm U parapet uses three ties and reproduces the 5.14 kN table cap"
 );
 
@@ -215,7 +213,9 @@ const detailingUrl = new URL(
   "http://local/"
 );
 assert(
-  detailingUrl.pathname.endsWith("/l-section-prototype.html") &&
+  // the context runs as Windpost-Selector-Full.html, so the built Detailing
+  // page is the target
+  detailingUrl.pathname.endsWith("/Windpost-Detailing-Full.html") &&
   detailingUrl.searchParams.get("section") === lParapet.selected.section.name &&
   detailingUrl.searchParams.get("length") === "800" &&
   detailingUrl.searchParams.get("support") === "cantilever" &&

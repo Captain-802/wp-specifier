@@ -16,15 +16,19 @@ The full HTML file contains all styles, section data and calculation scripts. It
 
 ## User workflow
 
-1. Choose a U or L windpost.
+1. Choose a U, L, DU (double-U) or I (flat plate, inner leaf) windpost. DU and I posts are simply supported only.
 2. Choose simply supported or cantilever behaviour.
 3. Choose total ULS UDL, or a top point load for a cantilever.
 4. Enter any exact windpost height.
 5. Either enter the required load for automatic selection or choose a catalogue section to calculate its capacity.
 6. Enter inner-leaf thickness, cavity width and outer-leaf thickness.
-7. Run the selection and view the recommended post, final governing capacity and tie schedule.
-8. For a cantilever U or L post, view the automatically designed RGM 12
-   baseplate, design checks and downloadable SVG plan/section drawing.
+6a. Choose the head and base fixings and bolt families (step 6), the number of posts, deliveries, debonding sleeves and any special connection (step 7).
+7. Run the selection and view the recommended post, final governing capacity, tie schedule, connection codes, bolt SKUs and counts, and weights.
+8. For a cantilever U or L post, view the RGM 12 baseplate: the standard plate
+   type for the base moment is verified by the full check set and adopted
+   (stiffener raised where the check needs it); beyond the standard range the
+   plate is auto-sized to the same practice. Design checks and a downloadable
+   SVG plan/section drawing are shown.
 9. For a simply-supported U or L post, view the separate fixed-standard RGM 12
    baseplate and downloadable SVG plan/side-view drawing. These standard
    details perform only the confirmed minimum edge-distance check.
@@ -58,14 +62,29 @@ inlined into `Windpost-Selector-Full.html`. The current standalone selector
 should be rebuilt only at the agreed final release stage; until then use
 `index.html` for the integrated result link or the dedicated launcher above.
 
+## Connections, bolts and weights (V.03)
+
+- The connection library, cantilever plate types, anchor capacities and bolt
+  quantities are generated from `WINDPOST_CALCULATOR_V2.xlsx` into
+  `js/data/connections-database.js` (see `ENGINE-RESPONSIBILITIES.txt`).
+- Simply supported: head/base fixing -> connection code, post bolt, bolt SKU
+  per family (Stainless, RGM, FAZ II, FAZ II PLUS). Load-dependent anchors use
+  final capacity / 2 <= 2 x anchor capacity (tension or shear).
+- Cantilever U/L: no head connection; base plate type U-A..U-G / L-A..L-G by
+  base moment (W.H for a top point load, W.H/2 for a UDL); plate + stiffener
+  weight varies with the selected section depth; beyond G = special design.
+- Post weight = blank width x thickness x length x 8185.9 kg/m3.
+- DU posts show two ties per level; I posts have shear ties only.
+- FAZ II M16 / FAZ II Plus M16 shear = M12 values pending the datasheet.
+
 ## Preserved design defaults
 
 - Allowable stress: `127.27 N/mm²`
 - Initial elastic modulus: `200 kN/mm²`
 - Secant-model proof strength: `210 N/mm²`
 - Ramberg–Osgood exponent: `7`
-- U-post tie strength: `1.713 kN/tie`
-- L-post tie strength: `2.25 kN/tie`
+- U-post and DU-post tie strength: `1.713 kN/tie`
+- L-post and I-post tie strength: `2.25 kN/tie`
 - First tie spacing: `225 mm`
 - Standard tie spacing: `225 mm c/c`
 - Parapet free-top tie clearance: `50 mm`
@@ -114,6 +133,7 @@ js/ui/cavity-wall-page.js           separate assembly-page controller
 cavity-wall-assembly.html           separate assembly page
 css/cavity-wall.css                 assembly-page styling
 tests/run-tests.js                  local regression checks
+tests/connections-tests.js          DU/I, connections, bolts and weights checks
 tests/baseplate-tests.js            U/L baseplate geometry and routing checks
 tests/cavity-wall-assembly-tests.js assembly geometry and drawing checks
 ```

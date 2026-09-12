@@ -205,27 +205,33 @@ check("simply-supported U standard uses the confirmed fixed right-hand detail", 
   const out = simplyUEngine.create(u60);
   assert(out.ok && out.standard && out.results.pass);
   assert.strictEqual(out.connectionType, "simply-supported-u");
+  // type U-B3A (depth 55-85): 205 long, B = 158 - 60 = 98
   assert.deepStrictEqual(out.design, {
     B: 150,
     tp: 6,
-    plateLen: 125,
-    anchorFromConcreteEdge: 90,
+    plateLen: 133,
+    anchorFromConcreteEdge: 98,
     rightEndDistance: 35,
-    w: 90,
-    sideEdge: 30,
+    w: 80,
+    sideEdge: 35,
     holeDia: 14,
     boltDia: 12,
     anchorName: "RGM 12",
     nRow: 1,
-    nCol: 2
+    nCol: 2,
+    typeCode: "U-B3A",
+    typeTitle: "U POST TO CONCRETE TOP · BOTTOM CONNECTION 55 TO 85",
+    edgeConstant: 158,
+    leftPortion: 72,
+    overallLength_mm: 205
   });
-  assert.strictEqual(out.results.minimumProvided, 30);
+  assert.strictEqual(out.results.minimumProvided, 35);
   assert.strictEqual(out.results.minimumRequired, 25);
   assert.deepStrictEqual(out.results.edgeDistances, {
-    concrete: 90,
+    concrete: 98,
     longitudinalPlateEnd: 35,
-    transverseTop: 30,
-    transverseBottom: 30
+    transverseTop: 35,
+    transverseBottom: 35
   });
 });
 
@@ -236,13 +242,14 @@ check("simply-supported U left portion changes only with selected post depth", (
   const g115 = simplyUGeometry.layout(d115, u115);
   assert.strictEqual(g60.CLEAR, 6);
   assert.strictEqual(g60.PL0, -72);
-  assert.strictEqual(g60.PL1, 125);
-  assert.strictEqual(g60.totX, 197);
-  assert.deepStrictEqual(g60.rows, [90]);
-  assert.deepStrictEqual(g60.cols, [-45, 45]);
+  assert.strictEqual(g60.PL1, 133);
+  assert.strictEqual(g60.totX, 205);
+  assert.deepStrictEqual(g60.rows, [98]);
+  assert.deepStrictEqual(g60.cols, [-40, 40]);
+  // UP 115 is type U-B3B: 240 long, B = 193 - 115 = 78
   assert.strictEqual(g115.PL0, -127);
-  assert.strictEqual(g115.PL1, 125);
-  assert.strictEqual(g115.totX, 252);
+  assert.strictEqual(g115.PL1, 113);
+  assert.strictEqual(g115.totX, 240);
 });
 
 check("simply-supported U drawing contains plan and side views without a stiffener", () => {
@@ -250,7 +257,8 @@ check("simply-supported U drawing contains plan and side views without a stiffen
   const drawing = simplyUDrawing.draw(out.design, u60);
   assert(drawing.svg.includes("SIMPLY-SUPPORTED U-POST BASE — PLAN"));
   assert(drawing.svg.includes("SIMPLY-SUPPORTED U-POST BASE — SIDE VIEW"));
-  assert(drawing.svg.includes("197 × 150 × 6 mm"));
+  assert(drawing.svg.includes("205 × 150 × 6 mm"));
+  assert(drawing.svg.includes("U-B3A"));
   assert(drawing.svg.includes("BASE PLATE"));
   assert(drawing.svg.includes("Ø 14"));
   assert(!drawing.svg.includes("14 mm dia hole"));
@@ -290,36 +298,38 @@ check("simply-supported L standard retains the fixed right-hand anchor detail", 
   assert.strictEqual(out.connectionType, "simply-supported-l");
   assert.strictEqual(out.design.B, 150);
   assert.strictEqual(out.design.tp, 6);
-  assert.strictEqual(out.design.plateLen, 125);
-  assert.strictEqual(out.design.anchorFromConcreteEdge, 90);
+  // type L-B2A (depth 125-160): 205 long, B = 254 - 125 = 129
+  assert.strictEqual(out.design.typeCode, "L-B2A");
+  assert.strictEqual(out.design.plateLen, 164);
+  assert.strictEqual(out.design.anchorFromConcreteEdge, 129);
   assert.strictEqual(out.design.rightEndDistance, 35);
-  assert.strictEqual(out.design.w, 90);
-  assert.strictEqual(out.design.sideEdge, 30);
+  assert.strictEqual(out.design.w, 80);
+  assert.strictEqual(out.design.sideEdge, 35);
   assert.strictEqual(out.design.holeDia, 14);
   assert.strictEqual(out.design.nRow, 1);
   assert.strictEqual(out.design.nCol, 2);
   assert.strictEqual(out.design.embedment, 90);
   assert.strictEqual(out.design.weldProjection, 6);
   assert.strictEqual(out.design.leftPortion, 41);
-  assert.strictEqual(out.results.minimumProvided, 30);
+  assert.strictEqual(out.results.minimumProvided, 35);
   assert.strictEqual(out.results.minimumRequired, 25);
 });
 
-check("80 mm L legs use the confirmed 160 mm plate and remain inside it", () => {
+check("80 mm L legs keep the standard 150 mm plate (type L-B2A) and remain inside it", () => {
   const out = simplyLEngine.create(l160x80);
   const g = simplyLGeometry.layout(out.design, l160x80);
   assert(out.ok && out.results.pass);
-  assert.strictEqual(out.design.B, 160);
+  assert.strictEqual(out.design.B, 150);
   assert.strictEqual(out.design.sideEdge, 35);
   assert.strictEqual(out.results.minimumProvided, 35);
   assert.strictEqual(out.design.leftPortion, 76);
   assert.strictEqual(g.PL0, -76);
   assert.strictEqual(g.PX0, -70);
   assert.strictEqual(g.PX1, 90);
-  assert.strictEqual(g.PL1, 125);
-  assert.strictEqual(g.totX, 201);
-  assert.deepStrictEqual(g.rows, [90]);
-  assert.deepStrictEqual(g.cols, [-45, 45]);
+  assert.strictEqual(g.PL1, 129);                 // B = 254 - 160 = 94, + 35
+  assert.strictEqual(g.totX, 205);
+  assert.deepStrictEqual(g.rows, [94]);
+  assert.deepStrictEqual(g.cols, [-40, 40]);
   const ys = g.PROF.map(point => point[1]);
   assert(Math.min(...ys) >= -g.B / 2);
   assert(Math.max(...ys) <= g.B / 2);
@@ -330,7 +340,8 @@ check("simply-supported L drawing contains plan and side views without a stiffen
   const drawing = simplyLDrawing.draw(out.design, l125);
   assert(drawing.svg.includes("SIMPLY-SUPPORTED L-POST BASE — PLAN"));
   assert(drawing.svg.includes("SIMPLY-SUPPORTED L-POST BASE — SIDE VIEW"));
-  assert(drawing.svg.includes("166 × 150 × 6 mm"));
+  assert(drawing.svg.includes("205 × 150 × 6 mm"));
+  assert(drawing.svg.includes("L-B2A"));
   assert(drawing.svg.includes("BASE PLATE"));
   assert(drawing.svg.includes("Ø 14"));
   assert(!drawing.svg.includes("14 mm dia hole"));

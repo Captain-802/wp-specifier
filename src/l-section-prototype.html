@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Folded L-Windpost Prototype</title>
+  <title>Windpost Detailing | Production Drawings</title>
   <link rel="stylesheet" href="./css/l-section-prototype.css">
 </head>
 <body>
@@ -17,6 +17,7 @@
       <span aria-current="page">Detailing</span>
     </nav>
   </header>
+  <p id="page-notice" class="page-notice" role="alert" hidden></p>
 
   <main>
     <aside class="controls" aria-labelledby="controls-title">
@@ -28,6 +29,7 @@
           <select id="prototype-post-type">
             <option value="L">L windpost</option>
             <option value="U">U windpost</option>
+            <option value="DU">DU windpost (two channels)</option>
           </select>
         </label>
         <label>
@@ -117,6 +119,22 @@
           <div
             class="drawing-mode"
             role="group"
+            aria-label="3D scene content"
+          >
+            <button
+              id="view-context-wall"
+              type="button"
+              aria-pressed="true"
+            >In wall</button>
+            <button
+              id="view-context-post"
+              type="button"
+              aria-pressed="false"
+            >Post only</button>
+          </div>
+          <div
+            class="drawing-mode"
+            role="group"
             aria-label="3D navigation mode"
           >
             <button
@@ -164,6 +182,11 @@
               type="button"
               aria-pressed="false"
             >Lines only</button>
+            <button
+              id="drawing-mode-photo"
+              type="button"
+              aria-pressed="false"
+            >Realistic</button>
           </div>
           <button id="download-drawing" type="button">Download SVG</button>
         </div>
@@ -184,6 +207,10 @@
         id="cantilever-baseplate-drawing"
         class="baseplate-sheet"
       ></div>
+      <div
+        id="top-connection-drawing"
+        class="baseplate-sheet"
+      ></div>
     </div>
 
     <section class="drawing" aria-labelledby="a4-sheet-title">
@@ -193,7 +220,7 @@
           <h2 id="a4-sheet-title">A4 windpost production drawing</h2>
         </div>
         <div class="production-export-actions">
-          <a class="button-link" href="./print-calibration.html">
+          <a class="button-link" id="print-calibration-link" href="./print-calibration.html" target="_blank">
             Print calibration
           </a>
           <button id="download-a4-sheet" type="button">Download A4 SVG</button>
@@ -310,6 +337,11 @@
         </div>
       </form>
       <div
+        id="production-validation-results"
+        class="validation-results"
+        aria-live="polite"
+      ></div>
+      <div
         id="combined-a4-sheet"
         class="drawing-sheet"
         aria-live="polite"
@@ -319,17 +351,20 @@
 
   <script src="./js/data/windpost-parameters.js"></script>
   <script src="./js/config.js"></script>
+  <script src="./js/engines/fold-width-engine.js"></script>
   <script src="./js/data/l-section-database.js"></script>
   <script src="./js/data/standard-section-heights.js"></script>
   <script src="./js/data/u-section-database.js"></script>
   <script src="./js/data/du-section-database.js"></script>
   <script src="./js/data/tie-profiles.js"></script>
+  <script src="./js/data/connections-database.js"></script>
+  <script src="./js/data/standard-base-plate-types.js"></script>
+  <script src="./js/data/du-slab-face-plates.js"></script>
   <script src="./js/engines/secant-modulus-engine.js"></script>
   <script src="./js/engines/load-case-engine.js"></script>
   <script src="./js/engines/tie-capacity-engine.js"></script>
   <script src="./js/engines/result-selection-engine.js"></script>
   <script src="./js/engines/windpost-calculation-engine.js"></script>
-  <script src="./js/engines/du-capacity-engine.js"></script>
   <script src="./js/engines/baseplate-config.js"></script>
   <script src="./js/engines/baseplate-bolt-engine.js"></script>
   <script src="./js/engines/baseplate-leff-engine.js"></script>
@@ -363,14 +398,19 @@
   <script src="./js/services/simply-l-baseplate-plan-engine.js"></script>
   <script src="./js/services/simply-l-baseplate-section-engine.js"></script>
   <script src="./js/services/simply-l-baseplate-drawing-service.js"></script>
+  <script src="./js/services/du-slab-face-drawing-service.js"></script>
+  <script src="./js/services/windpost-scene-mesh-engine.js"></script>
+  <script src="./js/services/windpost-gl-renderer.js"></script>
   <script src="./js/services/cavity-wall-3d-engine.js"></script>
   <script src="./js/services/l-section-orthographic-service.js"></script>
   <script src="./js/services/u-section-orthographic-service.js"></script>
+  <script src="./js/services/du-section-orthographic-service.js"></script>
   <script src="./js/services/tie-prototype-geometry-engine.js"></script>
   <script src="./js/services/tie-wall-setup-engine.js"></script>
   <script src="./js/services/tie-wall-drawing-service.js"></script>
   <script src="./js/services/windpost-approval-drawing-service.js"></script>
   <script src="./js/services/l-cantilever-baseplate-prototype-service.js"></script>
+  <script src="./js/services/dxf-r2000-writer.js"></script>
   <script src="./js/services/sheet-export-service.js"></script>
   <script src="./js/services/print-calibration-service.js"></script>
   <!-- small workflow engines: validated JSON transfer, caching and redraws -->

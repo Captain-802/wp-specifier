@@ -9,7 +9,9 @@ global.window = global;
 global.Windpost = {};
 require(path.join(root, "js/data/windpost-parameters.js"));
 require(path.join(root, "js/config.js"));
+require(path.join(root, "js/engines/fold-width-engine.js"));
 require(path.join(root, "js/data/l-section-database.js"));
+require(path.join(root, "js/data/connections-database.js"));
 require(path.join(root, "js/engines/secant-modulus-engine.js"));
 require(path.join(root, "js/engines/load-case-engine.js"));
 require(path.join(root, "js/engines/tie-capacity-engine.js"));
@@ -111,16 +113,16 @@ check("3D cantilever baseplate uses the designed datum and dimensions", () => {
   assert.strictEqual(geometry.startY_mm, -66);
   assert.strictEqual(geometry.endY_mm, 235);
   assert.strictEqual(geometry.overallLength_mm, 301);
-  assert.strictEqual(geometry.width_mm, 220);
+  assert.strictEqual(geometry.width_mm, 200);
   assert.strictEqual(geometry.thickness_mm, 8);
   assert.strictEqual(geometry.holeDiameter_mm, 14);
-  assert.deepStrictEqual(geometry.rowCentres_mm, [65, 170]);
+  assert.deepStrictEqual(geometry.rowCentres_mm, [55, 180]);
   assert.deepStrictEqual(geometry.columnCentres_mm, [-43, 53]);
   assert.deepStrictEqual(geometry.anchorCentres_mm, [
-    { x: -43, y: 65 },
-    { x: 53, y: 65 },
-    { x: -43, y: 170 },
-    { x: 53, y: 170 }
+    { x: -43, y: 55 },
+    { x: 53, y: 55 },
+    { x: -43, y: 180 },
+    { x: 53, y: 180 }
   ]);
 });
 
@@ -137,10 +139,16 @@ check("3D scene contains the folded post, perforated plate and stiffener", () =>
     result.design
   );
   const scene = W.cavityWall3d.buildSectionScene(model);
-  assert.strictEqual(scene.length, 3);
+  assert.strictEqual(scene.length, 4);
   assert.strictEqual(scene.filter(item => item.group === "post").length, 1);
   assert.strictEqual(scene.filter(item => item.group === "baseplate").length, 1);
   assert.strictEqual(scene.filter(item => item.group === "stiffener").length, 1);
+  assert.strictEqual(scene.filter(item => item.group === "anchors").length, 1);
+  assert.deepStrictEqual(model.sortPlanes.map(plane => plane.id), ["plate", "post"]);
+  assert.deepStrictEqual(scene.find(item => item.group === "stiffener").planeSides, { plate: 1, post: 1 });
+  assert.deepStrictEqual(scene.find(item => item.group === "post").planeSides, { plate: 1, post: -1 });
+  const anchors = scene.find(item => item.group === "anchors");
+  assert.strictEqual(anchors.faces.length, 4 * (3 * 2 + 16 + 6 + 12));
   const plate = scene.find(item => item.group === "baseplate");
   assert.strictEqual(plate.faces[4].holes.length, 4);
   assert.strictEqual(plate.faces[5].holes.length, 4);
@@ -166,7 +174,7 @@ check("3D stiffener matches the calculated thickness and height", () => {
   assert.deepStrictEqual(geometry.stiffener, {
     x0_mm: 2,
     x1_mm: 10,
-    startY_mm: 65,
+    startY_mm: 55,
     flatEndY_mm: 90,
     endY_mm: 235,
     thickness_mm: 8,
@@ -196,7 +204,7 @@ check("all L sections generate finite 3D baseplate geometry", () => {
           model.baseplate.anchorCentres_mm.length,
           result.design.nRow * result.design.nCol
         );
-        assert.strictEqual(scene.length, 3);
+        assert.strictEqual(scene.length, 4);
         assert(
           scene.flatMap(item => item.points || [])
             .flat()
@@ -410,11 +418,11 @@ check("cantilever baseplate reproduces the main selector pipeline", () => {
   assert.strictEqual(result.baseShear_kN, 6.75);
   assert.strictEqual(result.design.nRow, 2);
   assert.strictEqual(result.design.nCol, 2);
-  assert.strictEqual(result.design.edge, 65);
-  assert.strictEqual(result.design.pitch, 105);
+  assert.strictEqual(result.design.edge, 55);
+  assert.strictEqual(result.design.pitch, 125);
   assert.strictEqual(result.design.tp, 8);
   assert.strictEqual(result.design.hUp, 80);
-  assert.strictEqual(result.design.B, 220);
+  assert.strictEqual(result.design.B, 200);
   assert.strictEqual(result.design.leftPortion_mm, 66);
   assert.strictEqual(result.design.overallLength_mm, 301);
   assert(result.baseplate.results.pass);
@@ -637,8 +645,8 @@ check("production composer uses the selected A4 CAD palette and sign-off layout"
   assert(page.includes("BASE PLATE PLAN"));
   assert(page.includes("BASE PLATE SIDE VIEW"));
   assert(page.includes("const plateMetaX = label =>"));
-  assert(page.includes('plateMetaX("BASE PLATE PLAN")'));
-  assert(page.includes('plateMetaX("BASE PLATE SIDE VIEW")'));
+  assert(page.includes('plateMetaX(baseLabels[0])'));
+  assert(page.includes('plateMetaX(baseLabels[1])'));
   assert(page.includes(
     "topDetail.setScale(Number(ortho.scaleDenominator) || 1)"
   ));

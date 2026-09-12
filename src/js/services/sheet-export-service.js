@@ -11,8 +11,6 @@
   const windpost = global.Windpost = global.Windpost || {};
 
   const PT_PER_MM = 72 / 25.4;
-  // DXF TEXT height is cap height; SVG font-size is the em box.
-  const DXF_CAP_RATIO = 0.72;
 
   function styleOf(element) {
     const computed = global.getComputedStyle(element);
@@ -70,6 +68,9 @@
     const tag = element.tagName.toLowerCase();
     if (tag === "text" || tag === "tspan") return "text";
     if (tag === "circle") return "hole";
+    // an untagged dashed line is a hidden line, never a continuous steel edge
+    const dash = element.getAttribute("stroke-dasharray");
+    if (dash && dash !== "none" && dash !== "0") return "hidden";
     return windpost.cadLayers ? windpost.cadLayers.DEFAULT_ROLE : "steel";
   }
 
@@ -78,17 +79,36 @@
   // path by arc length would replace a clean outline with hundreds of 0.35 mm
   // fragments, which is what makes a section read as a dotted line in CAD.
   // Returns null when the path holds curves, which still have to be sampled.
+  // Every subpath (each M after the first, or anything after a Z) is its own
+  // outline: a DU plan holds two channel loops in one path and a broken
+  // extension line holds two strokes, and neither may be bridged.
   function straightPathPoints(d) {
     if (!d || /[aAcCqQsStT]/.test(d)) return null;
     const tokens = d.match(/[MmLlHhVvZz]|-?\d*\.?\d+(?:e[-+]?\d+)?/g) || [];
-    const points = [];
+    const subpaths = [];
+    let points = [];
+    let closed = false;
+    const flush = () => {
+      if (points.length > 1) subpaths.push({ points, closed });
+      points = [];
+      closed = false;
+    };
     let x = 0, y = 0, startX = 0, startY = 0, command = "";
     let index = 0;
     const next = () => Number(tokens[index++]);
     while (index < tokens.length) {
       const token = tokens[index];
-      if (/[MmLlHhVvZz]/.test(token)) { command = token; index++; }
-      if (command === "Z" || command === "z") { x = startX; y = startY; continue; }
+      if (/[MmLlHhVvZz]/.test(token)) {
+        command = token;
+        index++;
+        if (command === "Z" || command === "z") {
+          closed = true;
+          x = startX; y = startY;
+          flush();
+          continue;
+        }
+        if ((command === "M" || command === "m") && points.length) flush();
+      }
       if (index >= tokens.length) break;
       if (command === "M" || command === "L") { x = next(); y = next(); }
       else if (command === "m" || command === "l") { x += next(); y += next(); }
@@ -97,10 +117,22 @@
       else if (command === "V") y = next();
       else if (command === "v") y += next();
       else return null;                       // unknown command, play it safe
-      if (command === "M" || command === "m") { startX = x; startY = y; }
+      if (command === "M" || command === "m") {
+        startX = x; startY = y;
+        // an implicit lineto follows a moveto's first pair
+        command = command === "M" ? "L" : "l";
+      }
       points.push([x, y]);
     }
-    return points.length > 1 ? points : null;
+    flush();
+    return subpaths.length ? subpaths : null;
+  }
+
+  // The subpaths of a curved path, each as its own path data, so that curves
+  // are sampled one outline at a time as well.
+  function splitSubpaths(d) {
+    const parts = String(d || "").match(/[Mm][^Mm]*/g) || [];
+    return parts.length > 1 ? parts.map(part => part.trim()) : [String(d || "")];
   }
 
   function flatten(root) {
@@ -213,57 +245,50 @@
         pushShape(element, style, matrix, points, tag === "polygon");
       } else {
         const d = (element.getAttribute("d") || "").trim();
-        const closed = /z$/i.test(d);
         const exact = straightPathPoints(d);
         if (exact) {
-          // Straight-line outline: keep its own vertices.
-          const points = exact.map(([px, py]) => toSheet(matrix, px, py));
-          if (closed && points.length > 1) {
-            const first = points[0], last = points[points.length - 1];
-            if (Math.abs(first[0] - last[0]) < 1e-9 &&
-                Math.abs(first[1] - last[1]) < 1e-9) points.pop();
-          }
-          pushShape(element, style, matrix, points, closed);
+          // Straight-line outlines: keep their own vertices, one shape per
+          // subpath.
+          exact.forEach(sub => {
+            const points = sub.points.map(([px, py]) => toSheet(matrix, px, py));
+            if (sub.closed && points.length > 1) {
+              const first = points[0], last = points[points.length - 1];
+              if (Math.abs(first[0] - last[0]) < 1e-9 &&
+                  Math.abs(first[1] - last[1]) < 1e-9) points.pop();
+            }
+            pushShape(element, style, matrix, points, sub.closed);
+          });
           return;
         }
         // Curves are sampled with the browser's own path maths, at a step fine
-        // enough that the result is smooth at sheet size.
-        const length = element.getTotalLength ? element.getTotalLength() : 0;
-        if (!length) return;
+        // enough that the result is smooth at sheet size; a path with several
+        // subpaths is sampled subpath by subpath so none are bridged.
         const scale = scaleOf(matrix);
-        const steps = Math.max(8, Math.min(600, Math.ceil(length * scale / 0.35)));
-        const points = [];
-        for (let i = 0; i <= steps; i += 1) {
-          const at = element.getPointAtLength(length * i / steps);
-          points.push(toSheet(matrix, at.x, at.y));
-        }
-        if (closed) points.pop();
-        pushShape(element, style, matrix, points, closed);
+        splitSubpaths(d).forEach(part => {
+          let probePath = element;
+          if (part !== d) {
+            probePath = element.ownerDocument.createElementNS("http://www.w3.org/2000/svg", "path");
+            probePath.setAttribute("d", part);
+          }
+          const closed = /z$/i.test(part);
+          const length = probePath.getTotalLength ? probePath.getTotalLength() : 0;
+          if (!length) return;
+          const steps = Math.max(8, Math.min(600, Math.ceil(length * scale / 0.35)));
+          const points = [];
+          for (let i = 0; i <= steps; i += 1) {
+            const at = probePath.getPointAtLength(length * i / steps);
+            points.push(toSheet(matrix, at.x, at.y));
+          }
+          if (closed) points.pop();
+          pushShape(element, style, matrix, points, closed);
+        });
       }
     });
 
     return { width_mm, height_mm, items };
   }
 
-  // ---- DXF (AC1009 / R12 ASCII: LINE, CIRCLE, TEXT on named layers) --------
-
-  // R12 text is code-page dependent, so the typographic characters the sheet
-  // uses are folded to plain ASCII or to DXF's own control codes (%%c = Ø,
-  // %%d = °, %%p = ±). Keeps the file readable in any CAD package.
-  const DXF_TEXT = [
-    [/[×✕]/g, "x"], [/[—–]/g, "-"], [/·/g, "-"],
-    [/Ø/g, "%%c"], [/°/g, "%%d"], [/±/g, "%%p"],
-    [/[“”]/g, '"'], [/[‘’]/g, "'"]
-  ];
-
-  function dxfText(text) {
-    let out = String(text);
-    DXF_TEXT.forEach(([pattern, replacement]) => {
-      out = out.replace(pattern, replacement);
-    });
-    // Anything still outside ASCII would depend on $DWGCODEPAGE; drop it.
-    return out.replace(/[^\x20-\x7E]/g, "");
-  }
+  // ---- DXF ----------------------------------------------------------------
 
   function dxfLayerName(role) {
     const standard = windpost.cadLayers;
@@ -271,99 +296,17 @@
     return "0";
   }
 
-  // AC1009 (R11/R12) ASCII — deliberately the plainest DXF there is: LINE,
-  // CIRCLE and TEXT on named layers, no handles, no block records. Newer
-  // releases read it happily, and it is the version proven to open here.
-  function toDxf(sheet, options) {
-    const settings = options || {};
-    const out = [];
-    const pair = (code, value) => { out.push(String(code)); out.push(String(value)); };
-    const n = value => Number(value).toFixed(4);
-    // DXF is y-up; the sheet is y-down.
-    const flipY = y => sheet.height_mm - y;
-
+  // AutoCAD 2000 DXF through the R2000 writer: the office detailer's layer
+  // standard (colour + lineweight on every layer), LWPOLYLINE outlines,
+  // ANSI31 hatch in cut steel, Arial text style and the SALEEM dimension
+  // style. See dxf-r2000-writer.js.
+  function toDxf(sheet) {
+    const writer = windpost.dxfR2000Writer;
     const standard = windpost.cadLayers;
-    const layerTable = standard ? standard.LAYERS : [];
-    const linetypes = standard ? standard.LINETYPES : [];
-
-    // The colour-to-lineweight key travels in the file as DXF comments, so the
-    // plot style table can always be rebuilt from the drawing itself.
-    if (standard) standard.penTableLines().forEach(line => pair(999, line));
-
-    pair(0, "SECTION"); pair(2, "HEADER");
-    pair(9, "$ACADVER"); pair(1, "AC1009");
-    pair(9, "$INSBASE"); pair(10, "0.0"); pair(20, "0.0"); pair(30, "0.0");
-    pair(9, "$EXTMIN"); pair(10, "0.0"); pair(20, "0.0"); pair(30, "0.0");
-    pair(9, "$EXTMAX");
-    pair(10, n(sheet.width_mm)); pair(20, n(sheet.height_mm)); pair(30, "0.0");
-    pair(9, "$LTSCALE"); pair(40, "1.0");
-    pair(0, "ENDSEC");
-
-    pair(0, "SECTION"); pair(2, "TABLES");
-
-    pair(0, "TABLE"); pair(2, "LTYPE"); pair(70, linetypes.length);
-    linetypes.forEach(linetype => {
-      const total = linetype.pattern.reduce((sum, d) => sum + Math.abs(d), 0);
-      pair(0, "LTYPE"); pair(2, linetype.name); pair(70, 0);
-      pair(3, linetype.description); pair(72, 65);
-      pair(73, linetype.pattern.length); pair(40, n(total));
-      linetype.pattern.forEach(dash => pair(49, n(dash)));
-    });
-    pair(0, "ENDTAB");
-
-    // Colour is the pen width, assigned BYLAYER — entities carry no colour of
-    // their own, so a plot style table can drive every thickness.
-    pair(0, "TABLE"); pair(2, "LAYER"); pair(70, layerTable.length + 1);
-    pair(0, "LAYER"); pair(2, "0"); pair(70, 0); pair(62, 7); pair(6, "CONTINUOUS");
-    layerTable.forEach(layer => {
-      pair(0, "LAYER"); pair(2, layer.name); pair(70, 0);
-      pair(62, layer.aci); pair(6, layer.linetype);
-    });
-    pair(0, "ENDTAB"); pair(0, "ENDSEC");
-
-    pair(0, "SECTION"); pair(2, "ENTITIES");
-    const line = (layer, x1, y1, x2, y2) => {
-      pair(0, "LINE"); pair(8, layer);
-      pair(10, n(x1)); pair(20, n(flipY(y1))); pair(30, "0.0");
-      pair(11, n(x2)); pair(21, n(flipY(y2))); pair(31, "0.0");
-    };
-    sheet.items.forEach(item => {
-      const layer = dxfLayerName(item.role);
-      if (item.kind === "poly") {
-        if (!item.stroke || item.points.length < 2) return;
-        if (item.points.length === 2 && !item.closed) {
-          line(layer, item.points[0][0], item.points[0][1],
-            item.points[1][0], item.points[1][1]);
-          return;
-        }
-        // One POLYLINE rather than a run of separate LINEs: an outline stays a
-        // single selectable object that can be offset or trimmed, and cannot
-        // read as a dotted line. POLYLINE/VERTEX/SEQEND is original R12.
-        pair(0, "POLYLINE"); pair(8, layer); pair(66, 1);
-        pair(70, item.closed ? 1 : 0);
-        pair(10, "0.0"); pair(20, "0.0"); pair(30, "0.0");
-        item.points.forEach(([x, y]) => {
-          pair(0, "VERTEX"); pair(8, layer);
-          pair(10, n(x)); pair(20, n(flipY(y))); pair(30, "0.0");
-        });
-        pair(0, "SEQEND"); pair(8, layer);
-      } else if (item.kind === "circle") {
-        if (!item.stroke || !(item.r > 0)) return;
-        pair(0, "CIRCLE"); pair(8, layer);
-        pair(10, n(item.cx)); pair(20, n(flipY(item.cy))); pair(30, "0.0");
-        pair(40, n(item.r));
-      } else if (item.kind === "text") {
-        pair(0, "TEXT"); pair(8, layer);
-        pair(10, n(item.x)); pair(20, n(flipY(item.y))); pair(30, "0.0");
-        pair(40, n(item.size * DXF_CAP_RATIO));
-        pair(1, dxfText(item.text));
-        if (Math.abs(item.rotation) > 0.01) pair(50, n(item.rotation));
-      }
-    });
-    pair(0, "ENDSEC");
-    pair(0, "EOF");
-    void settings;
-    return out.join("\r\n") + "\r\n";
+    if (!writer || !standard) {
+      throw new Error("The DXF writer and CAD layer standard must be loaded before the sheet is exported.");
+    }
+    return writer.write(sheet, standard).text;
   }
 
   // ---- PDF (single A4 page, vector, base-14 Helvetica) --------------------

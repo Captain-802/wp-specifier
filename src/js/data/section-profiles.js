@@ -5,21 +5,29 @@
   const { CM4_TO_MM4, CM3_TO_MM3 } = windpost.config;
   const standardHeights_mm = windpost.standardSectionHeights;
 
-  const toCatalogueSection = (section) => Object.freeze({
+  const toCatalogueSection = (supportCondition) => (section) => Object.freeze({
     ...section,
-    supportCondition: "all",
+    supportCondition,
     availableLengths: standardHeights_mm
   });
 
-  // The DU catalogue is optional — a page that does not load it still runs.
-  const duSections = (windpost.duSectionDatabase &&
-    windpost.duSectionDatabase.sections) || [];
-
+  // U and L posts may be simply supported or cantilever. DU (double U) and
+  // I (flat plate in the inner leaf) posts are simply supported only.
+  const optional = (database) => (database && Array.isArray(database.sections)) ? database.sections : [];
   const allSections = Object.freeze([
-    ...windpost.uSectionDatabase.sections.map(toCatalogueSection),
-    ...windpost.lSectionDatabase.sections.map(toCatalogueSection),
-    ...duSections.map(toCatalogueSection)
+    ...windpost.uSectionDatabase.sections.map(toCatalogueSection("all")),
+    ...windpost.lSectionDatabase.sections.map(toCatalogueSection("all")),
+    ...optional(windpost.duSectionDatabase).map(toCatalogueSection("simplySupported")),
+    ...optional(windpost.iSectionDatabase).map(toCatalogueSection("simplySupported"))
   ]);
+
+  const FAMILIES = Object.freeze({
+    U: Object.freeze({ code: "U", label: "U-shaped post", cantilever: true, innerTie: "U tie" }),
+    L: Object.freeze({ code: "L", label: "L-shaped post", cantilever: true, innerTie: "Shear tie" }),
+    DU: Object.freeze({ code: "DU", label: "Double-U post", cantilever: false, innerTie: "U tie" }),
+    I: Object.freeze({ code: "I", label: "I (flat plate) post", cantilever: false, innerTie: "Shear tie" })
+  });
+  const supportsCantilever = (type) => Boolean(FAMILIES[type] && FAMILIES[type].cantilever);
 
   const getLookupSupportCondition = (supportCondition) =>
     supportCondition === "proppedCantilever" ? "cantilever" : supportCondition;
@@ -49,6 +57,8 @@
 
   windpost.sectionProfileEngine = Object.freeze({
     allSections,
+    FAMILIES,
+    supportsCantilever,
     standardHeights_mm,
     getLookupSupportCondition,
     getSections,

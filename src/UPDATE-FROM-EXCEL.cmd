@@ -31,20 +31,14 @@ if errorlevel 1 (
 
 echo.
 echo [2/3] Running the self-check tests...
-call node tests\run-tests.js >nul 2>nul
-if errorlevel 1 goto testfail
-call node tests\outer-tie-table-tests.js >nul 2>nul
-if errorlevel 1 goto testfail
-call node tests\tie-naming-tests.js >nul 2>nul
-if errorlevel 1 goto testfail
-call node tests\parapet-tests.js >nul 2>nul
-if errorlevel 1 goto testfail
-call node tests\random-tests.js >nul 2>nul
-if errorlevel 1 goto testfail
-call node tests\baseplate-tests.js >nul 2>nul
-if errorlevel 1 goto testfail
-call node tests\cavity-wall-assembly-tests.js >nul 2>nul
-if errorlevel 1 goto testfail
+rem Every suite in tests\ - the regenerated section data feeds all of them.
+for %%t in ("tests\*.js") do (
+  call node "%%~t" >nul 2>nul
+  if errorlevel 1 (
+    echo       FAILED: %%~nxt
+    goto testfail
+  )
+)
 echo       All tests passed.
 
 echo.

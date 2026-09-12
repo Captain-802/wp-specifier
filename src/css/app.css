@@ -72,10 +72,10 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
 .step-heading p { margin: 0; color: var(--muted); font-size: 13px; }
 .choice-grid { display: grid; gap: 12px; }
 .choice-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.choice-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.choice-card { cursor: pointer; position: relative; height: 100%; }
+.choice-grid.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.choice-card { cursor: pointer; position: relative; }
 .choice-card > input { position: absolute; opacity: 0; pointer-events: none; }
-.choice-content { min-height: 92px; height: 100%; border: 1px solid #cbd4df; border-radius: 7px; padding: 16px 46px 16px 16px; display: flex; align-items: center; gap: 15px; position: relative; background: #fff; transition: border-color .16s, box-shadow .16s, background .16s; }
+.choice-content { min-height: 92px; border: 1px solid #cbd4df; border-radius: 7px; padding: 16px 46px 16px 16px; display: flex; align-items: center; gap: 15px; position: relative; background: #fff; transition: border-color .16s, box-shadow .16s, background .16s; }
 .choice-content:hover { border-color: #879ab0; }
 .choice-card input:focus-visible + .choice-content { outline: 3px solid rgba(0,125,121,.28); outline-offset: 2px; }
 .choice-card input:checked + .choice-content { border: 2px solid var(--teal); padding: 15px 45px 15px 15px; background: var(--soft-teal); box-shadow: 0 0 0 3px rgba(0,125,121,.08); }
@@ -87,17 +87,26 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
 .text-choice { padding-left: 18px; }
 .choice-card.is-disabled { cursor: not-allowed; opacity: .54; }
 .choice-card.is-disabled .choice-content { background: #f0f2f4; }
-/* flex-shrink:0 — .choice-content is a flex row, and in the three-across grid
-   the cards are narrow enough to squash the icon and collapse the shapes. */
-.shape-icon { width: 46px; height: 46px; flex: 0 0 46px; display: block; position: relative; border-radius: 5px; background: #fff; box-shadow: inset 0 0 0 1px #dce2e9; }
+.shape-icon { width: 46px; height: 46px; display: block; position: relative; border-radius: 5px; background: #fff; box-shadow: inset 0 0 0 1px #dce2e9; }
 .shape-icon i { position: absolute; display: block; }
 .shape-u i { width: 27px; height: 28px; left: 10px; top: 8px; border-left: 6px solid var(--navy-2); border-right: 6px solid var(--navy-2); border-bottom: 6px solid var(--navy-2); border-radius: 0 0 5px 5px; }
 .shape-l i { width: 27px; height: 28px; left: 10px; top: 8px; border-left: 6px solid var(--navy-2); border-bottom: 6px solid var(--navy-2); }
-/* DU = two channels welded web to web: webs meet on the centreline, flanges
-   open outwards, so the pair reads as two mirrored U sections, not one box. */
-.shape-du i, .shape-du b { position: absolute; display: block; width: 16px; height: 28px; top: 9px; border-top: 5px solid var(--navy-2); border-bottom: 5px solid var(--navy-2); }
-.shape-du i { left: 5px; border-right: 5px solid var(--navy-2); border-radius: 0 4px 4px 0; }
-.shape-du b { right: 5px; border-left: 5px solid var(--navy-2); border-radius: 4px 0 0 4px; }
+.shape-du i { width: 13px; height: 27px; top: 9px; border-top: 5px solid var(--navy-2); border-bottom: 5px solid var(--navy-2); }
+.shape-du i:first-child { left: 7px; border-right: 5px solid var(--navy-2); border-radius: 3px 0 0 3px; }
+.shape-du i:last-child { left: 26px; border-left: 5px solid var(--navy-2); border-radius: 0 3px 3px 0; }
+.shape-i i { width: 8px; height: 30px; left: 19px; top: 8px; background: var(--navy-2); }
+.field-grid.two-col { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.special-grid { display: grid; gap: 10px; margin-top: 12px; }
+.special-row { display: grid; grid-template-columns: 1.3fr 0.9fr 0.9fr 1.6fr 0.8fr; gap: 10px; align-items: end; padding: 10px; border: 1px solid var(--line); border-radius: 6px; background: #f8fafb; }
+.special-row .check { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--navy); font-size: 13px; padding-bottom: 8px; }
+.special-row.is-off .field { opacity: .45; }
+.conn-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 4px; }
+.conn-table th { text-align: left; color: var(--muted); font-weight: 700; padding: 6px 4px; border-bottom: 1px solid var(--line); }
+.conn-table td { padding: 6px 4px; border-bottom: 1px solid #e7ebef; color: var(--navy); vertical-align: top; }
+.conn-table td:first-child { color: var(--muted); }
+.conn-table td.num { text-align: right; font-weight: 800; font-family: Consolas, "Courier New", monospace; }
+.weight-total { display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 2px solid var(--navy); font-weight: 800; color: var(--navy); }
+.choice-card.is-disabled { opacity: .45; pointer-events: none; }
 
 .field-grid { display: grid; gap: 14px; }
 .single-after-choices { grid-template-columns: minmax(230px, 52%); margin-top: 16px; }
@@ -135,58 +144,6 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
 .defaults-grid span, .defaults-grid strong { display: block; }
 .defaults-grid span { color: var(--muted); font-size: 11px; }
 .defaults-grid strong { margin-top: 3px; color: var(--navy); font-size: 13px; }
-.defaults-grid strong.is-custom { color: #a4560c; }
-
-/* Tie strength editor -------------------------------------------------- */
-.defaults-edit-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 13px; background: #fff; border-top: 1px solid #e2e7ec; }
-.tie-edit-button { cursor: pointer; font: inherit; font-size: 12px; font-weight: 700; color: var(--teal); background: #fff; border: 1px solid #bcd6d4; border-radius: 5px; padding: 7px 12px; display: inline-flex; align-items: center; gap: 7px; transition: background .15s, border-color .15s; }
-.tie-edit-button:hover { background: var(--soft-teal); border-color: var(--teal); }
-.tie-edit-button:focus-visible { outline: 3px solid rgba(0,125,121,.28); outline-offset: 2px; }
-.tie-flag { font-size: 11px; font-weight: 700; color: #a4560c; background: #fdf2e4; border: 1px solid #f0d3ab; border-radius: 4px; padding: 4px 9px; }
-
-.tie-dialog { border: none; border-radius: 9px; padding: 0; width: min(880px, calc(100vw - 32px)); box-shadow: 0 18px 48px rgba(14,32,52,.28); color: var(--navy); }
-/* The panel now carries every assumption, so it can outgrow a short screen. */
-.tie-dialog-scroll { max-height: min(52vh, 460px); overflow-y: auto; padding-right: 4px; }
-.tie-group-title { margin: 0 0 9px; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
-.tie-rows + .tie-group-title { margin-top: 18px; }
-.tie-group-note { margin: -3px 0 10px; font-size: 11px; line-height: 1.5; color: var(--muted); }
-/* Tie grid, laid out like the workbook's Ties sheet. Wide content, so it
-   scrolls sideways inside the dialog rather than stretching it. */
-.tie-table-wrap { overflow-x: auto; border: 1px solid #dce2e9; border-radius: 6px; }
-.tie-table { border-collapse: collapse; font-size: 12px; width: 100%; }
-.tie-table th, .tie-table td { border-right: 1px solid #e6ebf0; border-bottom: 1px solid #e6ebf0; padding: 6px 7px; text-align: center; }
-.tie-table thead th { background: #f5f7f9; font-size: 11px; font-weight: 800; color: var(--navy); white-space: nowrap; }
-.tie-table .tie-group-head { border-left: 2px solid #cbd4df; }
-.tie-table .tie-case-head { font-weight: 700; color: var(--muted); font-size: 10px; letter-spacing: .03em; }
-.tie-table tbody th { text-align: left; background: #fbfcfd; white-space: nowrap; position: sticky; left: 0; z-index: 1; }
-.tie-table-corner { text-align: left; position: sticky; left: 0; z-index: 2; }
-.tie-table-name { display: block; font-weight: 800; font-size: 12px; color: var(--navy); }
-.tie-table-note { display: block; font-weight: 500; font-size: 10px; color: var(--muted); margin-top: 1px; }
-.tie-table input { width: 64px; font: inherit; font-size: 12px; padding: 5px 6px; border: 1px solid #cbd4df; border-radius: 4px; text-align: right; }
-.tie-table input:focus-visible { outline: 2px solid rgba(0,125,121,.3); outline-offset: 1px; border-color: var(--teal); }
-.tie-table input.is-custom { border-color: #dda45c; background: #fffaf3; }
-.tie-table input.governs { box-shadow: inset 3px 0 0 var(--teal); }
-.tie-table input.is-invalid { border-color: #b4342b; background: #fdf3f2; }
-.tie-table-total td { background: #f5f7f9; font-weight: 800; color: var(--navy); }
-.tie-table-total th { background: #f5f7f9; }
-.tie-row-check { display: flex; align-items: center; justify-content: flex-end; gap: 8px; font-size: 12px; }
-.tie-row-check input { width: 17px; height: 17px; accent-color: var(--teal); cursor: pointer; }
-.tie-dialog::backdrop { background: rgba(14,32,52,.45); }
-.tie-dialog form { padding: 22px 24px 20px; margin: 0; }
-.tie-dialog h2 { margin: 0; font-size: 19px; color: var(--navy); }
-.tie-dialog-note { margin: 7px 0 16px; font-size: 12px; line-height: 1.5; color: var(--muted); }
-.tie-rows { display: grid; gap: 10px; }
-.tie-row { display: grid; grid-template-columns: 1fr 122px; align-items: center; gap: 12px; padding: 11px 12px; border: 1px solid #dce2e9; border-radius: 6px; }
-.tie-row-name { display: block; font-size: 13px; font-weight: 700; }
-.tie-row-meta { display: block; margin-top: 2px; font-size: 11px; color: var(--muted); }
-.tie-row-input { display: flex; align-items: center; gap: 6px; }
-.tie-row input { width: 100%; font: inherit; font-size: 13px; padding: 8px 9px; border: 1px solid #cbd4df; border-radius: 5px; text-align: right; }
-.tie-row input:focus-visible { outline: 3px solid rgba(0,125,121,.28); outline-offset: 1px; border-color: var(--teal); }
-.tie-row input.is-invalid { border-color: #b4342b; background: #fdf3f2; }
-.tie-row-unit { font-size: 12px; color: var(--muted); }
-.tie-dialog-error { margin: 13px 0 0; font-size: 12px; font-weight: 700; color: #b4342b; }
-.tie-dialog-actions { display: flex; align-items: center; gap: 9px; margin-top: 19px; flex-wrap: wrap; }
-.tie-dialog-spacer { flex: 1 1 auto; }
 .form-actions { padding: 25px 28px 28px; }
 .primary-button, .secondary-button { border: 0; border-radius: 5px; min-height: 48px; padding: 0 20px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 18px; font-weight: 800; transition: transform .12s, background .12s, box-shadow .12s; }
 .primary-button { background: var(--teal); color: #fff; box-shadow: 0 6px 16px rgba(0,125,121,.22); }
@@ -347,7 +304,8 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
   .intro-assurance { margin-top: 22px; }
   .panel-heading, .form-step, .form-actions { padding-left: 18px; padding-right: 18px; }
   .required-note { display: none; }
-  .choice-grid.two, .choice-grid.three, .single-after-choices, .segmented-control { grid-template-columns: 1fr; }
+  .choice-grid.two, .choice-grid.four, .field-grid.two-col, .single-after-choices, .segmented-control { grid-template-columns: 1fr; }
+  .special-row { grid-template-columns: 1fr 1fr; }
   .wall-fields { grid-template-columns: 1fr; }
   .wall-arrow { display: none; }
   .defaults-panel { margin-inline: 18px; }

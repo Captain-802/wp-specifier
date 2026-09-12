@@ -13,7 +13,7 @@
     const g = [];
 
     g.push(T(PX(PL0), planTop - 57, "CONNECTION — PLAN", 9.5, C.INK, "start", true));
-    g.push(cad("steelCut", R(PX(PL0), planTop, totX, B, "none", C.INK, 0.7)));
+    g.push(cad("steelFace", R(PX(PL0), planTop, totX, B, "none", C.INK, 0.7)));
     // The wall is tagged so a composed sheet can drop it and show the
     // connection on its own; the full drawing keeps it.
     g.push(`<g data-a4-hide="wall" data-cad="masonry">` +

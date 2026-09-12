@@ -4,8 +4,14 @@
 // single self-contained .html file — no server, no sibling files, nothing to
 // upload alongside it.
 //
-//   index.html               -> Windpost-Selector-Full.html
-//   l-section-prototype.html -> Windpost-Detailing-Full.html
+//   index.html                 -> Windpost-Selector-Full.html
+//   l-section-prototype.html   -> Windpost-Detailing-Full.html
+//   cavity-wall-assembly.html  -> Windpost-CavityWall-Full.html
+//   print-calibration.html     -> Windpost-PrintCalibration-Full.html
+//
+// The built pages link to each other by their built names, so ship all four
+// together (the Selector's cavity-wall button and the Detailing page's print
+// calibration link need the last two).
 //
 // Edit the small source engines, run the tests, then rebuild. Do not hand-edit
 // either generated file.
@@ -17,7 +23,9 @@ const root = __dirname;
 
 const PAGES = [
   { source: "index.html", output: "Windpost-Selector-Full.html" },
-  { source: "l-section-prototype.html", output: "Windpost-Detailing-Full.html" }
+  { source: "l-section-prototype.html", output: "Windpost-Detailing-Full.html" },
+  { source: "cavity-wall-assembly.html", output: "Windpost-CavityWall-Full.html" },
+  { source: "print-calibration.html", output: "Windpost-PrintCalibration-Full.html" }
 ];
 
 const read = relativePath => fs.readFileSync(path.join(root, relativePath), "utf8");

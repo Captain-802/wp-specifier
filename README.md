@@ -1,52 +1,51 @@
 # WP Specifier
 
-Windpost selection and detailing for cavity-wall masonry support, by
-[CED Engineers](https://www.cedengineers.com).
+Windpost selection and production detailing for cavity-wall masonry support,
+by [CED Engineers](https://www.cedengineers.com).
 
 **Live: https://captain-802.github.io/wp-specifier/**
+(embedded as a whole-page embed on the CED Google Site)
 
-Everything runs locally in the browser. No server, no build step, no external
-requests — which is what lets the same file be embedded in a Google Sites page.
+Everything runs locally in the browser. No server, no build step at run time,
+no external requests — which is what lets the pages be embedded in a Google
+Sites page.
 
-## What it does
+## Pages
 
-Enter the wall build-up, height, support condition and required ULS load, and
-it selects a standard windpost and its full tie schedule in one pass.
+| File | What it is |
+|---|---|
+| `index.html` | Selector: post family, support condition, load, exact height, wall build-up, fixings and bolts → section, capacity, tie schedule, connections, weights, PDF report |
+| `l-section-prototype.html` | Detailing: production drawings (orthographic A4, unfolded blank, base/top connection, client approval arrangement), 3D cut-away, SVG/DXF export. Opened from the Selector's **Detailing** tab with the design carried across in the URL |
+| `cavity-wall-assembly.html` | Interactive L-post cavity-wall assembly |
+| `print-calibration.html` | Printer scale check for the A4 sheets |
+| `dist/` | The same single-file builds under their original names |
+| `src/` | Modular source — engines, data, drawing services, tests |
 
-**Post families**
+## Post families
 
-| Family | Sections | Detailing |
-|---|---|---|
-| U  | 40 UP sections | Production drawings |
-| L  | 31 LP sections | Production drawings |
-| DU | 12 sections, 60–115 × 60 × 6 | Not yet — baseplate still to be defined |
+| Family | Sections | Support | Detailing |
+|---|---|---|---|
+| U | UP standard range | simply supported / cantilever | yes |
+| L | LP standard range | simply supported / cantilever | yes |
+| DU | two channels welded web to web | simply supported only | yes — DU-T2 / DU-B2 slab-face plates |
+| I | flat plate in the inner leaf | simply supported only | no |
 
-A DU is two channels welded web to web. It carries **two sets of ties at every
-level** (1 EDC + 1 U per set, so 4 ties per level), and its tie strength is
-twice the single U value.
-
-**Tie strengths are editable.** Design assumptions → *Edit tie strengths*.
-Values are per tie level. The DU value follows the U tie automatically unless
-you give it one of its own. Edited values are flagged in the panel so a saved
-calculation is never mistaken for catalogue values.
-
-## Layout
-
-    index.html        the whole application as one self-contained file
-    dist/             separate single-file Selector and Detailing builds
-    src/              modular source — engines, tests, drawing tools
+Simply-supported base plates follow the standard types U-B3A / U-B3B /
+L-B2A / L-B2B (by section depth); cantilever plates are sized by the
+base-plate designer. DXF export uses the firm's layer standard (AutoCAD 2000).
 
 ## Working on it
 
     cd src
-    node tests/run-tests.js        # core suite
-    node tests/tie-strength-tests.js
-    node build-standalone.js       # regenerate dist/
+    for t in tests/*.js; do node "$t"; done   # 21 suites
+    node build-standalone.js                   # regenerate the single-file pages
 
 `src/js/engines/` holds one engine per file, each an IIFE registering on
-`window.Windpost` with no dependencies. Section catalogues and design
-constants are generated from `windpost-database.xlsx` — see
-`src/HOW-TO-UPDATE-DATABASE.md`.
+`window.Windpost` with no dependencies. Do not hand-edit the built pages at the
+repo root: edit `src/`, run the suites, rebuild, then copy
+`Windpost-Selector-Full.html` → `index.html` and
+`Windpost-Detailing-Full.html` → `l-section-prototype.html` (the Selector links
+to the Detailing page by that name).
 
 ## Notes
 

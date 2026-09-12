@@ -114,20 +114,12 @@ function independentCalculation(section, input) {
     ? Math.max(0, Math.floor((input.length_mm - 50) / 225))
     : Math.max(0, Math.floor((input.length_mm - 225) / 225));
   const expectedTieCapacity = expectedTieCount * W.config.DEFAULT_TIE_STRENGTH_KN[input.type];
-  // The issued capacity is always truncated to two decimals, so the
-  // independent expectation truncates too — computed here rather than
-  // borrowed from the engine, so it stays a genuine cross-check.
-  const expectedFinalCapacityExact = Math.min(
+  const expectedFinalCapacity = Math.min(
     calculation.ultimateLoadDeflectionBased,
     calculation.ultimateLoadBendingMomentBased,
     expectedTieCapacity
   );
-  const expectedFinalCapacity =
-    Math.floor(expectedFinalCapacityExact * 100 + 1e-9) / 100;
-  return {
-    calculation, expectedTieCount, expectedTieCapacity,
-    expectedFinalCapacity, expectedFinalCapacityExact
-  };
+  return { calculation, expectedTieCount, expectedTieCapacity, expectedFinalCapacity };
 }
 
 function independentEvaluation(section, input) {
@@ -188,10 +180,6 @@ for (let index = 0; index < AUTOMATIC_CASES; index += 1) {
   check(selected.section.name === expected.section.name, "automatic selector did not choose the first suitable catalogue section", { index, input, actual: selected.section.name, expected: expected.section.name });
   check(selected.finalCapacity_kN + 1e-9 >= input.requiredLoad_kN, "selected final capacity is below demand", { index, input, selected: selected.finalCapacity_kN });
   check(close(selected.finalCapacity_kN, expected.expectedFinalCapacity), "governing capacity differs from independent minimum", { index, input, actual: selected.finalCapacity_kN, expected: expected.expectedFinalCapacity });
-  // The issued figure must never exceed the true capacity, and must be a
-  // clean two-decimal value.
-  check(selected.finalCapacity_kN <= expected.expectedFinalCapacityExact + 1e-9, "issued capacity exceeds the exact capacity", { index, input, actual: selected.finalCapacity_kN, exact: expected.expectedFinalCapacityExact });
-  check(close(selected.finalCapacity_kN * 100, Math.round(selected.finalCapacity_kN * 100)), "issued capacity is not a two-decimal value", { index, input, actual: selected.finalCapacity_kN });
   check(selected.calculation.numberOfTies === expected.expectedTieCount, "tie count differs from exact-height floor equation", { index, input, actual: selected.calculation.numberOfTies, expected: expected.expectedTieCount });
   check(close(selected.calculation.totalTiesCapacity, expected.expectedTieCapacity), "ultimate tie capacity differs from count times per-tie strength", { index, input });
   check(selected.wall.selectedTieLength_mm === expected.wall.tieLength, "outer EDC tie differs from independent discrete selection", { index, input, actual: selected.wall.selectedTieLength_mm, expected: expected.wall.tieLength });

@@ -1,5 +1,5 @@
 WINDPOST + BASEPLATE DESIGNER
-MODULAR ENGINE BUILD — 26 JULY 2026 V.02
+MODULAR ENGINE BUILD — 11 SEPTEMBER 2026 V.03
 ============================================================
 
 PURPOSE
@@ -35,9 +35,28 @@ js/data/u-section-database.js
 js/data/standard-section-heights.js
   Holds the standard reference heights used by catalogue and checking tools.
 
+js/data/du-section-database.js
+  Holds the DU (double-U) catalogue: two U channels welded web to web,
+  properties = 2 x U. Simply supported only. Generated from
+  WINDPOST_CALCULATOR_V2.xlsx.
+
+js/data/i-section-database.js
+  Holds the I (flat plate a x t) catalogue built into the inner leaf.
+  Simply supported only, shear ties only, no outer tie. Generated from
+  WINDPOST_CALCULATOR_V2.xlsx; reproduces the former hardcoded I table.
+
+js/data/connections-database.js
+  Holds the connection library (head/base fixings per family with codes,
+  descriptions, material class, bracket weights, post bolts and connection
+  bolt SKUs per bolt family), the cantilever base-plate types U-A..U-G /
+  L-A..L-G with capacity bands and plate/stiffener geometry, the anchor
+  capacity table (RGM, FAZ II, FAZ II Plus), the bolt-quantity matrix and the
+  per-section standard plate weights. I-post rows are copies of the U rows.
+
 js/data/section-profiles.js
-  Provides one common lookup interface for U and L sections and converts
-  stored catalogue properties into calculation-ready values.
+  Provides one common lookup interface for U, L, DU and I sections and
+  converts stored catalogue properties into calculation-ready values. Also
+  declares which families may be cantilevered (U and L only).
 
 js/data/tie-profiles.js
   Stores confirmed fabrication dimensions for the separate connection-tie
@@ -75,8 +94,19 @@ js/engines/outer-tie-selection-engine.js
   outer-leaf embedment from the wall construction and selected section.
 
 js/engines/automatic-selection-engine.js
-  Evaluates the catalogue in order and selects the first suitable U or L
-  section. It also supports manual section checking.
+  Evaluates the catalogue in order and selects the first suitable U, L, DU or
+  I section. It also supports manual section checking. DU and I cantilevers
+  are rejected.
+
+js/engines/connection-selection-engine.js
+  Resolves head and base connection codes from the chosen fixings, the bolt
+  SKU for the chosen bolt family (load-dependent anchors use the capacity/2
+  rule against the anchor table), bolt counts from the quantity matrix,
+  the cantilever standard plate type from the base moment (W.H for a top
+  point load, W.H/2 for a UDL) with plate + stiffener weight varying with the
+  selected section depth, post weight (blank x t x L x density), special
+  connection overrides, ties per level (DU = 2), debonding sleeves and the
+  total weight per post and for all posts.
 
 
 3. CANTILEVER BASEPLATE STRUCTURAL ENGINES
@@ -106,8 +136,14 @@ js/engines/baseplate-check-engine.js
   checks and returns utilisation and pass/fail results.
 
 js/engines/baseplate-sizer-engine.js
-  Searches the approved discrete plate, anchor-row and stiffener sizes until a
-  passing standard arrangement is found.
+  Stage 1: rebuilds the standard plate type for the base moment (U-A..U-G /
+  L-A..L-G from connections-database) as a bolt layout + stiffener and runs
+  the full check set; if it passes it is the design ("standard"). If only the
+  base + stiffener bending check fails, the standard plate and bolts are kept
+  and the stiffener height is raised ("standard (stiffener raised)").
+  Stage 2: otherwise auto-sizes (fewest rows, thinnest, shortest) with the
+  standard practice: pitch <= 150 mm, 200 wide up to 260 long then 220,
+  8 thick then 10 from 390 long, local plate bending always enforced.
 
 js/engines/baseplate-design-engine.js
   Public cantilever baseplate facade. It validates the requested actions,
@@ -173,8 +209,26 @@ js/services/engineering-canvas-renderer.js
   mode and all downloaded/printed production files remain vector SVG.
 
 js/services/cad-layer-standard.js
-  Defines AutoCAD-style layer names, ACI colours, lineweights, linetypes and
-  monochrome/coloured plotting behaviour.
+  The office detailer's drawing standard applied to the windpost sheet: the
+  firm's layer names where the line kind matches (STEEL, 5 FB, Con. Sections,
+  DR-SEC, Text, leader, HATCH, grid line, 0) and windpost-only layers in the
+  same style (STEEL CUT, SECTION MARK, HOLES, WELDS, MASONRY, 3D VIEW,
+  HIDDEN); every layer with its ACI colour AND lineweight (1/100 mm); text
+  styles Standard/Writing = arial.ttf; dimension style SALEEM (grey 253
+  lines, white 7 text, oblique ticks); ANSI31 hatch for cut steel. Also the
+  on-screen palette (darkened ACI colours) and the monochrome switch.
+
+js/services/dxf-r2000-writer.js
+  AutoCAD 2000 (AC1015) ASCII DXF writer for the flattened A4 sheet, laid out
+  like the detailer's ezdxf documents: HEADER ($INSUNITS 4 mm, $LWDISPLAY 1,
+  SALEEM current), CLASSES, all nine symbol tables with handles and owners,
+  *Model_Space / *Paper_Space / _OBLIQUE blocks, entities (LINE, LWPOLYLINE
+  outlines, CIRCLE, TEXT in Standard, HATCH ANSI31 inside closed STEEL CUT
+  outlines), OBJECTS (root dictionary, ACAD_GROUP, ACAD_LAYOUT with Model
+  and Layout1, ACAD_MLINESTYLE Standard, ACAD_PLOTSTYLENAME placeholder).
+  Text is folded to ASCII / %%c %%d %%p. Verified with ezdxf 1.4.4:
+  `recover.readfile` audit 0 errors 0 fixes, PyMuPDF render matches the
+  screen. Replaces the R12 writer (no lineweights, no hatch) on 11 Sep 2026.
 
 js/services/baseplate-geometry-engine.js
   Calculates cantilever L-post plan and side-view coordinates without drawing.
@@ -364,8 +418,19 @@ tests/run-tests.js
   Tests section selection, material constants, ties and selector/detailing
   transfer.
 
+tests/connections-tests.js
+  Locks the DU / I catalogues and rules, the connection codes, bolt SKUs,
+  bolt counts, bracket / standard-plate / cantilever-plate weights and the
+  workbook test case (LP 130x70x5 at 1000 mm: 11.112 kg per post).
+
 tests/baseplate-tests.js
   Tests all four baseplate routes and locks the approved drawing conventions.
+
+tests/baseplate-standard-tests.js
+  Proves the designer reproduces every standard plate type that passes the
+  checks (11 of 14 exactly), keeps the standard plate for U-G and L-C with a
+  raised stiffener, auto-sizes L-B (band capacity exceeds the 230 mm plate)
+  and obeys the width / thickness / pitch practice beyond the standard range.
 
 tests/l-section-prototype-tests.js
   Tests folded geometry, slots, 3D baseplate, A4 composition and CAD output.
@@ -446,3 +511,312 @@ The rebuilt Windpost-Selector-Full.html contains the new selector project-file,
 geometry-signature and automatic annotation-lane engines. Detailing remains a
 separate same-tab page and now adds project JSON, revision history, pre-issue
 validation, print calibration and multi-sheet batch output.
+
+
+CHANGE RECORD - 11 SEPTEMBER 2026 V.03
+--------------------------------------
+Aligned with WINDPOST_CALCULATOR_V2.xlsx (owner decisions of 11 Sep 2026):
+- DU and I post families added (simply supported only; I = flat plate in the
+  inner leaf with shear ties only and no outer tie or cavity check).
+- Step 6 head/base fixings with bolt families, step 7 quantities and special
+  connections; results and the detailed report show connection codes, bolt
+  SKUs, bolt counts, post/connection weights and totals.
+- Cantilever U/L base: standard plate type by base moment (W.H point,
+  W.H/2 UDL) with section-dependent plate weight, in addition to the existing
+  drawn base-plate design used by Detailing.
+- FAZ II M16 and FAZ II Plus M16 shear capacities set equal to M12 pending
+  the datasheet. Detailing remains available for U and L posts only.
+- package.json (type commonjs) added so the Node tests run under a parent
+  folder that declares ES modules.
+All twelve existing suites plus tests/connections-tests.js pass.
+
+BASE-PLATE DESIGNER vs STANDARD TYPES — 11 SEPTEMBER 2026
+---------------------------------------------------------
+Compared at each band capacity (kNm): bolts / plate / stiffener.
+  U-A 2.376  4 / 185x200x8  / 6x80    standard adopted (97%)
+  U-B 3.432  4 / 262x200x8  / 6x100   standard adopted (99%)
+  U-C 4.550  6 / 230x200x8  / 8x100   standard adopted (100%)
+  U-D 5.140  6 / 260x200x8  / 8x104   standard adopted (100%)
+  U-E 6.138  6 / 310x220x8  / 8x114   standard adopted (100%)
+  U-F 7.800  6 / 394x220x10 / 8x128   standard adopted (100%)
+  U-G 13.560 8 / 520x220x10 / 10x110  standard stiffener FAILS T-section
+                                       check (179%); designer keeps plate and
+                                       bolts, stiffener raised to 155 mm.
+  L-A 2.700  4 / 210x200x8  / 8x75    standard adopted (97%)
+  L-B 3.160  4 / 230x200x8  / 8x80    standard bolt group FAILS (104%: band
+                                       capacity 3.16 > 2x6.6x230/1000 = 3.036);
+                                       designer gives 4 bolts, 240x200x8.
+  L-C 4.750  6 / 240x200x8  / 8x95    standard stiffener 105%; kept, raised
+                                       to 100 mm.
+  L-D 6.138  6 / 310x220x8  / 8x112   standard adopted (100%)
+  L-E 7.700  6 / 390x220x10 / 10x112  standard adopted (100%)
+  L-F 10.560 8 / 400x220x10 / 10x135  standard adopted (100%, 401 long)
+  L-G 11.350 8 / 440x220x10 / 10x140  standard adopted (98%)
+Owner to review: L-B capacity band (3.16 vs 3.036 kNm, or plate 240 long) and
+the U-G / L-C stiffener heights in the standard table.
+Detailing (l-section-prototype) now routes its cantilever baseplate through
+the same standard-type designer (family passed, no fixed 220 width), so the
+Selector and Detailing plates agree. The reference LP 150x70x4 / 900 mm case
+is now 4 bolts, 301 x 200 x 8 (rows at 55 and 180), hUp 80. The six stored
+A4 raster baselines (tests/visual-baselines) pre-date this change and must be
+refreshed with tools/run-visual-regression.ps1 -Update on a PC with Playwright.
+
+3D VIEW — BASE PLATE / STIFFENER JUNCTION (11 Sep 2026)
+cavity-wall-3d-engine.js draws with a painter's algorithm. The post leg was
+one full-height quad, so at some azimuths its centroid sat in front of the
+stiffener and painted over it at the junction. Fix:
+  - model.sortPlanes: separating planes (plate top z=0, post leg plane) and
+    per-item planeSides; draw order = plane bands from the view direction
+    first, centroid depth second (baseplate behind, post/stiffener/anchors in
+    front of the plate; stiffener vs post decided by the leg plane).
+  - sliceFace(): post extrusion faces are sliced at render time into <=150 mm
+    strips (hole-aware), so each strip sorts by its own depth.
+  - anchorBolts(): washer + hex head + shank at each anchor centre (group
+    "anchors") so the plate reads as fixed.
+Verified visually through eight orbits/elevations at 900 and 2670 mm.
+tests/l-section-prototype-tests.js asserts planeSides, sortPlanes and the
+anchor face count (4 x (3x2 + 16 + 6 + 12)).
+
+3D VIEW — PRODUCT-RENDER QUALITY (11 Sep 2026, after the junction fix)
+Target: the Keystone Lintels windpost product renders (isometric cut-away,
+stainless post, slabs, brick/block leaves, ties, soft shadow on white).
+  - js/services/windpost-scene-mesh-engine.js: turns every scene item into
+    triangles (rectangular faces with holes are cut into bands, so anchor
+    holes, post slots and brick perforations triangulate exactly), smooths
+    normals across the fold radii (34 deg crease), orients inside-out items
+    by signed volume, and builds the wall context from the post placement:
+    floor slab (and the floor above for simply supported), block inner leaf
+    built around an embedded L leg and stepped away to +x, brick outer leaf
+    stepped away to -x with perforated exposed bricks and recessed mortar,
+    shear tie + L tie (L) or U tie (U) at every slot level in the bed joints,
+    head cleat with two anchors under the soffit, white shadow ground.
+  - js/services/windpost-gl-renderer.js: WebGL 1, no library, inline GLSL.
+    Depth buffer (no painter's sorting), 2048 shadow map with 5x5 PCF, key
+    light fixed to the camera (upper-left-front), hemisphere ambient, fill,
+    studio-environment reflections for the metals, procedural brushed
+    stainless / plate / anchor / concrete / brick / mortar / block materials.
+    Shaders are proven on a scratch canvas first; if WebGL is refused the 2D
+    painter path in cavity-wall-3d-engine.js is used unchanged.
+  - cavity-wall-3d-engine.js: default camera moved to the cavity side
+    (azimuth pi + 0.62, elevation 0.42); setContext({showWall, wall,
+    supportCondition}); HTML badge overlays the WebGL canvas.
+  - l-section-prototype.html / -page.js: "In wall / Post only" toggle; the
+    wall parameters (inner/cavity/outer from the Selector hand-off or URL)
+    and support condition feed the context.
+  - tests/scene-mesh-tests.js (10 checks). Visual PNG baselines still stale.
+
+DXF EXPORT — DETAILER LAYER STANDARD (11 Sep 2026)
+Owner: "the dxf layers shall be the same as the beams and columns". The
+production A4 DXF now opens in AutoCAD like the beam/column schedule files:
+lineweights on every layer (0.35 cut steel, 0.25 outlines and callouts, 0.18
+concrete/masonry/hatch, 0.13 holes and grid, 0.09 dimensions and leaders,
+0.05 construction), firm layer names, Arial text, SALEEM dimension style,
+ANSI31 hatch in cut steel. The plate in plan and the unfolded blank carry the
+new steelFace role (STEEL CUT line, not hatched); only true sections hatch.
+tests/dxf-export-tests.js (7 checks). Independent audit: python + ezdxf
+(scratch script dxf-audit.py: recover.readfile -> 0 errors / 0 fixes).
+Sample: web/LP-125x70x6-900-A4-sample.dxf.
+
+FOLD WIDTH ON THE CAD SHEET (11 Sep 2026)
+Owner: "the excel sheet already has the fold width ... the cad file shall
+show that fold width". js/engines/fold-width-engine.js reproduces the V2
+workbook lines (r = 1.5t, k = 0.38): L a+b-2(r+t)+(pi/2)(r+0.38t); U
+2a+b-4(r+t)+pi(r+0.38t); DU 2xU; I a. It feeds: the post weight
+(connection-selection-engine.blankWidth_mm), both production drawings (text
+"FOLD WIDTH nnn.nn mm" above the blank, class fold-width, on the Text layer
+in the DXF), the A4 SPECIFICATION line, and the Selector results row
+"Fold (blank) width" (covers DU and I posts, which have no Detailing page).
+OPEN QUESTION for the owner: the workbook's U line develops two legs of a
+and one of b (2a + b). The same workbook's area and inertia lines, the tie
+gap rule (cavity - 6 - a) and the drawn blank treat a as the single web and
+b as the two flanges, which develops a + 2b. They agree only when a = b;
+UP 90x60x4 gives 223.62 (workbook) vs 193.62 (drawn blank). config
+FOLD_WIDTH_BASIS = "workbook" (default, spreadsheet reproduced exactly) or
+"developed". The production validator raises an advisory WARNING naming
+both numbers whenever they differ, and the page now shows the validation
+panel under the production details form. tests/fold-width-tests.js.
+
+SIMPLY-SUPPORTED BASE PLATES U-B3A / U-B3B / L-B2A / L-B2B (11 Sep 2026)
+Owner's detail sheets replace the July placeholder (125 long, gauge 90,
+anchor 90 from the edge). js/data/standard-base-plate-types.js holds the
+four hard-coded types: U-B3A depth 55-85 (205 long, B = 158 - D), U-B3B
+90-120 (240, B = 193 - D), L-B2A 125-160 (205, B = 254 - D), L-B2B 165-200
+(240, B = 289 - D); all 150 wide x 6, two RGM 12 (Ø14 holes) 35 from the
+plate end, 80 gauge, 35 side edges; U: 6 + D + 6 + B + 35; L: 6 + (D - 90)
++ B + 35. simply-u/l-baseplate-standard-engine.js build the design record
+from it (typeCode, typeTitle, edgeConstant, leftPortion, overallLength_mm),
+so the plan/side drawings, the A4 sheet ("... BASE PLATE - TYPE U-B3B"),
+the DXF and the 3D base follow. connection-selection-engine reports the
+sub-type as base.code with libraryCode U-B3 / L-B2 (bolts and the 1.52 /
+1.77 kg weights unchanged). An 80 mm L short leg is shifted 3 mm on the
+150 plate to stay inside it. tests/standard-base-plate-tests.js reproduces
+every row of the owner's tables. NOT changed: the V2 workbook (BASE
+CONNECTIONS still one U-B3 / L-B2 row each; Baseplate!A10 SS detail still
+125 long) and the web L catalogue, which lacks LP 135/145/155/165/175/
+190/195 that the owner's tables list.
+
+DU SLAB-FACE CONNECTIONS DU-T2 / DU-B2 (11 Sep 2026)
+Owner's detail sheets: 6 mm S.S plate on the slab FACE, DU post welded to it
+(end 8 mm inside the plate edge), two M12 anchors (RG M12 / FAZ II M12 /
+FAZ II Plus M12) through 14 x 70 vertical slots = +/- 29 mm adjustment.
+DU-T2 top: 280 x 150, slots 50 from each end, post 80 from each end.
+DU-B2 bottom: 250 x 150, slots 35 / post 65 (the top mirrored).
+Slots 180 apart, 40/70/40 vertically, post 120 wide (2 x 60 flanges, 12 web).
+  - js/data/du-slab-face-plates.js: the two plates + geometryFor(code, section)
+    (checks that 2 x edge + 180 and 2 x post edge + 120 close the length).
+  - js/services/du-slab-face-drawing-service.js: PLAN (slab, plate, H
+    section of the two channels, anchors) + ELEVATION 1 (plate, slots, post
+    with break, +/-29 note) on the shared CAD roles.
+  - connections-database DU-T2 / DU-B2 rows: M12 SKUs and
+    minimumAnchorSize_mm 12; connection-selection-engine.selectAnchor never
+    goes below that size (light loads no longer get M10 here).
+  - Selector (app.js): when a DU post has DU-T2 / DU-B2 selected, the
+    drawings appear after "Connections and bolts" with Download SVG / DXF
+    (index.html now loads the DXF writer + sheet export); the detailed report
+    embeds them. tests/du-slab-face-tests.js.
+NOT done: DU on the Detailing page (no DU orthographic / 3D model yet) and
+the V2 workbook (DU rows still carry the M10 SKUs).
+The DU section in the DU-T2 / DU-B2 plan is the SELECTED section: two
+rounded folded channels (uBaseplateGeom.postProfile with the section's a, b,
+t and inside radius) welded web to web, labelled "2 x UP axbxt welded web
+to web - Ri r mm"; the depth dimension follows the section.
+
+DU POST ON THE DETAILING PAGE (12 Sep 2026)
+Owner: "YES, TOP AND BOTTOM". The Detailing page now takes DU posts:
+  - js/services/du-section-orthographic-service.js: one channel's views come
+    from the U service (web / flange elevations, flat blank with the
+    per-channel fold width); the plan is replaced by the two rounded
+    channels welded web to web (one compound .section-fill path, so the A4
+    top-view detail scales as a whole) and a FACE ELEVATION (2b wide, one
+    slot column per channel, 25 mm from each outer tip) is added. Sheet
+    views: ELEVATION OF BLANK (2 No.) + FACE ELEVATION. foldWidth carries
+    value_mm (2 x U, workbook) and perChannel_mm; the SPECIFICATION line
+    reads "FOLD WIDTH 2 x 155.44 = 310.88 mm".
+  - l-cantilever-baseplate-prototype-service.design(): a DU returns the
+    du-slab-face record: DU-B2 drawing as the base (ids bp-plan / bp-side
+    so the sheet zones pick it), DU-T2 as topSvg + topTypeCode; design
+    fields B 150 / tp 6 / plateLen 250 / typeCode so the plate note and the
+    validator work unchanged. Always simply supported (the page forces and
+    disables the support control for DU).
+  - Sheet: the previously blank TOP CONNECTIONS band now shows
+    "TOP CONNECTION DU-T2 - ELEVATION" (from #top-connection-drawing, a new
+    hidden holder); the base zones read "BASE CONNECTION DU-B2 - PLAN /
+    ELEVATION" (baseLabels); the DU drawing titles are dropped on the sheet.
+    The client approval arrangement (cavity-wall) is L/U only; a DU shows
+    its section views in that panel.
+  - 3D: cavity-wall-3d-engine sectionPrototypeModel type "DU":
+    foldedUMesh with a transform option builds the two channels (webs back
+    to back at x = 0, near flanges on the plate face at y = -6, slots on all
+    flanges); prototypeDuFacePlates puts DU-B2 at z -8..142 and DU-T2 at
+    length-142..length+8 on the inner-leaf face with horizontal M12 anchors
+    at x = +-90 (facePlateAnchors). windpost-scene-mesh-engine: faceMounted
+    posts get slabs stopping at the inner-leaf line, the lower slab top at
+    +150 and the soffit at length-150 (post overlaps both slabs), two U ties
+    per level, no head cleat. Selector's Detailing tab now opens for DU.
+  - tests/du-detailing-tests.js (5 checks); l-section-prototype-tests
+    updated for the baseLabels indirection.
+
+L-T1 (12 Sep 2026): a timber-joist head bracket was drawn from reference
+images and REMOVED the same day at the owner's instruction ("wrongly
+detailed"). Nothing of it remains except the Selector hand-off carrying the
+chosen head/base codes (?head=..., ?base=...) and accepting DU posts, which
+stay because the DU sheet uses them.
+
+REALISTIC (PHOTO) DRAWING MODE (12 Sep 2026)
+--------------------------------------------
+Owner asked for the approval-sheet render images to look "extreme realistic"
+against https://iglintels.com/windpost-design/ (textured block inner leaf,
+perforated red brick outer leaf, stainless ties). Implemented as a third
+drawing mode alongside hatch / lines:
+  * tie-wall-drawing-service.js — draw(model, {mode:"photo"}) emits PHOTO_CSS
+    + PHOTO_DEFS: gradient unit fills and SVG filters (feTurbulence +
+    feDiffuseLighting) photoBrick / photoBlock / photoMortar, photoSteel
+    stroke gradient, photoShadow drop shadow. One filter per masonry layer
+    group (photo-brick-layer / photo-block-layer), never per unit, so the
+    page stays responsive. data-render-mode="photo".
+  * windpost-approval-drawing-service.js — in photo mode the two wall crops
+    are INLINED as nested <svg viewBox=crop> with a clipPath (data-inline=
+    "photo") instead of data-URI <image>, because an SVG-as-image with lit
+    filters is re-rasterised on every paint. localise() suffixes every id /
+    url(#) / href(#) per view so the two crops of one source cannot collide.
+    Hatch and lines modes still embed <image> as before.
+  * Detailing page: third toggle "Realistic" (#drawing-mode-photo);
+    setDrawingMode handles hatch | lines | photo.
+  * tests/photo-mode-tests.js.
+Harness note: a heredoc once turned "\b" in the strip regex into a literal
+backspace byte (invisible to grep); scan with grep -P '[\x00-\x08]' if an
+inline view ever shows the source's own <svg> root again.
+
+DU SELECTION-CARD ICON (12 Sep 2026)
+-------------------------------------
+Owner supplied a reference icon: two mirrored channel brackets forming "]["
+(webs touching at centre, flanges pointing outward), captioned "DU-shaped
+post" / "Two channels welded web to web". The Selector's step-1 card
+previously drew two same-facing U shapes side by side and read "Double-U
+post · DU range · simply supported only".
+  * index.html — card text now "DU-shaped post" / "Two channels welded web
+    to web"; the simply-supported-only note moved to a title tooltip on the
+    label (info kept, card matches the reference wording).
+  * css/app.css — .shape-du i redrawn as two mirrored brackets (first child:
+    border-top/bottom/right = "]"; last child: border-top/bottom/left =
+    "["), replacing the old twin-U icon.
+No engine/label changes elsewhere (section-profiles.js DU.label stays
+"Double-U post" — that is the internal/report name, untouched).
+
+RE-CHECK BEFORE THE 12 SEP 2026 DEPLOYMENT (audit + fixes)
+-----------------------------------------------------------
+A five-way audit (tests/build, Selector->Detailing hand-off, recent-commit
+review, DXF validity via ezdxf, headless engine fuzz) preceded the push to
+Captain-802/wp-specifier. Fixed:
+  * design-transfer-engine href() -> Windpost-Detailing-Full.html when the
+    Selector runs as the built file (detailingFileName()); build-standalone
+    now also builds Windpost-CavityWall-Full.html and
+    Windpost-PrintCalibration-Full.html, and the pages switch their sibling
+    links to the built names when served that way.
+  * Drawn connections follow the selected fixings: selectorBaseplateRouting
+    design(selection, connections) returns no concrete-top plate unless the
+    base fixing is U-B3 / L-B2 (connections.base.standardPlate); the Detailing
+    page passes ?head=/?base= into lCantileverBaseplatePrototype.design and
+    duSlabFace()/omitUnselectedPlate() draw DU-T2 / DU-B2 / U-B3x / L-B2x only
+    when handed over (direct open still draws them), otherwise the zone
+    carries a captioned note (connectionNote(): "BASE CONNECTION DU-B1 / DU
+    POST TO TIMBER JOIST / NO STANDARD DETAIL DRAWN") and the plate meta reads
+    "TYPE <code> - NO DRAWN PLATE"; the 3D omits an omitted U/L plate (the DU
+    3D keeps its generic slab-face plates).
+  * Data: DU-T3 materialClass CONCRETE (blank in the V2 workbook row; its
+    anchors are RG/FAZ concrete anchors). connectionSelectionEngine returns
+    `notes` (never invalidating) when a non-anchor SKU has no quantity in the
+    bolt matrix (KM12/100 under U-B1A/U-B1B/I-B1A/I-B1B, DU-T4) - the Selector
+    prints them in amber under Connections instead of a silent 0.
+  * Detailing tab disabled (with tooltip) when the hand-off would be rejected
+    (heights outside 300-12000 mm); unknown section in the URL shows a
+    #page-notice instead of silently drawing the default; Back-to-Selector
+    uses history.back() only when sessionStorage windpost.detailing.fromSelector
+    was set by the Selector; print-calibration opens in a new tab and its
+    Back closes the tab / steps back; cavity-wall link carries load, capacity
+    and the designed plate (bp JSON) in the URL (localStorage is partitioned
+    inside the Google Sites embed); Selector "Download PDF" inside an embed
+    opens the report in an unsandboxed tab and prints there; alert() replaced
+    by in-page messages.
+  * DXF: sheet-export straightPathPoints() returns subpaths (DU plan's two
+    channel loops and broken extension lines no longer bridged; curved paths
+    sampled per subpath); HATCH writes 52 = angle-45, 41 = spacing/3.175 so
+    AutoCAD regenerates the stored 45-degree ANSI31 lines; bolt centre-lines in
+    the U and simply-supported plan engines tagged cad("centre") ("grid line"
+    layer); untagged dashed lines fall back to "hidden"; DU slab-face drawing
+    tags the slab (concrete) and anchors (hidden).
+  * DU-T2/DU-B2 elevation: the dashed hidden edge is the one the post covers
+    (bottom edge of the top plate, top edge of the bottom plate) and the
+    outline leaves the gap there.
+  * Photo mode: per-unit hatch filters switched off under the layer filters;
+    the inlined view's stylesheet is scoped to the view id (scopeStyles) and
+    the sheet's own rules target its direct content only.
+  * DU result-card icon emits two channels; Detailing page title.
+  * UPDATE-FROM-EXCEL.cmd gates the rebuild on every suite in tests/.
+Open (owner decisions, unchanged): fold-width basis (workbook 2a+b vs drawn
+a+2b: the reviewer showed the catalogue area/Ixx match web a + two flanges b,
+i.e. the drawn blank; weight differs ~15% on UP 90x60x4); KM12/100 quantities
+for U-B1A/U-B1B/I-B1A/I-B1B and DU-T4 in the workbook Bolts sheet; the
+Aug-2026 "editable design assumptions / tie strengths per post, load case and
+leaf" fork that was live on wp-specifier is NOT in V.03 (different lineage).
+Tests: tests/deployment-tests.js (8 checks); 22 suites.

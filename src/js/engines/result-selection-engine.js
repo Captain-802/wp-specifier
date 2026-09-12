@@ -3,24 +3,6 @@
 
   const windpost = global.Windpost = global.Windpost || {};
 
-  // The issued windpost capacity is ALWAYS rounded DOWN to two decimals, so
-  // the figure on a drawing or schedule can never overstate what the post
-  // carries. Truncation happens only at the very end: the governing criterion
-  // is decided on the exact value, and selection then compares against the
-  // same rounded figure the user is shown, so a section can never be offered
-  // whose printed capacity is below the required load.
-  //
-  // The epsilon absorbs binary representation error — 8.07*100 is
-  // 806.9999999999999 in IEEE 754, which would otherwise truncate to 8.06.
-  const CAPACITY_DECIMALS = 2;
-  const FACTOR = Math.pow(10, CAPACITY_DECIMALS);
-
-  function roundDownCapacity(value) {
-    const number = Number(value);
-    if (!Number.isFinite(number)) return number;
-    return Math.floor(number * FACTOR + 1e-9) / FACTOR;
-  }
-
   function selectResults(options) {
     const deflectionCapacity = Number(options.deflectionCapacity);
     const bendingCapacity = Number(options.bendingCapacity);
@@ -47,27 +29,23 @@
       ultimateLoadBendingMomentBased,
       ultimateTotalTiesCapacity
     );
-    // Exact governing value first — the criterion is decided on this.
-    const ultimateExact = hasConnectionCapacityCap
+    const ultimateDesignValue = hasConnectionCapacityCap
       ? Math.min(ultimateBeforeConnectionCap, connectionCapacityCap)
       : ultimateBeforeConnectionCap;
 
     let ultimateGoverningCriteriaStatus = "Deflection Governs Ultimate";
-    if (Math.abs(ultimateExact - ultimateLoadDeflectionBased) < 1e-9) {
+    if (Math.abs(ultimateDesignValue - ultimateLoadDeflectionBased) < 1e-9) {
       ultimateGoverningCriteriaStatus = "Deflection Governs Ultimate";
     }
-    if (Math.abs(ultimateExact - ultimateLoadBendingMomentBased) < 1e-9) {
+    if (Math.abs(ultimateDesignValue - ultimateLoadBendingMomentBased) < 1e-9) {
       ultimateGoverningCriteriaStatus = "Bending Moment Governs Ultimate";
     }
-    if (Math.abs(ultimateExact - ultimateTotalTiesCapacity) < 1e-9) {
+    if (Math.abs(ultimateDesignValue - ultimateTotalTiesCapacity) < 1e-9) {
       ultimateGoverningCriteriaStatus = "Tie Capacity Governs Ultimate";
     }
-    if (hasConnectionCapacityCap && Math.abs(ultimateExact - connectionCapacityCap) < 1e-9) {
+    if (hasConnectionCapacityCap && Math.abs(ultimateDesignValue - connectionCapacityCap) < 1e-9) {
       ultimateGoverningCriteriaStatus = "Connection Capacity Governs Ultimate";
     }
-
-    // Only now is the issued figure truncated.
-    const ultimateDesignValue = roundDownCapacity(ultimateExact);
 
     const windpostUltimateCapacity = Math.min(
       ultimateLoadDeflectionBased,
@@ -87,16 +65,9 @@
       ultimateBeforeConnectionCap,
       connectionCapacityCapApplied: hasConnectionCapacityCap ? connectionCapacityCap : null,
       ultimateDesignValue,
-      // The untruncated value, kept for audit and for any downstream check
-      // that must not inherit the rounding.
-      ultimateDesignValueExact: ultimateExact,
       ultimateGoverningCriteriaStatus
     };
   }
 
-  windpost.resultSelectionEngine = Object.freeze({
-    CAPACITY_DECIMALS,
-    roundDownCapacity,
-    selectResults
-  });
+  windpost.resultSelectionEngine = Object.freeze({ selectResults });
 })(window);

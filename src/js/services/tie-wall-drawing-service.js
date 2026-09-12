@@ -17,7 +17,7 @@
       <text class="dim-text" x="${x - 9}" y="${middle}" transform="rotate(-90 ${x - 9} ${middle})">${label}</text>`;
   }
 
-  function masonryElevation(model, layer, x, y, width, height) {
+  function masonryElevation(model, layer, x, y, width, height, photo) {
     const zone = model[layer];
     const material = zone.material;
     const scaleX = width / model.wallLength_mm;
@@ -34,12 +34,12 @@
         <text class="view-title" x="${x}" y="${y - 16}">${zone.label} ELEVATION</text>
         <rect class="elevation-mortar ${layer}-elevation-mortar" x="${x}" y="${y}" width="${width}" height="${height}"/>
         <rect class="view-frame" x="${x}" y="${y}" width="${width}" height="${height}"/>
-        ${rectangles}
+        <g class="${photo ? (layer === "outer" ? "photo-brick-layer" : "photo-block-layer") : ""}">${rectangles}</g>
         <text class="note" x="${x}" y="${y + height + 24}">${material.label.toUpperCase()} · ${number(material.unitLength_mm)} × ${number(material.unitHeight_mm)} · ${number(material.mortar_mm)} mm JOINTS</text>
       </g>`;
   }
 
-  function fullHeightConnectionElevation(model, x, y, width, height) {
+  function fullHeightConnectionElevation(model, x, y, width, height, photo) {
     const elevationHeight = model.elevation.height_mm;
     const scaleX = width / model.totalThickness_mm;
     const scaleZ = height / elevationHeight;
@@ -127,10 +127,10 @@
     return `<g aria-label="full-height cavity wall connection elevation">
       <text class="view-title" x="${x}" y="${y - 16}">VERTICAL CAVITY-WALL SECTION / ELEVATION</text>
       <rect class="inner-elevation-mortar" x="${x}" y="${y}" width="${innerWidth}" height="${height}"/>
-      ${innerUnits}
+      <g class="${photo ? "photo-block-layer" : ""}">${innerUnits}</g>
       <rect class="cavity-fill" x="${innerEnd}" y="${y}" width="${cavityWidth}" height="${height}"/>
       <rect class="outer-elevation-mortar" x="${outerStart}" y="${y}" width="${outerWidth}" height="${height}"/>
-      ${outerUnits}
+      <g class="${photo ? "photo-brick-layer" : ""}">${outerUnits}</g>
       <rect class="view-frame" x="${x}" y="${y}" width="${width}" height="${height}"/>
       ${ties}
       <rect class="vertical-windpost" data-leg="long" data-long-leg-mm="${number(model.connection.section.a_mm)}" data-embedded-mm="${number(model.connection.innerLeafEmbedment_mm)}" data-visible-long-leg-mm="${number(model.connection.cavityProjection_mm)}" aria-label="${model.connection.section.name} exposed long-leg elevation" x="${postFaceX.toFixed(2)}" y="${y}" width="${postFaceWidth.toFixed(2)}" height="${(baseY - y).toFixed(2)}"/>
@@ -357,10 +357,114 @@
     </g>`;
   }
 
+  // Photo mode: the materials are lit and textured with SVG filters
+  // (turbulence height maps under a distant light, multiplied into the base
+  // colour, with an inner edge shade), so the cavity-wall plan reads like the
+  // manufacturer's product renders and still travels inside an <image>.
+  const PHOTO_CSS = `
+      .mortar-bed{stroke:#5c5852;stroke-width:1;fill:#b4aea3;filter:url(#photoMortar)}
+      .mortar-joint{stroke:none;filter:none}
+      .inner-mortar{fill:#a49f97!important;stroke:none}
+      .outer-mortar{fill:#b6b0a5!important}
+      .mortar-edge,.inner-mortar-edge{stroke:rgba(0,0,0,.22);stroke-width:.8}
+      .elevation-mortar{filter:url(#photoMortar)}
+      .outer-elevation-mortar{fill:#b6b0a5}
+      .inner-elevation-mortar{fill:#a49f97}
+      .outer-plan-unit{fill:url(#photoBrickBase);stroke:#3a1d16;stroke-width:.9;filter:none}
+      .inner-plan-unit{fill:url(#photoBlockBase);stroke:#4a4f52;stroke-width:.9;filter:none}
+      .photo-brick-layer{filter:url(#photoBrick)}
+      .photo-block-layer{filter:url(#photoBlock)}
+      .brick-core{fill:url(#photoCore);stroke:#1c1210;stroke-width:1}
+      .cavity-fill{fill:#f5f4f1;stroke:#c9cfd3;stroke-width:.8;stroke-dasharray:none}
+      .windpost{stroke:url(#photoSteel);filter:url(#photoShadow)}
+      .shear-tie,.edc-tie{fill:url(#photoSteel);stroke:#4f5c64;stroke-width:.8;filter:url(#photoShadow)}
+      .edc-hook{stroke:#6b7780}
+      .tie-hole{fill:#2b2f33;stroke:#15181a;stroke-width:.6}
+      .side-windpost,.vertical-windpost,.windpost-base,.side-post-edge{fill:url(#photoSteelV);stroke:#4f5c64;stroke-width:.9;filter:url(#photoShadow);opacity:1}
+      .side-shear-tie,.side-edc-tie{fill:url(#photoSteelV);stroke:#4f5c64;stroke-width:.8}
+      .side-post-slot{fill:#2b2f33;stroke:#15181a}
+      .outer-unit{fill:url(#photoBrickBase);stroke:#3a1d16;stroke-width:.8}
+      .inner-unit{fill:url(#photoBlockBase);stroke:#4a4f52;stroke-width:.8}
+      .view-frame{stroke:#2b2f33;stroke-width:1.2}
+  `;
+
+  const PHOTO_DEFS = `
+        <linearGradient id="photoBrickBase" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#bb5b3f"/>
+          <stop offset=".5" stop-color="#a7452d"/>
+          <stop offset="1" stop-color="#c4684c"/>
+        </linearGradient>
+        <linearGradient id="photoBlockBase" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#d6d5cf"/>
+          <stop offset="1" stop-color="#bfbeb8"/>
+        </linearGradient>
+        <radialGradient id="photoCore" cx=".45" cy=".4" r=".72">
+          <stop offset="0" stop-color="#141111"/>
+          <stop offset=".68" stop-color="#1c1615"/>
+          <stop offset="1" stop-color="#4a2a22"/>
+        </radialGradient>
+        <linearGradient id="photoSteel" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#eaedef"/>
+          <stop offset=".3" stop-color="#b3bbc2"/>
+          <stop offset=".55" stop-color="#f3f5f6"/>
+          <stop offset=".8" stop-color="#a5aeb6"/>
+          <stop offset="1" stop-color="#d8dde1"/>
+        </linearGradient>
+        <linearGradient id="photoSteelV" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="#eaedef"/>
+          <stop offset=".3" stop-color="#b3bbc2"/>
+          <stop offset=".55" stop-color="#f3f5f6"/>
+          <stop offset=".8" stop-color="#a5aeb6"/>
+          <stop offset="1" stop-color="#d8dde1"/>
+        </linearGradient>
+        <filter id="photoShadow" x="-25%" y="-25%" width="150%" height="150%" color-interpolation-filters="sRGB">
+          <feDropShadow dx="2.5" dy="3" stdDeviation="2.4" flood-color="#000" flood-opacity=".38"/>
+        </filter>
+        <filter id="photoBrick" x="-2%" y="-3%" width="104%" height="106%" color-interpolation-filters="sRGB">
+          <feTurbulence type="fractalNoise" baseFrequency=".42 .42" numOctaves="4" seed="19" result="grain"/>
+          <feDiffuseLighting in="grain" surfaceScale="1.4" diffuseConstant="1.08" lighting-color="#fff" result="lit">
+            <feDistantLight azimuth="130" elevation="58"/>
+          </feDiffuseLighting>
+          <feComposite in="lit" in2="SourceAlpha" operator="in" result="litClip"/>
+          <feBlend in="SourceGraphic" in2="litClip" mode="multiply" result="rough"/>
+          <feTurbulence type="fractalNoise" baseFrequency=".03 .16" numOctaves="3" seed="3" result="mottle"/>
+          <feColorMatrix in="mottle" type="matrix" values="0 0 0 0 .62  0 0 0 0 .33  0 0 0 0 .24  0 0 0 .55 0" result="mottleTone"/>
+          <feComposite in="mottleTone" in2="SourceAlpha" operator="in" result="mottleClip"/>
+          <feBlend in="rough" in2="mottleClip" mode="soft-light" result="toned"/>
+          <feComposite in="toned" in2="SourceAlpha" operator="in"/>
+        
+        </filter>
+        <filter id="photoBlock" x="-2%" y="-3%" width="104%" height="106%" color-interpolation-filters="sRGB">
+          <feTurbulence type="fractalNoise" baseFrequency=".11" numOctaves="5" seed="23" result="grain"/>
+          <feDiffuseLighting in="grain" surfaceScale="3.4" diffuseConstant="1.12" lighting-color="#fff" result="lit">
+            <feDistantLight azimuth="130" elevation="55"/>
+          </feDiffuseLighting>
+          <feComposite in="lit" in2="SourceAlpha" operator="in" result="litClip"/>
+          <feBlend in="SourceGraphic" in2="litClip" mode="multiply" result="rough"/>
+          <feTurbulence type="turbulence" baseFrequency=".48" numOctaves="2" seed="7" result="poreNoise"/>
+          <feColorMatrix in="poreNoise" type="matrix" values="0 0 0 0 .25  0 0 0 0 .25  0 0 0 0 .24  0 0 0 2.6 -1.7" result="pores"/>
+          <feComposite in="pores" in2="SourceAlpha" operator="in" result="poreClip"/>
+          <feBlend in="rough" in2="poreClip" mode="multiply" result="pored"/>
+          <feComposite in="pored" in2="SourceAlpha" operator="in"/>
+        
+        </filter>
+        <filter id="photoMortar" x="-2%" y="-3%" width="104%" height="106%" color-interpolation-filters="sRGB">
+          <feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="47" result="grain"/>
+          <feDiffuseLighting in="grain" surfaceScale="1.3" diffuseConstant="1" lighting-color="#fff" result="lit">
+            <feDistantLight azimuth="130" elevation="60"/>
+          </feDiffuseLighting>
+          <feComposite in="lit" in2="SourceAlpha" operator="in" result="litClip"/>
+          <feBlend in="SourceGraphic" in2="litClip" mode="multiply" result="rough"/>
+          <feComposite in="rough" in2="SourceAlpha" operator="in"/>
+        </filter>
+  `;
+
   function draw(model, options) {
-    const mode = options && options.mode === "lines" ? "lines" : "hatch";
+    const requested = options && options.mode;
+    const photo = requested === "photo";
+    const mode = requested === "lines" ? "lines" : "hatch";
     const useCanvas =
-      mode === "hatch" &&
+      mode === "hatch" && !photo &&
       Boolean(options && options.canvasMasonry);
     const width = 1280;
     const height = 1200;
@@ -429,8 +533,8 @@
       .note{font-size:12px;font-weight:600}
     `;
 
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Dimensioned cavity wall setup" data-render-mode="${mode}" data-render-engine="${useCanvas ? "canvas+svg" : "svg"}">
-      <defs>
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Dimensioned cavity wall setup" data-render-mode="${photo ? "photo" : mode}" data-render-engine="${useCanvas ? "canvas+svg" : "svg"}">
+      <defs>${photo ? PHOTO_DEFS : ""}
         <pattern id="brickHatch" width="16" height="16" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
           <line x1="0" y1="0" x2="0" y2="16" stroke="#c56c52" stroke-width="2"/>
         </pattern>
@@ -500,17 +604,17 @@
           <feBlend in="SourceGraphic" in2="mortarTone" mode="multiply"/>
         </filter>
       </defs>
-      <style>${css}</style>
+      <style>${css}${photo ? PHOTO_CSS : ""}</style>
       <rect width="${width}" height="${height}" fill="${useCanvas ? "none" : "#fff"}"/>
       <text class="sheet-title" x="54" y="46">CAVITY WALL SETUP</text>
       <text class="view-title" x="${planX}" y="${planY - 22}">PLAN AT PAIRED TIE LEVEL</text>
       <text class="note" x="${planX + 360}" y="${planY - 22}">INNER LEAF · ${number(model.cavity.thickness_mm)} CLEAR CAVITY · OUTER LEAF</text>
       <rect class="mortar-bed" data-canvas-mortar="block" x="${planX}" y="${innerY}" width="${planWidth}" height="${innerDepth}" fill="${useCanvas ? "none" : mode === "hatch" ? "#858681" : "#fff"}"/>
-      ${planMasonry(model, "inner", planX, innerY, planWidth, innerDepth, mode)}
+      <g class="${photo ? "photo-block-layer" : ""}">${planMasonry(model, "inner", planX, innerY, planWidth, innerDepth, mode)}</g>
       ${planMortarJoints(model, "inner", planX, innerY, planWidth, innerDepth, mode)}
       <rect class="cavity-fill" x="${planX}" y="${cavityY}" width="${planWidth}" height="${cavityDepth}"/>
       <rect class="mortar-bed" data-canvas-mortar="brick" x="${planX}" y="${outerY}" width="${planWidth}" height="${outerDepth}" fill="${useCanvas ? "none" : mode === "hatch" ? "#a29d95" : "#fff"}"/>
-      ${planMasonry(model, "outer", planX, outerY, planWidth, outerDepth, mode)}
+      <g class="${photo ? "photo-brick-layer" : ""}">${planMasonry(model, "outer", planX, outerY, planWidth, outerDepth, mode)}</g>
       ${planMortarJoints(model, "outer", planX, outerY, planWidth, outerDepth, mode)}
       ${(() => {
         const isU = model.connection.postType === "U";
@@ -545,14 +649,14 @@
       ${dimensionVertical(dimensionX, cavityY, outerY, planX, number(model.cavity.thickness_mm))}
       ${dimensionVertical(dimensionX, outerY, endY, planX, number(model.outer.thickness_mm))}
       ${dimensionVertical(totalDimensionX, innerY, endY, planX, number(model.totalThickness_mm))}
-      ${masonryElevation(model, "outer", 95, elevationY, elevationWidth, elevationHeight)}
-      ${fullHeightConnectionElevation(model, 760, elevationY, 250, 650)}
+      ${masonryElevation(model, "outer", 95, elevationY, elevationWidth, elevationHeight, photo)}
+      ${fullHeightConnectionElevation(model, 760, elevationY, 250, 650, photo)}
     </svg>`;
 
     return {
       svg,
       model,
-      mode
+      mode: photo ? "photo" : mode
     };
   }
 

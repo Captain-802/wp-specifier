@@ -22,7 +22,15 @@
     B:        220,                    // plate width (200 or 220)
     tpCandidates: Object.freeze([8, 10, 12]),
     tpCap:    10,                     // add a row before exceeding this
+    // standard practice (matches the U-A..G / L-A..G plate table):
+    widthStep_mm: 260,                // plates up to this long are 200 wide
+    narrowB:  200,
+    wideB:    220,
+    thickLen_mm: 390,                 // plates from this length are 10 thick
+    thinTp:   8,
+    thickTp:  10,
     edgeCandidates: Object.freeze([55, 60, 65]),
+    pitchMax_mm: 150,                 // practical row pitch cap (standard types use 60..152)
     saMin:    60,                     // min spacing / edge (RGM)
     hStep:    5                       // stiffener height rounding
   });

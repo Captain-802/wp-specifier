@@ -6,31 +6,27 @@
   const { getCalculatedDesignValues } = windpost.windpostCalculationEngine;
   const { calculateWallAndTie } = windpost.outerTieSelectionEngine;
 
-  // The catalogue constants now live in config, alongside the override layer
-  // that the Design assumptions editor writes to. DESIGN_DEFAULTS remains the
-  // unedited catalogue; currentDesignValues() is what a calculation runs on.
-  const NON_EDITABLE_DEFAULTS = Object.freeze({
+  // Editable design constants come from windpost.parameters (generated from
+  // windpost-database.xlsx); literals are the fallback if that file is absent.
+  const PD = (windpost.parameters && windpost.parameters.design) || {};
+
+  const DESIGN_DEFAULTS = Object.freeze({
+    fy: PD.fy ?? 127.27,
+    e: PD.e ?? 200,
+    secantFy: PD.secantFy ?? 210,
+    secantN: PD.secantN ?? 7,
+    firstTieSpacing: PD.firstTieSpacing ?? 225,
+    standardTieSpacing: PD.standardTieSpacing ?? 225,
+    apply10mmLimit: false,
     useCustomDeflectionLimit: false,
     customDeflectionLimit: "",
     connectionCapacityCap: ""
   });
 
-  const DESIGN_DEFAULTS = Object.freeze({
-    ...windpost.config.DESIGN_DEFAULTS,
-    ...NON_EDITABLE_DEFAULTS
-  });
-
-  // The assumptions a run actually used - passed back on the design object so
-  // the detailed report prints the edited figures, not the catalogue ones.
-  function currentDesignDefaults() {
-    return { ...windpost.config.currentDesignValues(), ...NON_EDITABLE_DEFAULTS };
-  }
-
-  function sharedCalculationInputs(type, supportCondition, loadType) {
-    const loadCase = windpost.config.loadCaseOf(supportCondition, loadType);
+  function sharedCalculationInputs(type) {
     return {
-      ...currentDesignDefaults(),
-      tieStrength: windpost.config.tieStrength(type, loadCase)
+      ...DESIGN_DEFAULTS,
+      tieStrength: windpost.config.DEFAULT_TIE_STRENGTH_KN[type]
     };
   }
 
@@ -60,7 +56,7 @@
   function evaluateSection(section, options) {
     const properties = getSectionProperties(section);
     const calculation = getCalculatedDesignValues({
-      ...sharedCalculationInputs(options.type, options.supportCondition, options.loadType),
+      ...sharedCalculationInputs(options.type),
       length: options.length_mm,
       ixx: properties.ixx_mm4,
       zxx: properties.zxx_mm3,
@@ -92,11 +88,12 @@
   function validateOptions(options) {
     const length = Number(options.length_mm);
     const requiredLoad = Number(options.requiredLoad_kN);
-    if (!['U', 'L', 'DU'].includes(options.type)) {
-      return "Choose a U, L or DU windpost.";
-    }
+    if (!['U', 'L', 'DU', 'I'].includes(options.type)) return "Choose a U, L, DU or I windpost.";
     if (!['cantilever', 'simplySupported'].includes(options.supportCondition)) {
       return "Choose a support condition.";
+    }
+    if (options.supportCondition === "cantilever" && !windpost.sectionProfileEngine.supportsCantilever(options.type)) {
+      return `${options.type} posts are simply supported only.`;
     }
     if (options.supportCondition !== "cantilever" && options.loadType === "tipPointLoad") {
       return "A top point load is available for cantilevers only.";
@@ -149,7 +146,7 @@
           normalized.loadType
         ),
         inputs: normalized,
-        designDefaults: currentDesignDefaults()
+        designDefaults: { ...DESIGN_DEFAULTS }
       };
     }
 
@@ -179,7 +176,7 @@
         normalized.loadType
       ),
       inputs: normalized,
-      designDefaults: currentDesignDefaults()
+      designDefaults: { ...DESIGN_DEFAULTS }
     };
   }
 

@@ -32,6 +32,9 @@
     g.push(T(SX(PL0), sectionTitleY,
       "SIMPLY-SUPPORTED L-POST BASE — SIDE VIEW",
       9.5, C.INK, "start", true));
+    if (d.typeCode) {
+      g.push(T(SX(PL0), sectionTitleY + 11, d.typeCode + "  " + d.typeTitle, 7, C.INK, "start", true));
+    }
 
     // Surroundings are tagged so a composed sheet can drop them and show the
     // connection on its own; the full drawing keeps them.

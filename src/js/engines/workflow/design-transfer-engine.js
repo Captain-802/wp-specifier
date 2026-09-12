@@ -20,7 +20,7 @@
       : "index.html";
   }
 
-  function snapshot(design, baseplate, locationObject) {
+  function snapshot(design, baseplate, locationObject, connections) {
     const selected = design && design.selected;
     const section = selected && selected.section;
     const inputs = design && design.inputs;
@@ -56,7 +56,11 @@
         cavityWidth_mm: finite(wall.cavityWidth_mm, 100),
         outerLeafThickness_mm: finite(wall.outerLeafThickness_mm, 100)
       },
-      baseplate: baseplateSnapshot
+      baseplate: baseplateSnapshot,
+      // the chosen fixings, so the sheet can draw a connection that has its
+      // own detail (L-T1, DU-T2, DU-B2)
+      headCode: connections && connections.head && connections.head.applicable ? String(connections.head.code || "") : "",
+      baseCode: connections && connections.base ? String(connections.base.code || "") : ""
     };
   }
 
@@ -67,7 +71,7 @@
     if (typeof value.sectionName !== "string" || !value.sectionName.trim()) {
       return null;
     }
-    if (!["L", "U"].includes(value.postType)) return null;
+    if (!["L", "U", "DU"].includes(value.postType)) return null;
     if (!["cantilever", "simplySupported"].includes(value.supportCondition)) {
       return null;
     }
@@ -126,19 +130,32 @@
       cavity: String(valid.wall.cavityWidth_mm),
       outer: String(valid.wall.outerLeafThickness_mm),
       capacity: String(valid.finalCapacity_kN || ""),
+      head: String(valid.headCode || ""),
+      base: String(valid.baseCode || ""),
       return: valid.returnFile
     }).toString();
   }
 
+  // The built Selector ships beside the built Detailing page, the split
+  // source pages beside each other, so the target follows the file the
+  // Selector is running as.
+  function detailingFileName(value) {
+    const valid = validate(value);
+    return valid && valid.returnFile === "Windpost-Selector-Full.html"
+      ? "Windpost-Detailing-Full.html"
+      : "l-section-prototype.html";
+  }
+
   function href(value) {
     const query = toQuery(value);
-    return query ? `./l-section-prototype.html?${query}` : "";
+    return query ? `./${detailingFileName(value)}?${query}` : "";
   }
 
   windpost.designTransferEngine = Object.freeze({
     VERSION,
     STORAGE_KEY,
     selectorFileName,
+    detailingFileName,
     snapshot,
     validate,
     serialize,

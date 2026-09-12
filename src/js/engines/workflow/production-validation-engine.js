@@ -39,6 +39,21 @@
       "error",
       section.name || "No section"
     ));
+
+    // Fold width: the workbook line and the drawn development must agree;
+    // for U/DU posts with a != b the workbook's 2a + b line does not.
+    if (windpost.foldWidth && section.name) {
+      const fold = windpost.foldWidth.describe(section);
+      checks.push(check(
+        "fold-width",
+        "Fold width agrees with the drawn blank",
+        fold.agree,
+        "warning",
+        fold.agree
+          ? `${fold.value_mm.toFixed(2)} mm (${fold.formula})`
+          : `Workbook ${fold.workbook_mm.toFixed(2)} mm (${fold.formula}) but the drawn blank develops ${fold.developed_mm.toFixed(2)} mm (web a, two flanges b). Showing the ${fold.basis} value.`
+      ));
+    }
     checks.push(check(
       "length",
       "Windpost length is within drawing range",

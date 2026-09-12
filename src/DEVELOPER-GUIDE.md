@@ -73,7 +73,23 @@ js/
     u-baseplate-*.js           U-post floating-baseplate plan/section SVG drawing
     cavity-wall-assembly-engine.js  Shared L-post/wall/tie geometry model
     cavity-wall-drawing-service.js Coordinated plan/elevation/side/iso SVGs
-    cavity-wall-3d-engine.js    Offline interactive canvas renderer
+    windpost-scene-mesh-engine.js  Polygon scene -> triangle meshes (smooth
+                               normals, hole triangulation) + cavity-wall
+                               context: slabs, cut-away brick/block leaves,
+                               ties, head connection
+    windpost-gl-renderer.js     Library-free WebGL 1 renderer: depth buffer,
+                               shadow map, procedural stainless/concrete/
+                               brick/block materials, white studio ground
+    ../engines/fold-width-engine.js  Fold (blank) width per the workbook lines
+                               (U, L, DU = 2 x U, I); "workbook" or "developed"
+                               basis (config.FOLD_WIDTH_BASIS); one source for
+                               drawings, DXF, post weight and Selector results
+    cad-layer-standard.js       Detailer layer standard: names, ACI colour,
+                               lineweight, linetypes, Arial styles, SALEEM
+    dxf-r2000-writer.js         AutoCAD 2000 DXF writer (lineweights, LWPOLYLINE,
+                               ANSI31 hatch, dimension style) for the A4 sheet
+    cavity-wall-3d-engine.js    Scene geometry + interactive viewer; draws
+                               through the WebGL renderer, 2D painter fallback
   ui/
     app.js                     UI controller: reads the form, runs the design,
                                renders the result panel and detailed report
@@ -91,13 +107,29 @@ tests/
   outer-tie-table-tests.js     EDC tie selection vs the published tables
   tie-naming-tests.js          Custom tie names + per-tie actual lengths
   parapet-tests.js             Parapet matrix + photographed ULS UDL values
+  photo-mode-tests.js          Realistic (photo) drawing mode + inlined approval views
+  deployment-tests.js          Built-page links, hand-off gating of drawn connections, DXF hatch codes, DU elevation edges
   random-tests.js              1600 randomised end-to-end invariant checks
   baseplate-tests.js           Shared design + U/L geometry and UI routing checks
   cavity-wall-assembly-tests.js L-post masonry/tie/drawing geometry checks
 ```
 
+### Connections, DU / I catalogues (V.03, 11 Sep 2026)
+
+`js/data/du-section-database.js`, `js/data/i-section-database.js` and
+`js/data/connections-database.js` are generated from
+`WINDPOST_CALCULATOR_V2.xlsx` (sheets Sections_DU, Sections_I, Connections,
+BasePlates, Bolts) by the V2 build tooling, not by `UPDATE-FROM-EXCEL.cmd`.
+The engine that uses them is `js/engines/connection-selection-engine.js`
+(pure: fixings + bolt families + capacity + height in, codes / SKUs / counts /
+weights out). The UI reads steps 6 and 7 in `js/ui/app.js`
+(`readConnectionInputs`, `populateFixings`, `connectionsBlockHtml`) and the
+report appends section 5 in `design-report-service.js`. Tests:
+`tests/connections-tests.js`.
+
 ### Which files are GENERATED (never edit by hand)
 
+- `js/data/du-section-database.js`, `js/data/i-section-database.js`, `js/data/connections-database.js` (from the V2 workbook)
 - `js/data/windpost-parameters.js`
 - `js/data/standard-section-heights.js`
 - `js/data/u-section-database.js`
@@ -177,7 +209,12 @@ When the user clicks **Run windpost selection**:
   section/side and cutaway isometric SVGs from the same model.
 - `cavity-wall-3d-engine.js` uses no external libraries and renders course
   units, steel, post slots, the four confirmed shear-tie holes, baseplate and
-  concrete on an orbitable canvas.
+  concrete on an orbitable canvas. Since V.03 the picture is drawn by
+  `windpost-gl-renderer.js` (hand-written WebGL 1, inline GLSL, CSP-safe)
+  from meshes built by `windpost-scene-mesh-engine.js`; the Detailing viewer
+  shows the post built into its cavity wall (floor slabs, stepped cut-away
+  brick leaf with perforated bricks, block leaf, ties, head connection) with
+  an "In wall / Post only" toggle. Browsers without WebGL keep the 2D painter.
 
 ### U-post baseplate drawing geometry
 
@@ -342,8 +379,8 @@ tab; heights on the **Heights** tab; sections on **U_Sections/L_Sections**.
 
 ## Part 5 — How to change X (step by step)
 
-After **any** change: run the seven tests (Part 6) and rebuild the standalone
-(Part 7). The `UPDATE-FROM-EXCEL.cmd` route does both automatically for data
+After **any** change: run every suite in `tests/` (Part 6) and rebuild the standalone
+pages (Part 7). The `UPDATE-FROM-EXCEL.cmd` route does both automatically for data
 changes; code changes you rebuild and test yourself.
 
 ### 5.1 Add, remove, or edit a U or L section
@@ -466,10 +503,14 @@ node tests/parapet-tests.js
 node tests/random-tests.js
 node tests/baseplate-tests.js
 node tests/cavity-wall-assembly-tests.js
+node tests/connections-tests.js
+node tests/baseplate-standard-tests.js
 ```
 
-`UPDATE-FROM-EXCEL.cmd` runs all seven automatically and refuses to finish if any
-fail.
+These are the data-facing suites; there are 22 in `tests/` altogether and
+`UPDATE-FROM-EXCEL.cmd` runs every one of them (`for %%t in (tests\*.js)`) and
+refuses to finish if any fail. Run them all yourself with
+`for t in tests/*.js; do node "$t"; done` (Git Bash) before a commit.
 
 - **run-tests.js** — 23 checks: defaults preserved, section counts, tie
   equations, the 2670 mm / 13 kN reference case, manual mode, "no external
@@ -506,12 +547,21 @@ lets a non-author change things with confidence.
   (it does, via its `<script>` position in `index.html`). If you add a new JS
   file, add its `<script>` tag in the correct dependency order; the build picks
   up tags automatically.
-- **Deploy**: ship `Windpost-Selector-Full.html`. It is fully offline and
-  CSP-safe (no external requests, no inline handlers, no eval).
-- The cavity-wall assembly remains a separate page and must be shipped with
-  `cavity-wall-assembly.html`, `css/cavity-wall.css`, its referenced shared
-  data/engine files and the three `js/services/cavity-wall-*` files. It is not
-  inlined into the standalone selector.
+- **Deploy**: ship the four built pages together — `Windpost-Selector-Full.html`,
+  `Windpost-Detailing-Full.html`, `Windpost-CavityWall-Full.html` and
+  `Windpost-PrintCalibration-Full.html`. Each is fully offline and CSP-safe
+  (no external requests, no inline handlers, no eval), and they link to each
+  other by those names (the Selector's Detailing tab and cavity-wall button,
+  the Detailing page's print-calibration link).
+- **Live site**: the public repo `Captain-802/wp-specifier` hosts them on GitHub
+  Pages (https://captain-802.github.io/wp-specifier/) under the split names
+  `index.html`, `l-section-prototype.html`, `cavity-wall-assembly.html`,
+  `print-calibration.html` (plus `dist/` with the built names and `src/` with
+  this tree); the CED Google Site page `wp-specifier` embeds that URL as a
+  whole-page embed, so a push to `wp-specifier` `main` is the deployment.
+  Inside that embed `window.print()` and `alert()` are inert (sandbox without
+  allow-modals), which is why the Selector's PDF opens the report in a new tab
+  when embedded and every page reports errors in-page rather than via alert.
 
 ---
 

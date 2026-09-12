@@ -45,7 +45,37 @@
     };
   }
 
-  function buildReport(design) {
+  function connectionsSection(c) {
+    if (!c) return "";
+    const headNa = !c.head.applicable;
+    const cell = (v) => escapeHtml(v);
+    const plate = c.base.plate;
+    const plateLines = plate && Number.isFinite(plate.capacity_kNm)
+      ? `<div class="calc-line"><span>Base moment M = ${cell(plate.loadModel)}</span><strong>${format(c.base.moment_kNm, 3)} kNm &le; ${format(plate.capacity_kNm, 3)} kNm &rarr; plate type ${cell(plate.code)}</strong></div>
+         <div class="calc-line"><span>Plate ${format(plate.plateLength_mm, 0)} &times; ${plate.plateWid_mm} &times; ${plate.plateThk_mm} + stiffener ${plate.stiffThk_mm} mm</span><strong>${format(plate.plateKg, 2)} + ${format(plate.stiffKg, 2)} = ${format(plate.totalKg, 2)} kg</strong></div>`
+      : (plate ? `<div class="calc-line"><span>Base moment</span><strong>${format(c.base.moment_kNm, 3)} kNm &mdash; special design plate</strong></div>` : "");
+    return `
+        <section class="report-section">
+          <h3>5. Connections, bolts and weights</h3>
+          <table>
+            <tr><td>Head fixing</td><td>${headNa ? "Not applicable (cantilever)" : cell(c.head.description.trim())}</td><td>Head connection</td><td>${headNa ? "&mdash;" : cell(c.head.code)}</td></tr>
+            <tr><td>Head post bolts</td><td>${headNa ? "&mdash;" : cell(c.head.postBolt)}</td><td>Head connection bolts</td><td>${headNa ? "&mdash;" : `${format(c.head.boltCount, 0)} no. ${cell(c.head.boltSku)}${c.head.special ? " (special)" : ""}`}</td></tr>
+            <tr><td>Base fixing</td><td>${cell(c.base.description.trim())}</td><td>Base connection</td><td>${cell(c.base.code || "&mdash;")}</td></tr>
+            <tr><td>Base post bolts</td><td>${cell(c.base.postBolt)}</td><td>Base connection bolts</td><td>${format(c.base.boltCount, 0)} no. ${cell(c.base.boltSku)}${c.base.special ? " (special)" : ""}</td></tr>
+            <tr><td>Ties per post</td><td>${format(c.ties.innerCount, 0)} inner${c.ties.outerCount ? ` / ${format(c.ties.outerCount, 0)} outer` : ""}</td><td>Debonding sleeves</td><td>${format(c.ties.debondingSleeves, 0)}</td></tr>
+          </table>
+          <div class="calculation-grid compact">
+            <div class="calc-line"><span>Post weight = blank &times; t &times; L &times; &rho;</span><strong>${format(c.post.blankWidth_mm, 2)} &times; L &times; ${format(c.post.kgPerMetre, 3)} kg/m &rarr; ${format(c.post.weight_kg, 3)} kg</strong></div>
+            ${plateLines}
+            <div class="calc-line"><span>Head connection weight</span><strong>${format(c.head.weight_kg, 3)} kg</strong></div>
+            <div class="calc-line"><span>Base connection weight</span><strong>${format(c.base.weight_kg, 3)} kg</strong></div>
+            <div class="calc-line"><span>Total weight per post</span><strong>${format(c.totalWeightPerPost_kg, 3)} kg</strong></div>
+            <div class="calc-line"><span>${format(c.postsCount, 0)} similar posts, ${format(c.deliveries, 0)} deliveries</span><strong>${format(c.totalWeightAllPosts_kg, 3)} kg</strong></div>
+          </div>
+        </section>`;
+  }
+
+  function buildReport(design, connections) {
     if (!design || !design.selected) return "";
     const { selected, inputs, demandActions, designDefaults } = design;
     const { section, properties, calculation, wall } = selected;
@@ -67,6 +97,8 @@
     const appliedAction = design.mode === "automatic"
       ? `<div class="calc-line"><span>${equations.action}</span><strong>${format(demandActions.maximumMoment_kNm, 3)} kN·m</strong></div>`
       : "";
+    const perLevel = (windpost.config.TIES_PER_LEVEL || {})[section.type] || 1;
+    const isIPost = section.type === "I";
     const innerTieGeometryRow = section.type === "U"
       ? `<tr><td>U-tie actual length</td><td>${format(wall.innerTieActualLength_mm, 2)} mm</td><td>Inner-leaf embedment</td><td>${format(wall.innerTieEmbedment_mm, 2)} mm</td></tr>`
       : "";
@@ -91,7 +123,7 @@
         <section class="report-section">
           <h3>1. Design summary</h3>
           <table>
-            <tr><td>Windpost family</td><td>${escapeHtml(section.type)} shape</td><td>Support condition</td><td>${supportLabel(inputs.supportCondition)}</td></tr>
+            <tr><td>Windpost family</td><td>${escapeHtml((windpost.sectionProfileEngine.FAMILIES || {})[section.type] ? windpost.sectionProfileEngine.FAMILIES[section.type].label : section.type + " shape")}</td><td>Support condition</td><td>${supportLabel(inputs.supportCondition)}</td></tr>
             <tr><td>Load type</td><td>${loadLabel(inputs.loadType)}</td><td>Exact post height</td><td>${format(inputs.length_mm, 0)} mm</td></tr>
             ${loadComparison}
             <tr><td>Final governing capacity</td><td>${format(selected.finalCapacity_kN, 3)} kN</td><td>Governing check</td><td>${escapeHtml(calculation.ultimateGoverningCriteriaStatus)}</td></tr>
@@ -105,7 +137,7 @@
             <tr><td>I<sub>xx</sub></td><td>${format(properties.ixx_mm4, 2)} mm⁴</td><td>Z<sub>xx</sub></td><td>${format(properties.zxx_mm3, 2)} mm³</td></tr>
             <tr><td>Allowable stress, f<sub>y</sub></td><td>${format(designDefaults.fy)} N/mm²</td><td>Initial E</td><td>${format(designDefaults.e, 0)} kN/mm²</td></tr>
             <tr><td>Secant proof strength</td><td>${format(designDefaults.secantFy)} N/mm²</td><td>Ramberg–Osgood n</td><td>${format(designDefaults.secantN, 0)}</td></tr>
-            <tr><td>Tie strength</td><td>${format(windpost.config.tieStrength(section.type, windpost.config.loadCaseOf(inputs.supportCondition, inputs.loadType)), 3)} kN/tie</td><td>Tie spacing</td><td>${format(designDefaults.standardTieSpacing, 0)} mm c/c</td></tr>
+            <tr><td>Tie strength</td><td>${format(windpost.config.DEFAULT_TIE_STRENGTH_KN[section.type], 3)} kN/tie</td><td>Tie spacing</td><td>${format(designDefaults.standardTieSpacing, 0)} mm c/c</td></tr>
           </table>
         </section>
 
@@ -127,18 +159,20 @@
             <tr><td>Inner leaf</td><td>${format(wall.innerLeafThickness_mm, 0)} mm</td><td>Cavity</td><td>${format(wall.cavityWidth_mm, 0)} mm</td></tr>
             <tr><td>Outer leaf</td><td>${format(wall.outerLeafThickness_mm, 0)} mm</td><td>Post placement</td><td>${escapeHtml(wall.placementDescription)}</td></tr>
             <tr><td>Post projection into cavity</td><td>${format(wall.postProjectionIntoCavity_mm, 1)} mm</td><td>Clear outer gap, g</td><td>${format(wall.outerGap_mm, 1)} mm</td></tr>
-            <tr><td>Inner-leaf tie</td><td>${format(calculation.numberOfTies * (wall.tieSetsPerLevel || 1), 0)} no. ${escapeHtml(wall.innerTie)}</td><td>Outer-leaf tie</td><td>${format(calculation.numberOfTies * (wall.tieSetsPerLevel || 1), 0)} no. ${escapeHtml(wall.outerTie)}</td></tr>
+            <tr><td>Inner-leaf tie</td><td>${format(calculation.numberOfTies * perLevel, 0)} no. ${escapeHtml(wall.innerTie)}</td><td>Outer-leaf tie</td><td>${isIPost ? "None (post within the inner leaf)" : `${format(calculation.numberOfTies * perLevel, 0)} no. ${escapeHtml(wall.outerTie)}`}</td></tr>
             ${innerTieGeometryRow}
             <tr><td>Outer embedment</td><td>${format(wall.outerEmbedment_mm, 1)} mm</td><td>Number of tie levels</td><td>${format(calculation.numberOfTies, 0)}</td></tr>
           </table>
           <div class="calculation-grid compact">
-            <div class="calc-line"><span>g = cavity − post position/projection</span><strong>g = ${format(wall.outerGap_mm, 1)} mm</strong></div>
-            <div class="calc-line"><span>E<sub>mb</sub> = L<sub>actual</sub> − 18.77 − g</span><strong>${format(wall.actualTieLength_mm, 0)} − 18.77 − ${format(wall.outerGap_mm, 1)} = ${format(wall.outerEmbedment_mm, 1)} mm</strong></div>
+            ${isIPost ? "" : `<div class="calc-line"><span>g = cavity − post position/projection</span><strong>g = ${format(wall.outerGap_mm, 1)} mm</strong></div>
+            <div class="calc-line"><span>E<sub>mb</sub> = L<sub>actual</sub> − 18.77 − g</span><strong>${format(wall.actualTieLength_mm, 0)} − 18.77 − ${format(wall.outerGap_mm, 1)} = ${format(wall.outerEmbedment_mm, 1)} mm</strong></div>`}
             ${innerTieCalculation}
             <div class="calc-line"><span>${tieEquation}</span><strong>${tieSubstitution}</strong></div>
-            <div class="calc-line"><span>Ultimate tie capacity</span><strong>${format(calculation.numberOfTies, 0)} × ${format(windpost.config.tieStrength(section.type, windpost.config.loadCaseOf(inputs.supportCondition, inputs.loadType)), 3)} = ${format(calculation.totalTiesCapacity, 3)} kN</strong></div>
+            <div class="calc-line"><span>Ultimate tie capacity</span><strong>${format(calculation.numberOfTies, 0)} × ${format(windpost.config.DEFAULT_TIE_STRENGTH_KN[section.type], 3)} = ${format(calculation.totalTiesCapacity, 3)} kN</strong></div>
           </div>
         </section>
+
+        ${connectionsSection(connections)}
 
         <section class="report-conclusion">
           <span>Final usable ULS capacity</span>

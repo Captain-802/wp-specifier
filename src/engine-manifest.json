@@ -1,12 +1,15 @@
 {
   "name": "Windpost + Baseplate Designer Modular Engine Build",
-  "version": "2026-07-26-v02",
+  "version": "2026-09-11-v03",
   "principle": "Calculations, geometry, drawing, workflow and UI are separated by task.",
   "groups": {
     "data": [
       "js/config.js",
       "js/data/windpost-parameters.js",
       "js/data/l-section-database.js",
+      "js/data/du-section-database.js",
+      "js/data/i-section-database.js",
+      "js/data/connections-database.js",
       "js/data/u-section-database.js",
       "js/data/standard-section-heights.js",
       "js/data/section-profiles.js",
@@ -20,7 +23,8 @@
       "js/engines/result-selection-engine.js",
       "js/engines/windpost-calculation-engine.js",
       "js/engines/outer-tie-selection-engine.js",
-      "js/engines/automatic-selection-engine.js"
+      "js/engines/automatic-selection-engine.js",
+      "js/engines/connection-selection-engine.js"
     ],
     "cantileverBaseplate": [
       "js/engines/baseplate-config.js",
@@ -75,6 +79,8 @@
       "js/services/l-section-orthographic-service.js",
       "js/services/u-section-orthographic-service.js",
       "js/services/windpost-approval-drawing-service.js",
+      "js/services/windpost-scene-mesh-engine.js",
+      "js/services/windpost-gl-renderer.js",
       "js/services/cavity-wall-3d-engine.js",
       "js/services/l-cantilever-baseplate-prototype-service.js",
       "js/services/cavity-wall-assembly-engine.js",
@@ -89,6 +95,12 @@
     ],
     "reportsAndExports": [
       "js/services/design-report-service.js",
+      "js/data/standard-base-plate-types.js",
+      "js/data/du-slab-face-plates.js",
+      "js/engines/fold-width-engine.js",
+      "js/services/du-slab-face-drawing-service.js",
+      "js/services/du-section-orthographic-service.js",
+      "js/services/dxf-r2000-writer.js",
       "js/services/sheet-export-service.js",
       "js/services/print-calibration-service.js"
     ],

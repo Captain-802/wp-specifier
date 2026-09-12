@@ -46,20 +46,37 @@
     queryPayload() {
       const params = new URLSearchParams(global.location.search);
       if (!params.has("section") && !params.has("height")) return null;
+      let baseplate = null;
+      if (params.has("bp")) {
+        try { baseplate = JSON.parse(params.get("bp")); } catch (error) { baseplate = null; }
+      }
       return {
         sectionName: params.get("section"),
         length_mm: Number(params.get("height")),
         supportCondition: params.get("support"),
+        loadType: params.get("load") || undefined,
+        finalCapacity_kN: params.has("capacity") ? Number(params.get("capacity")) : undefined,
         wall: {
           innerLeafThickness_mm: Number(params.get("inner")),
           cavityWidth_mm: Number(params.get("cavity")),
           outerLeafThickness_mm: Number(params.get("outer"))
-        }
+        },
+        baseplate
       };
     },
 
     applyImportedPayload() {
       const payload = this.queryPayload() || this.storedPayload();
+      // An older link without the plate in the URL: the stored payload for
+      // the same design still supplies it.
+      if (payload && !payload.baseplate) {
+        const stored = this.storedPayload();
+        if (stored && stored.sectionName === payload.sectionName &&
+            Number(stored.length_mm) === Number(payload.length_mm) &&
+            stored.supportCondition === payload.supportCondition) {
+          payload.baseplate = stored.baseplate || null;
+        }
+      }
       if (!payload || (payload.type && payload.type !== "L")) return;
       const sections = windpost.lSectionDatabase.sections;
       const name = payload.sectionName ||

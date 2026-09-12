@@ -29,7 +29,12 @@
     const PL0 = -CANT, PL1 = d.plateLen;
     const totX = PL1 - PL0, B = d.B;
     const secName = (section && section.name) || "L windpost";
-    const PROF = windpost.baseplateGeom.postProfile(a, b, t);
+    // The long leg sits on the plate centre-line; a short leg that would
+    // reach past the plate edge (80 mm legs on the 150 plate) is shifted in
+    // by just enough to keep 2 mm of plate beyond its tip.
+    const shiftY = Math.max(0, (b - t / 2) - (B / 2 - 2));
+    const PROF = windpost.baseplateGeom.postProfile(a, b, t)
+      .map(point => [point[0], point[1] + shiftY]);
 
     const ML = 140, MR = 210, MT = 52;
     const planTop = MT + 42;

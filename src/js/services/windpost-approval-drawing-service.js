@@ -61,7 +61,67 @@
       encodeURIComponent(String(svg || "")).replaceAll("'", "%27");
   }
 
-  function sourceImage(source, crop, rect, label, id) {
+  // Photo mode inlines the view as a nested <svg> instead of an <image>:
+  // an SVG loaded as an image is re-rasterised by the browser on every
+  // paint, which with lit-texture filters stalls the page, whereas inline
+  // filters render once. Ids are suffixed so two crops of one source cannot
+  // collide, and the source's own root <svg> and <style> are kept inside.
+  function localise(html, tag) {
+    const ids = [];
+    html.replace(/\sid="([^"]+)"/g, (match, id) => { ids.push(id); return match; });
+    let out = html;
+    ids.forEach(id => {
+      const quoted = id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      out = out
+        .replace(new RegExp(`id="${quoted}"`, "g"), `id="${id}-${tag}"`)
+        .replace(new RegExp(`url\\(#${quoted}\\)`, "g"), `url(#${id}-${tag})`)
+        .replace(new RegExp(`href="#${quoted}"`, "g"), `href="#${id}-${tag}"`);
+    });
+    return out;
+  }
+
+  // A <style> inside an inline SVG is document-wide, so every selector of the
+  // copied view's stylesheet is prefixed with the view's id: the view keeps
+  // its own look and leaks nothing onto the sheet or the page.
+  function scopeStyles(html, id) {
+    return html.replace(/<style([^>]*)>([\s\S]*?)<\/style>/g, (match, attributes, css) => {
+      const scoped = css.replace(/([^{}]+)\{([^{}]*)\}/g, (rule, selectors, body) => {
+        if (/^\s*@/.test(selectors)) return rule;
+        const prefixed = selectors.split(",").map(selector => {
+          const trimmed = selector.trim();
+          return trimmed ? `#${id} ${trimmed}` : trimmed;
+        }).filter(Boolean).join(",");
+        return `${prefixed}{${body}}`;
+      });
+      return `<style${attributes}>${scoped}</style>`;
+    });
+  }
+
+  function inlineView(source, crop, rect, label, id) {
+    const [cropX, cropY, cropW, cropH] = crop.map(Number);
+    const inner = String(source || "")
+      .replace(/^[\s\S]*?<svg\b[^>]*>/i, "")
+      .replace(/<\/svg>\s*$/i, "");
+    const clipId = `${id}-clip`;
+    return `<svg
+      id="${escapeXml(id)}"
+      data-view="${escapeXml(id)}"
+      data-inline="photo"
+      aria-label="${escapeXml(label)}"
+      x="${number(rect.x)}"
+      y="${number(rect.y)}"
+      width="${number(rect.width)}"
+      height="${number(rect.height)}"
+      viewBox="${crop.map(number).join(" ")}"
+      preserveAspectRatio="xMidYMid meet"
+      overflow="hidden"
+    ><clipPath id="${clipId}"><rect x="${number(cropX)}" y="${number(cropY)}" width="${number(cropW)}" height="${number(cropH)}"/></clipPath>
+      <g clip-path="url(#${clipId})">${scopeStyles(localise(inner, id), id)}</g>
+    </svg>`;
+  }
+
+  function sourceImage(source, crop, rect, label, id, inline) {
+    if (inline) return inlineView(source, crop, rect, label, id);
     return `<image
       id="${escapeXml(id)}"
       data-view="${escapeXml(id)}"
@@ -165,17 +225,17 @@
       role="img"
       aria-label="${escapeXml(title)}"
       data-sheet-purpose="client-approval"
-      data-render-mode="${mode === "lines" ? "lines" : "hatch"}"
+      data-render-mode="${mode === "lines" ? "lines" : mode === "photo" ? "photo" : "hatch"}"
     >
       <style>
-        #windpost-approval-sheet .sheet{fill:#fff;stroke:#111;stroke-width:.35}
-        #windpost-approval-sheet .approval-panel rect{fill:#fff;stroke:#9aa6ae;stroke-width:.22}
-        #windpost-approval-sheet text{font-family:"Arial Narrow",Arial,Helvetica,sans-serif;fill:#111}
-        #windpost-approval-sheet .sheet-title{font-size:5px;font-weight:700;letter-spacing:.18px}
-        #windpost-approval-sheet .sheet-subtitle{font-size:3px}
-        #windpost-approval-sheet .view-title{font-size:3.2px;font-weight:700;letter-spacing:.12px}
-        #windpost-approval-sheet .note{font-size:2.8px}
-        #windpost-approval-sheet .rule{stroke:#9aa6ae;stroke-width:.22}
+        #windpost-approval-sheet > .sheet{fill:#fff;stroke:#111;stroke-width:.35}
+        #windpost-approval-sheet > .approval-panel > rect{fill:#fff;stroke:#9aa6ae;stroke-width:.22}
+        #windpost-approval-sheet > text,#windpost-approval-sheet > .approval-panel > text{font-family:"Arial Narrow",Arial,Helvetica,sans-serif;fill:#111}
+        #windpost-approval-sheet > .sheet-title{font-size:5px;font-weight:700;letter-spacing:.18px}
+        #windpost-approval-sheet > .sheet-subtitle{font-size:3px}
+        #windpost-approval-sheet > .approval-panel > .view-title{font-size:3.2px;font-weight:700;letter-spacing:.12px}
+        #windpost-approval-sheet > .note{font-size:2.8px}
+        #windpost-approval-sheet > .rule{stroke:#9aa6ae;stroke-width:.22}
       </style>
       <rect class="sheet" x="5" y="5" width="410" height="287" rx="1"/>
       <text class="sheet-title" x="10" y="16">${escapeXml(title)}</text>
@@ -215,8 +275,9 @@
       wallHeight_mm: finite(wall.wallHeight_mm, 450),
       elevationHeight_mm: length_mm
     });
+    const photo = values.mode === "photo";
     const wallDrawing = windpost.tieWallDrawing.draw(model, {
-      mode: values.mode === "lines" ? "lines" : "hatch"
+      mode: values.mode === "lines" ? "lines" : photo ? "photo" : "hatch"
     });
     const wallSource = wallDrawing.svg;
     const planEndY = 100 + model.totalThickness_mm * .92;
@@ -243,7 +304,8 @@
         [120, 88, 1155, Math.max(170, planEndY - 58)],
         { x: 14, y: 37, width: 392, height: 76 },
         "Cavity wall plan with windpost, inner shear tie and outer EDC tie",
-        "approval-wall-plan"
+        "approval-wall-plan",
+        photo
       ),
       panel(
         basePlanPanel.x,
@@ -280,7 +342,8 @@
         [700, elevationY, 480, wallSectionCropHeight],
         { x: 208, y: 133, width: 198, height: 149 },
         "Full-height cavity wall section with windpost, baseplate and paired ties",
-        "approval-wall-section"
+        "approval-wall-section",
+        photo
       )
     ].join("");
 

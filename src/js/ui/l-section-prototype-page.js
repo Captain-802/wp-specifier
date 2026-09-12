@@ -20,6 +20,7 @@
         "cantilever-baseplate-drawing"
       );
       this.a4Sheet = document.getElementById("combined-a4-sheet");
+      this.topConnectionDrawing = document.getElementById("top-connection-drawing");
       this.productionForm = document.getElementById("production-details-form");
       this.productionDateInput = document.getElementById("production-date");
       this.validationResults = document.getElementById(
@@ -78,6 +79,12 @@
       document.getElementById("view-mode-pan").addEventListener("click", () =>
         this.setViewInteractionMode("pan")
       );
+      document.getElementById("view-context-wall").addEventListener("click", () =>
+        this.setViewContext(true)
+      );
+      document.getElementById("view-context-post").addEventListener("click", () =>
+        this.setViewContext(false)
+      );
       document.getElementById("download-drawing").addEventListener("click", () =>
         this.downloadDrawing()
       );
@@ -99,8 +106,25 @@
       document.getElementById("drawing-mode-lines").addEventListener("click", () =>
         this.setDrawingMode("lines")
       );
+      document.getElementById("drawing-mode-photo").addEventListener("click", () =>
+        this.setDrawingMode("photo")
+      );
       this.render();
       global.setTimeout(() => this.renderer.resize(), 0);
+    },
+
+    // The 3D picture shows the post built into its cavity wall (floor slabs,
+    // brick outer leaf cut away, block inner leaf, ties) or the bare post.
+    setViewContext(showWall) {
+      this.renderer.setContext({ showWall: Boolean(showWall) });
+      document.getElementById("view-context-wall").setAttribute(
+        "aria-pressed",
+        String(Boolean(showWall))
+      );
+      document.getElementById("view-context-post").setAttribute(
+        "aria-pressed",
+        String(!showWall)
+      );
     },
 
     setViewInteractionMode(mode) {
@@ -134,14 +158,35 @@
       this.selectorSnapshot = stored;
       const value = (name, fallback) =>
         params.has(name) ? params.get(name) : fallback;
+      // Served as the built single file, the sibling pages carry their built
+      // names too.
+      const servedAsFull = /Windpost-Detailing-Full\.html$/i.test(
+        decodeURIComponent((global.location && global.location.pathname) || "")
+      );
+      const calibrationLink = document.getElementById("print-calibration-link");
+      if (calibrationLink && servedAsFull) {
+        calibrationLink.href = "./Windpost-PrintCalibration-Full.html";
+      }
       const returnTarget = value("return", stored && stored.returnFile);
       if (this.backToSelector &&
           /^(?:index|Windpost-Selector-Full)\.html$/i.test(returnTarget || "")) {
         this.backToSelector.href = `./${returnTarget}`;
+      } else if (this.backToSelector && servedAsFull) {
+        this.backToSelector.href = "./Windpost-Selector-Full.html";
       }
       if (this.backToSelector && params.get("source") === "selector") {
         this.backToSelector.addEventListener("click", event => {
-          if (global.history.length <= 1) return;
+          // history.back() only when the Selector really is the previous
+          // entry: inside an embed the joint history also holds the host
+          // page's navigations.
+          let fromSelector = false;
+          try {
+            fromSelector = global.sessionStorage.getItem("windpost.detailing.fromSelector") === "1";
+            global.sessionStorage.removeItem("windpost.detailing.fromSelector");
+          } catch (error) {
+            fromSelector = false;
+          }
+          if (!fromSelector || global.history.length <= 1) return;
           event.preventDefault();
           global.history.back();
         });
@@ -158,9 +203,11 @@
         .find(section => section.name === wanted);
       if (match) {
         // The post type follows the named section, so the list holds it.
-        this.postTypeSelect.value = match.type === "U" ? "U" : "L";
+        this.postTypeSelect.value = match.type === "U" || match.type === "DU" ? match.type : "L";
         this.populateSections();
         this.sectionSelect.value = match.name;
+      } else if (wanted) {
+        this.notify(`Section "${wanted}" is not in this Detailing build, so the default section is shown. Rebuild and redeploy the Selector and Detailing pages together.`);
       }
       const length = Number(value("length", stored && stored.length_mm));
       if (length > 0) this.lengthInput.value = length;
@@ -176,6 +223,9 @@
       if (slotSpacing > 0) this.slotSpacingInput.value = slotSpacing;
       const load = value("load", stored && stored.loadType);
       if (load === "udl" || load === "tipPointLoad") this.loadTypeSelect.value = load;
+      // the fixings chosen in the Selector (or ?head=... for a direct link)
+      this.headCode = String(value("head", stored && stored.headCode) || "");
+      this.baseCode = String(value("base", stored && stored.baseCode) || "");
       const storedWall = stored && stored.wall;
       this.wallParameters = {
         innerLeafThickness_mm: Number(value(
@@ -204,7 +254,8 @@
     allSections() {
       const l = (windpost.lSectionDatabase && windpost.lSectionDatabase.sections) || [];
       const u = (windpost.uSectionDatabase && windpost.uSectionDatabase.sections) || [];
-      return l.concat(u);
+      const du = (windpost.duSectionDatabase && windpost.duSectionDatabase.sections) || [];
+      return l.concat(u, du);
     },
 
     monochrome() {
@@ -226,7 +277,8 @@
     },
 
     postType() {
-      return this.postTypeSelect && this.postTypeSelect.value === "U" ? "U" : "L";
+      const value = this.postTypeSelect && this.postTypeSelect.value;
+      return value === "U" || value === "DU" ? value : "L";
     },
 
     supportCondition() {
@@ -311,10 +363,18 @@
       return this.lastValidation;
     },
 
+    // Visible in-page message (an alert is swallowed inside an embed).
+    notify(message) {
+      const notice = document.getElementById("page-notice");
+      if (!notice) { console.error(message); return; }
+      notice.textContent = message;
+      notice.hidden = !message;
+    },
+
     productionReady() {
       const report = this.updateValidation();
       if (!report || report.ok) return true;
-      global.alert(
+      this.notify(
         "The production drawing has validation errors and cannot be exported."
       );
       return false;
@@ -325,17 +385,23 @@
     populateSections() {
       const type = this.postType();
       const sections = this.allSections()
-        .filter(section => (section.type === "U") === (type === "U"));
+        .filter(section => section.type === type);
       if (!sections.length) return;
       const previous = this.sectionSelect.value;
       this.sectionSelect.innerHTML = sections.map(section =>
         `<option value="${this.escape(section.name)}">${this.escape(section.name)}</option>`
       ).join("");
+      const defaults = { U: "UP 90x60x4", L: "LP 150x70x4", DU: "DU 60x60x6" };
       const preferred =
         sections.find(section => section.name === previous) ||
-        sections.find(section =>
-          section.name === (type === "U" ? "UP 90x60x4" : "LP 150x70x4")) ||
+        sections.find(section => section.name === defaults[type]) ||
         sections[0];
+      // A DU post spans between floors on its slab-face plates: simply
+      // supported only, as in the approved workbook.
+      if (this.supportSelect) {
+        if (type === "DU") this.supportSelect.value = "simplySupported";
+        this.supportSelect.disabled = type === "DU";
+      }
       this.sectionSelect.value = preferred.name;
       const label = document.getElementById("section-label");
       if (label) label.textContent = `${type} section`;
@@ -349,6 +415,7 @@
 
     // The orthographic service for the selected post type.
     orthographicService(section) {
+      if (section && section.type === "DU") return windpost.duSectionOrthographic;
       return section && section.type === "U"
         ? windpost.uSectionOrthographic
         : windpost.lSectionOrthographic;
@@ -356,15 +423,16 @@
 
     render() {
       const section = this.selectedSection();
-      const isU = section.type === "U";
+      const isDU = section.type === "DU";
+      const isU = section.type === "U" || isDU;
       const length = Number(this.lengthInput.value);
-      // The L's offset is user-set, a U's is fixed at 25 — so the U's value is
-      // never read back into the L when switching between the two.
+      // The L's offset is user-set, a U's (and DU's) is fixed at 25 — so that
+      // value is never read back into the L when switching between them.
       if (!this.showingU) this.lSlotOffset = Number(this.slotOffsetInput.value);
       this.showingU = isU;
       const firstSlot = Number(this.firstSlotInput.value);
       const slotSpacing = Number(this.slotSpacingInput.value);
-      const supportCondition = this.supportCondition();
+      const supportCondition = isDU ? "simplySupported" : this.supportCondition();
       const cacheKey = JSON.stringify([
         section.name,
         length,
@@ -373,7 +441,9 @@
         this.drawingMode,
         isU ? 25 : this.lSlotOffset,
         firstSlot,
-        slotSpacing
+        slotSpacing,
+        this.headCode || "",
+        this.baseCode || ""
       ]);
       const cached = this.renderCache.get(cacheKey);
       if (cached) {
@@ -395,7 +465,12 @@
             section,
             length,
             this.loadTypeSelect.value,
-            { mode: this.drawingMode, supportCondition }
+            {
+              mode: this.drawingMode,
+              supportCondition,
+              headCode: this.headCode || "",
+              baseCode: this.baseCode || ""
+            }
           );
         this.renderCache.set(cacheKey, {
           orthographic: this.orthographic,
@@ -428,11 +503,15 @@
           : "Slot centre from long-leg outer edge";
       }
       this.slotOffsetInput.disabled = isU;
+      this.renderer.context = Object.assign({}, this.renderer.context, {
+        wall: this.wallParameters,
+        supportCondition
+      });
       this.renderer.setSection(
         section,
         length,
         placement,
-        this.cantileverBaseplate.ok
+        this.cantileverBaseplate.ok && !this.cantileverBaseplate.omitted
           ? this.cantileverBaseplate.design
           : null
       );
@@ -441,6 +520,18 @@
         : `<p class="drawing-error">${this.escape(
             this.cantileverBaseplate.reason
           )}</p>`;
+      // A DU post also has a head plate (DU-T2); its drawing feeds the
+      // sheet's top-connection zone.
+      if (this.topConnectionDrawing) {
+        this.topConnectionDrawing.innerHTML =
+          this.cantileverBaseplate.ok && this.cantileverBaseplate.topSvg
+            ? this.cantileverBaseplate.topSvg
+            : "";
+        const topRoot = this.topConnectionDrawing.querySelector("svg");
+        if (topRoot && windpost.drawingLayoutEngine) {
+          windpost.drawingLayoutEngine.resolve(topRoot);
+        }
+      }
       const baseplateRoot = this.baseplateDrawing.querySelector("svg");
       if (baseplateRoot && windpost.drawingLayoutEngine) {
         windpost.drawingLayoutEngine.resolve(baseplateRoot);
@@ -448,7 +539,7 @@
       this.resolvedBaseplateSvg = baseplateRoot
         ? baseplateRoot.outerHTML
         : (this.cantileverBaseplate.svg || "");
-      if (this.drawingMode === "hatch" &&
+      if (this.drawingMode !== "lines" &&
           this.cantileverBaseplate.ok &&
           windpost.engineeringCanvasRenderer) {
         windpost.engineeringCanvasRenderer.enhance(
@@ -476,7 +567,7 @@
       if (root && windpost.drawingLayoutEngine) {
         windpost.drawingLayoutEngine.resolve(root);
       }
-      if (this.drawingMode === "hatch" &&
+      if (this.drawingMode !== "lines" &&
           windpost.engineeringCanvasRenderer) {
         windpost.engineeringCanvasRenderer.enhance(
           this.drawing,
@@ -486,6 +577,16 @@
     },
 
     renderApprovalDrawing(section, length) {
+      if (section && section.type === "DU") {
+        // The cavity-wall approval arrangement is drawn for L and U posts;
+        // a DU shows its orthographic section views here.
+        this.approvalDrawing = { svg: this.orthographic.svg };
+        this.drawing.innerHTML = this.orthographic.svg;
+        const duRoot = this.drawing.querySelector("svg");
+        if (duRoot && windpost.drawingLayoutEngine) windpost.drawingLayoutEngine.resolve(duRoot);
+        this.resolvedOrthographicSvg = duRoot ? duRoot.outerHTML : this.orthographic.svg;
+        return;
+      }
       this.approvalDrawing = windpost.windpostApprovalDrawing.build({
         orthographic: this.orthographic,
         baseplate: Object.assign({}, this.cantileverBaseplate, {
@@ -518,15 +619,14 @@
     },
 
     setDrawingMode(mode) {
-      this.drawingMode = mode === "lines" ? "lines" : "hatch";
-      document.getElementById("drawing-mode-hatch").setAttribute(
-        "aria-pressed",
-        String(this.drawingMode === "hatch")
-      );
-      document.getElementById("drawing-mode-lines").setAttribute(
-        "aria-pressed",
-        String(this.drawingMode === "lines")
-      );
+      // hatch: CAD hatching; lines: linework only; photo: lit, textured
+      // materials on the approval arrangement (the sections stay hatched)
+      this.drawingMode = mode === "lines" ? "lines" : mode === "photo" ? "photo" : "hatch";
+      [["hatch", "drawing-mode-hatch"], ["lines", "drawing-mode-lines"], ["photo", "drawing-mode-photo"]]
+        .forEach(([value, id]) => {
+          const button = document.getElementById(id);
+          if (button) button.setAttribute("aria-pressed", String(this.drawingMode === value));
+        });
       this.render();
     },
 
@@ -606,15 +706,22 @@
           "CONNECTION — PLAN", "U-POST BASE — PLAN",
           "SIMPLY-SUPPORTED L-POST BASE — PLAN",
           "SIMPLY-SUPPORTED U-POST BASE — PLAN",
-          "~BASE PLATE", "~mm stiffener"
+          "~BASE PLATE", "~mm stiffener", "~POST TO CONCRETE TOP",
+          "~DU POST TO CONCRETE SLAB FACE", "~Fixing  ·"
         ]),
         side: pick(bRoot, "bp-side", [
           "CONNECTION — SIDE VIEW", "U-POST BASE — SIDE VIEW",
           "SIMPLY-SUPPORTED L-POST BASE — SIDE VIEW",
           "SIMPLY-SUPPORTED U-POST BASE — SIDE VIEW",
-          "~BASE PLATE", "~mm thk stiffener"
+          "~BASE PLATE", "~mm thk stiffener", "~POST TO CONCRETE TOP",
+          "~DU POST TO CONCRETE SLAB FACE", "~Fixing  ·"
         ])
       };
+      // A DU post's head plate (DU-T2) goes into the top-connection zone.
+      const tRoot = this.topConnectionDrawing && this.topConnectionDrawing.querySelector("svg");
+      v.topConn = tRoot
+        ? pick(tRoot, "bp-side", ["~DU POST TO CONCRETE SLAB FACE", "~Fixing  ·"])
+        : null;
       // The section detail must remain readable when a very long post forces
       // the orthographic elevations onto a smaller model-space scale. Give
       // this A4-only detail the same paper size as the identical profile in
@@ -630,9 +737,10 @@
           restoreTopView();
         };
       }
-      const found = [v.top, v.plan, v.side, ...elev].filter(Boolean);
+      const found = [v.top, v.plan, v.side, v.topConn, ...elev].filter(Boolean);
+      const expected = 3 + (v.topConn ? 1 : 0) + sheetViews.length;
       try {
-        return found.length === 3 + sheetViews.length && sheetViews.length
+        return found.length === expected && sheetViews.length
           ? this.composeA4(v, elev, ortho)
           : "";
       } finally {
@@ -721,6 +829,16 @@
       });
       const topAllocation = () =>
         [{ w: rightW - 2 * PAD, h: topViewH - CAP - CAPTION_GAP - PAD }];
+      const bp = this.cantileverBaseplate;
+      const faceMounted = bp && bp.connectionType === "du-slab-face";
+      // a connection without a drawn plate is captioned by its code too
+      const baseLabels = faceMounted || bp.omitted
+        ? [`BASE CONNECTION ${bp.design.typeCode} — PLAN`, `BASE CONNECTION ${bp.design.typeCode} — ELEVATION`]
+        : ["BASE PLATE PLAN", "BASE PLATE SIDE VIEW"];
+      const cFit = v.topConn
+        ? this.fitGroup([v.topConn], BP, () =>
+            [{ w: rightW - 2 * PAD, h: topConnH - CAP - CAPTION_GAP - PAD }])
+        : null;
       const topDetail = v.top.detail;
       let tFit;
       if (topDetail && topDetail.box) {
@@ -750,11 +868,13 @@
           z, label: elevLabels[i], cap: elevCaps[i], fit: eFit, i, ref: ORTHO,
           contentTop: elevationDatumY
         })),
+        ...(cFit ? [{ z: { x: rX, y: topConnY, w: rightW, h: topConnH },
+          label: `TOP CONNECTION ${bp.topTypeCode || "DU-T2"} — ELEVATION`, fit: cFit, i: 0, ref: BP }] : []),
         { z: { x: rX, y: bpY, w: rightW, h: bFit.rects[0].h + CAP + CAPTION_GAP + PAD },
-          label: "BASE PLATE PLAN", fit: bFit, i: 0, ref: BP },
+          label: baseLabels[0], fit: bFit, i: 0, ref: BP },
         { z: { x: rX, y: bpY + bFit.rects[0].h + CAP + CAPTION_GAP + PAD + G, w: rightW,
                h: bFit.rects[1].h + CAP + CAPTION_GAP + PAD },
-          label: "BASE PLATE SIDE VIEW", fit: bFit, i: 1, ref: BP }
+          label: baseLabels[1], fit: bFit, i: 1, ref: BP }
       ];
 
       const src = { o: this.defsOf(v.top.defs), b: this.defsOf(v.plan.defs) };
@@ -798,12 +918,16 @@
         (Number(d.leftPortion_mm ?? d.leftPortion) || 0) +
         (Number(d.plateLen) || 0)
       );
-      const plateMeta = [
-        plateOverall && d.B && d.tp
-          ? `${plateOverall} × ${Math.round(Number(d.B))} × ${Math.round(Number(d.tp))} mm BASE PLATE`
-          : "",
-        d.tw ? `${Math.round(Number(d.tw))} mm STIFFENER` : ""
-      ].filter(Boolean).join(" · ");
+      // A connection without a drawn plate carries no plate dimensions.
+      const plateMeta = bp.omitted
+        ? (d.typeCode ? `TYPE ${d.typeCode} · NO DRAWN PLATE` : "")
+        : [
+          plateOverall && d.B && d.tp
+            ? `${plateOverall} × ${Math.round(Number(d.B))} × ${Math.round(Number(d.tp))} mm BASE PLATE`
+            : "",
+          d.typeCode ? `TYPE ${d.typeCode}` : "",
+          d.tw ? `${Math.round(Number(d.tw))} mm STIFFENER` : ""
+        ].filter(Boolean).join(" · ");
       const sideY = bpY + bFit.rects[0].h + CAP + CAPTION_GAP + PAD + G;
       const plateHeadingX = rX + PAD + 0.7;
       const plateMetaGap = 3;
@@ -812,9 +936,9 @@
         plateHeadingX + this.textWidth(label, 3.2, true) + plateMetaGap;
       const baseplateMeta = plateMeta
         ? `<g id="production-baseplate-meta" data-cad="text">`
-          + `<text x="${f(plateMetaX("BASE PLATE PLAN"))}" y="${f(bpY + 5.1)}" `
+          + `<text x="${f(plateMetaX(baseLabels[0]))}" y="${f(bpY + 5.1)}" `
           + `font-size="${plateMetaFont}" font-weight="700">${this.escape(plateMeta)}</text>`
-          + `<text x="${f(plateMetaX("BASE PLATE SIDE VIEW"))}" y="${f(sideY + 5.1)}" `
+          + `<text x="${f(plateMetaX(baseLabels[1]))}" y="${f(sideY + 5.1)}" `
           + `font-size="${plateMetaFont}" font-weight="700">${this.escape(plateMeta)}</text>`
           + `</g>`
         : "";
@@ -872,7 +996,12 @@
       const revisionIssue = details.revisionIssue || "FIRST ISSUE";
       const section = ortho.sectionName || "WINDPOST";
       const length = Math.round(Number(ortho.length_mm) || 0);
-      const specification = `${section} WINDPOST @ ${length} mm`;
+      const fold = ortho.foldWidth && Number.isFinite(ortho.foldWidth.value_mm)
+        ? (Number.isFinite(ortho.foldWidth.perChannel_mm)
+            ? ` - FOLD WIDTH 2 x ${Number(ortho.foldWidth.perChannel_mm).toFixed(2)} = ${Number(ortho.foldWidth.value_mm).toFixed(2)} mm`
+            : ` - FOLD WIDTH ${Number(ortho.foldWidth.value_mm).toFixed(2)} mm`)
+        : "";
+      const specification = `${section} WINDPOST @ ${length} mm${fold}`;
       const text = (tx, ty, label, value, size) =>
         `<text x="${f(tx)}" y="${f(ty)}" font-size="${size || 2.45}" `
         + `fill="#000" data-cad="text"><tspan font-weight="700">`
@@ -1227,7 +1356,7 @@
           isDxf ? "image/vnd.dxf" : "application/pdf"
         );
       } catch (error) {
-        global.alert(`The sheet could not be exported: ${error.message}`);
+        this.notify(`The sheet could not be exported: ${error.message}`);
       }
     },
 
