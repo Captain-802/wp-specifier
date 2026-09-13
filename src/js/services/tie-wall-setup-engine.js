@@ -59,8 +59,8 @@
       name: "U tie",
       overallLength_mm: 84,
       innerEmbedment_mm: 65.23,
-      width_mm: 10,
-      thickness_mm: 1.5
+      width_mm: 21,
+      thickness_mm: 1.2
     }),
     edcEngagement_mm: 7.6 + 11.17,
     nominalTieSlots: Object.freeze({
@@ -69,16 +69,19 @@
       radius_mm: 3,
       centresFromFreeEnd_mm: Object.freeze([10, 25])
     }),
+    // Shear Tie 240 x 21 x 1.2 (workbook Ties sheet), from tie-profiles when
+    // that file is on the page.
     shearTie: Object.freeze({
-      overallLength_mm: 168,
-      halfLength_mm: 84,
-      width_mm: 10,
-      thickness_mm: 1.5,
+      overallLength_mm: 240,
+      halfLength_mm: 120,
+      width_mm: 21,
+      thickness_mm: 1.2,
       endRadius_mm: 5,
       slotLength_mm: 10,
       slotWidth_mm: 6,
       slotRadius_mm: 3,
-      slotCentresFromEnd_mm: Object.freeze([10, 25])
+      slotCentresFromEnd_mm: Object.freeze([10, 25]),
+      ...((windpost.tieProfiles && windpost.tieProfiles.shearTie) || {})
     })
   });
 
@@ -221,8 +224,8 @@
       name: "EDC25-150",
       nominalLength_mm: 150,
       overallLength_mm: 158,
-      width_mm: 18,
-      thickness_mm: 1.5
+      width_mm: 21,
+      thickness_mm: 1.2
     };
     const usableLength = selected.overallLength_mm - engagement;
     return {
@@ -230,8 +233,8 @@
       profile: selected,
       nominalLength_mm: selected.nominalLength_mm,
       overallLength_mm: selected.overallLength_mm,
-      width_mm: selected.width_mm || 18,
-      thickness_mm: selected.thickness_mm || 1.5,
+      width_mm: selected.width_mm || 21,
+      thickness_mm: selected.thickness_mm || 1.2,
       engagementNotchLength_mm:
         selected.engagementNotchLength_mm || 7.6,
       tailBeyondNotch_mm:

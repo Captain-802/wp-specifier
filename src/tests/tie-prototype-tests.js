@@ -37,8 +37,8 @@ function check(name, task) {
 check("EDC25-100 stores only the confirmed primary dimensions", () => {
   assert.strictEqual(profile.nominalLength_mm, 100);
   assert.strictEqual(profile.overallLength_mm, 108);
-  assert.strictEqual(profile.width_mm, 18);
-  assert.strictEqual(profile.thickness_mm, 1.5);
+  assert.strictEqual(profile.width_mm, 21);
+  assert.strictEqual(profile.thickness_mm, 1.2);
   assert.strictEqual(profile.engagementNotchLength_mm, 7.6);
   assert.strictEqual(profile.tailBeyondNotch_mm, 11.17);
   assert.strictEqual(profile.assumedNotchDropEach_mm, 1);
@@ -65,8 +65,8 @@ check("the complete EDC25-100 to EDC25-375 series is available", () => {
   );
   edc.forEach(item => {
     assert.strictEqual(item.overallLength_mm, item.nominalLength_mm + 8);
-    assert.strictEqual(item.width_mm, 18);
-    assert.strictEqual(item.thickness_mm, 1.5);
+    assert.strictEqual(item.width_mm, 21);
+    assert.strictEqual(item.thickness_mm, item.nominalLength_mm >= 325 ? 1.5 : 1.2);
     assert.strictEqual(item.holesShown, false);
   });
 });
@@ -85,14 +85,14 @@ check("connection datums are derived from the confirmed 108 mm length", () => {
   );
 });
 
-check("prototype outline is finite and retains the rounded 18 mm leading end", () => {
-  assert.strictEqual(geometry.leadingRadius_mm, 9);
+check("prototype outline is finite and retains the rounded 21 mm leading end", () => {
+  assert.strictEqual(geometry.leadingRadius_mm, 10.5);
   assert(geometry.outline.length >= 15);
   assert(geometry.outline.flat().every(Number.isFinite));
-  assert.deepStrictEqual([...geometry.outline[0]], [9, 0]);
+  assert.deepStrictEqual([...geometry.outline[0]], [10.5, 0]);
   assert.deepStrictEqual(
     [...geometry.outline.at(-1)],
-    [9, 18]
+    [10.5, 21]
   );
   assert(geometry.meshOutline.length > geometry.outline.length);
   assert.strictEqual(
@@ -111,7 +111,7 @@ check("prototype outline is finite and retains the rounded 18 mm leading end", (
   );
   assert.strictEqual(
     Math.min(...geometry.outline.map(point => point[0])),
-    9
+    10.5
   );
 });
 
@@ -120,8 +120,8 @@ check("CAD drawing contains plan and true side elevation without holes", () => {
   assert(drawing.svg.startsWith("<svg"));
   assert(drawing.svg.includes("EDC25-100"));
   assert(drawing.svg.includes(">108</text>"));
-  assert(drawing.svg.includes(">18</text>"));
-  assert(drawing.svg.includes(">1.5</text>"));
+  assert(drawing.svg.includes(">21</text>"));
+  assert(drawing.svg.includes(">1.2</text>"));
   assert(drawing.svg.includes(">7.6</text>"));
   assert(drawing.svg.includes(">11.17</text>"));
   assert(drawing.svg.includes("holes omitted"));
@@ -155,11 +155,11 @@ check("every EDC drawing fits the sheet and retains a readable connection detail
 });
 
 check("shear tie stores the confirmed fabrication dimensions", () => {
-  const shear = W.tieProfiles.get("SHEAR TIE 168");
-  assert.strictEqual(shear.overallLength_mm, 168);
-  assert.strictEqual(shear.halfLength_mm, 84);
-  assert.strictEqual(shear.width_mm, 10);
-  assert.strictEqual(shear.thickness_mm, 1.5);
+  const shear = W.tieProfiles.get("SHEAR TIE 240");
+  assert.strictEqual(shear.overallLength_mm, 240);
+  assert.strictEqual(shear.halfLength_mm, 120);
+  assert.strictEqual(shear.width_mm, 21);
+  assert.strictEqual(shear.thickness_mm, 1.2);
   assert.strictEqual(shear.endRadius_mm, 5);
   assert.strictEqual(shear.slotLength_mm, 10);
   assert.strictEqual(shear.slotWidth_mm, 6);
@@ -170,14 +170,14 @@ check("shear tie stores the confirmed fabrication dimensions", () => {
 });
 
 check("shear tie geometry is symmetric with four non-overlapping slots", () => {
-  const shear = W.tieProfiles.get("SHEAR TIE 168");
+  const shear = W.tieProfiles.get("SHEAR TIE 240");
   const detail = W.tiePrototypeGeometry.build(shear);
   assert.strictEqual(detail.kind, "shear");
-  assert.strictEqual(detail.halfLength_mm, 84);
-  assert.strictEqual(detail.leftNotchStart_mm, 78.415);
-  assert.strictEqual(detail.leftNotchEnd_mm, 86.015);
-  assert.strictEqual(detail.rightNotchStart_mm, 81.985);
-  assert.strictEqual(detail.rightNotchEnd_mm, 89.585);
+  assert.strictEqual(detail.halfLength_mm, 120);
+  assert.strictEqual(detail.leftNotchStart_mm, 114.415);
+  assert.strictEqual(detail.leftNotchEnd_mm, 122.015);
+  assert.strictEqual(detail.rightNotchStart_mm, 117.985);
+  assert.strictEqual(detail.rightNotchEnd_mm, 125.585);
   assert.strictEqual(detail.notchDepth_mm, 3);
   assert(
     Math.abs(
@@ -186,7 +186,7 @@ check("shear tie geometry is symmetric with four non-overlapping slots", () => {
   );
   assert.deepStrictEqual(
     [...detail.slots].map(slot => slot.centreX_mm),
-    [10, 25, 143, 158]
+    [10, 25, 215, 230]
   );
   assert(
     detail.slots.every(slot =>
@@ -198,8 +198,8 @@ check("shear tie geometry is symmetric with four non-overlapping slots", () => {
   );
 });
 
-check("shear tie CAD drawing shows holes, centre detail and both 84 mm halves", () => {
-  const shear = W.tieProfiles.get("SHEAR TIE 168");
+check("shear tie CAD drawing shows holes, centre detail and both 120 mm halves", () => {
+  const shear = W.tieProfiles.get("SHEAR TIE 240");
   const drawing = W.tiePrototypeDrawing.draw(shear, { mode: "hatch" });
   assert(drawing.svg.includes("SHEAR TIE PROTOTYPE"));
   assert(drawing.svg.includes("MIRRORED CENTRE CONNECTION"));
@@ -209,7 +209,7 @@ check("shear tie CAD drawing shows holes, centre detail and both 84 mm halves", 
     4
   );
   assert.strictEqual(
-    (drawing.svg.match(/>84<\/text>/g) || []).length,
+    (drawing.svg.match(/>120<\/text>/g) || []).length,
     2
   );
   assert(drawing.svg.includes(">7.6</text>"));
@@ -359,7 +359,7 @@ check("dimensioned wall plan shows all three zones and total thickness", () => {
   assert(drawing.svg.includes("EXTERNAL FACE DATUM"));
   assert(drawing.svg.includes("LP 125x70x4"));
   assert(drawing.svg.includes("EDC25-150"));
-  assert(drawing.svg.includes("168 × 10 × 1.5 SHEAR TIE"));
+  assert(drawing.svg.includes("240 × 21 × 1.2 SHEAR TIE"));
   assert(drawing.svg.includes('class="windpost"'));
   assert(drawing.svg.includes('class="shear-tie"'));
   assert(drawing.svg.includes('class="edc-tie edc-engagement-profile"'));

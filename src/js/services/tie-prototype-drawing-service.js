@@ -108,10 +108,10 @@
       <path class="outline" d="${path}"/>
       ${slotMarkup}
       <path class="centre" d="M${x(0)} ${y(geometry.width_mm / 2)}H${end + 22}"/>
-      ${dimH(planX, end, 116, top, "168")}
-      ${dimV(top, bottom, 118, planX, "10")}
-      ${dimH(planX, centre, bottom + 44, bottom, "84")}
-      ${dimH(centre, end, bottom + 78, bottom, "84")}
+      ${dimH(planX, end, 116, top, `${geometry.length_mm}`)}
+      ${dimV(top, bottom, 118, planX, `${geometry.width_mm}`)}
+      ${dimH(planX, centre, bottom + 44, bottom, `${geometry.halfLength_mm}`)}
+      ${dimH(centre, end, bottom + 78, bottom, `${geometry.halfLength_mm}`)}
       <path d="M${x(25)} ${y(geometry.width_mm / 2)}L${x(42)} ${bottom + 112}H${x(68)}"
         fill="none" stroke="#111" stroke-width="1"/>
       <text class="note" x="${x(69)}" y="${bottom + 117}">4 SLOTS 10 × 6 · R3 ENDS</text>
@@ -134,20 +134,20 @@
         detailBottom,
         "11.17"
       )}
-      <text class="note" x="${detailX}" y="${detailBottom + 108}">MIRRORED ABOUT 84 mm CENTRELINE</text>
+      <text class="note" x="${detailX}" y="${detailBottom + 108}">MIRRORED ABOUT ${geometry.halfLength_mm} mm CENTRELINE</text>
 
       <text class="view-title" x="${planX}" y="${sideY - 30}">SIDE ELEVATION</text>
       <rect class="outline" x="${planX}" y="${sideY}"
         width="${n(geometry.length_mm * scale)}" height="${n(sideThickness)}"/>
-      ${dimH(planX, end, sideY + 60, sideY + sideThickness, "168")}
-      ${dimV(sideY, sideY + sideThickness, 118, planX, "1.5")}
+      ${dimH(planX, end, sideY + 60, sideY + sideThickness, `${geometry.length_mm}`)}
+      ${dimV(sideY, sideY + sideThickness, 118, planX, `${geometry.thickness_mm}`)}
 
       <g transform="translate(725 675)">
         <rect x="0" y="0" width="225" height="105" fill="#f7f9fb" stroke="#bcc5ce"/>
         <text class="view-title" x="16" y="27">CONFIRMED INPUTS</text>
-        <text class="note" x="16" y="52">Overall length  168 mm</text>
-        <text class="note" x="16" y="73">Width  10 mm</text>
-        <text class="note" x="16" y="94">Thickness  1.5 mm · four slots</text>
+        <text class="note" x="16" y="52">Overall length  ${geometry.length_mm} mm</text>
+        <text class="note" x="16" y="73">Width  ${geometry.width_mm} mm</text>
+        <text class="note" x="16" y="94">Thickness  ${geometry.thickness_mm} mm · four slots</text>
       </g>
     </svg>`;
 
@@ -227,7 +227,7 @@
       <path class="outline" d="${path}"/>
       <path class="centre" d="M${x(0)} ${y(geometry.width_mm / 2)}H${end + 26}"/>
       ${dimH(planX, end, 116, top, String(geometry.length_mm))}
-      ${dimV(top, bottom, 118, planX, "18")}
+      ${dimV(top, bottom, 118, planX, `${geometry.width_mm}`)}
 
       <text class="view-title" x="${detailX}" y="${detailY - 28}">CONNECTION DETAIL</text>
       <g clip-path="url(#tieConnectionClip)">
@@ -240,14 +240,14 @@
       <rect class="outline" x="${planX}" y="${sideY}" width="${n(geometry.length_mm * scale)}"
         height="${n(sideThickness)}"/>
       ${dimH(planX, end, sideY + 60, sideY + sideThickness, String(geometry.length_mm))}
-      ${dimV(sideY, sideY + sideThickness, 118, planX, "1.5")}
+      ${dimV(sideY, sideY + sideThickness, 118, planX, `${geometry.thickness_mm}`)}
 
       <g transform="translate(725 675)">
         <rect x="0" y="0" width="225" height="105" fill="#f7f9fb" stroke="#bcc5ce"/>
         <text class="view-title" x="16" y="27">CONFIRMED INPUTS</text>
         <text class="note" x="16" y="52">Overall length  ${geometry.length_mm} mm</text>
-        <text class="note" x="16" y="73">Width  18 mm</text>
-        <text class="note" x="16" y="94">Thickness  1.5 mm · holes omitted</text>
+        <text class="note" x="16" y="73">Width  ${geometry.width_mm} mm</text>
+        <text class="note" x="16" y="94">Thickness  ${geometry.thickness_mm} mm · holes omitted</text>
       </g>
     </svg>`;
 

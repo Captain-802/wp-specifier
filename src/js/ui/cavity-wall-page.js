@@ -217,7 +217,7 @@
         ["Section", model.section.name],
         ["Overall height", `${this.number(model.length_mm, 0)} mm`],
         ["Wall", `${this.number(model.wall.innerLeafThickness_mm, 0)} / ${this.number(model.wall.cavityWidth_mm, 0)} / ${this.number(model.wall.outerLeafThickness_mm, 1)} mm`],
-        ["Shear ties", `${model.tieSchedule.count} × 168 mm two-way`],
+        ["Shear ties", `${model.tieSchedule.count} × ${model.shearTie.overallLength_mm} mm two-way`],
         ["EDC ties", `${model.tieSchedule.count} × ${model.wallTie.outerTie}`],
         ["Base plate", plate.B && plate.tp
           ? `${this.number((Number(plate.leftPortion) || 0) + (Number(plate.plateLen) || 0), 0)} × ${this.number(plate.B, 0)} × ${this.number(plate.tp, 0)} mm`

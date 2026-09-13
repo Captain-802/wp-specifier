@@ -218,9 +218,9 @@
     body += line(x0 - 10, cavityY, x1 + 10, cavityY, "centre");
     body += line(x0 - 10, outerY, x1 + 10, outerY, "centre");
 
-    body += dimH(postX - shearHalf, postX, innerY - 48, shearY - 6, "84");
-    body += dimH(postX, postX + shearHalf, innerY - 48, shearY - 6, "84");
-    body += dimH(postX - shearHalf, postX + shearHalf, innerY - 74, shearY - 6, "168 shear tie");
+    body += dimH(postX - shearHalf, postX, innerY - 48, shearY - 6, `${n(model.shearTie.halfLength_mm)}`);
+    body += dimH(postX, postX + shearHalf, innerY - 48, shearY - 6, `${n(model.shearTie.halfLength_mm)}`);
+    body += dimH(postX - shearHalf, postX + shearHalf, innerY - 74, shearY - 6, `${n(model.shearTie.overallLength_mm)} shear tie`);
 
     const dx = x1 + 25;
     body += dimV(innerY, cavityY, dx, x1, `${n(model.wall.innerLeafThickness_mm)} inner leaf`);
@@ -232,7 +232,7 @@
       `90 mm embedded into inner leaf`
     ], "start");
     body += callout(postX - 40, shearY, x0 + 20, innerY + 31, [
-      "168 × 10 × 1.5 mm two-way shear tie",
+      `${n(model.shearTie.overallLength_mm)} × ${n(model.shearTie.width_mm)} × ${model.shearTie.thickness_mm} mm two-way shear tie`,
       "4 no. 6 × 10 mm R3 slots"
     ], "start");
     body += callout(edcX, outerY + 18, x1 - 132, wallEndY + 46, [
@@ -389,7 +389,7 @@
     body += isoPrism(-plateB / 2, inner - left, -8, plateB, left + right, 8, C.steelDark, C.ink, .96, origin);
 
     model.tieSchedule.levels_mm.filter(level => level <= height).forEach((level) => {
-      body += isoPrism(-84, inner / 2 - 5, level - .75, 168, 10, 1.5, C.shear, C.shear, .98, origin);
+      body += isoPrism(-model.shearTie.halfLength_mm, inner / 2 - 5, level - .75, model.shearTie.overallLength_mm, model.shearTie.width_mm, model.shearTie.thickness_mm, C.shear, C.shear, .98, origin);
       const edcX = model.post.b_mm / 2 - 12.5;
       const usable = model.wallTie.actualTieLength_mm - model.wallTie.tieConnectionLength_mm;
       body += isoPrism(edcX, postY1 - 11.17, level - .75, 25, usable, 1.5, C.tie, C.tie, .98, origin);

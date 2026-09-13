@@ -215,7 +215,7 @@
         );
       });
     });
-    return `<g aria-label="168 × 10 × 1.5 SHEAR TIE">
+    return `<g aria-label="${tie.overallLength_mm} × ${tie.width_mm} × ${tie.thickness_mm} SHEAR TIE">
       <rect class="shear-tie" x="${left.toFixed(2)}" y="${(cy - height / 2).toFixed(2)}" width="${width.toFixed(2)}" height="${height.toFixed(2)}" rx="${(height / 2).toFixed(2)}"/>
       ${slots.join("")}
     </g>`;

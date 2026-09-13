@@ -25,11 +25,12 @@
       height_mm: 50,
       radius_mm: 5
     }),
+    // Shear Tie 240 x 21 x 1.2, as the workbook Ties sheet
     shearTie: Object.freeze({
-      overallLength_mm: 168,
-      halfLength_mm: 84,
-      width_mm: 10,
-      thickness_mm: 1.5,
+      overallLength_mm: 240,
+      halfLength_mm: 120,
+      width_mm: 21,
+      thickness_mm: 1.2,
       endRadius_mm: 5,
       holeWidth_mm: 6,
       holeLength_mm: 10,

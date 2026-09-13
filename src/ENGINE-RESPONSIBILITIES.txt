@@ -871,3 +871,23 @@ bolt editing sheet to add / remove / modify bolts.
 Known data notes for the owner: the app draws the shear tie 168 mm long
 (tie-profiles) while the workbook Ties sheet lists Shear Tie 240 mm; the
 editor shows the workbook figures for the product columns.
+
+TIE PRODUCTS = THE WORKBOOK TIES SHEET (13 Sep 2026, "the excel sheet is always right")
+--------------------------------------------------------------------------------------
+js/data/tie-profiles.js now carries the Ties-sheet figures: EDC25 ties 21 wide,
+1.2 thick to EDC25-300 and 1.5 from EDC25-325 (leading-end radius 10.5 = half
+width); Shear Tie 240 x 21 x 1.2 (name "SHEAR TIE 240", halfLength 120; get()
+resolves any "SHEAR TIE ..." name); EDC25-U Tie 84 x 21 x 1.2 in
+tie-wall-setup-engine CONNECTION.uTie. tie-wall-setup-engine.shearTie spreads
+tieProfiles.shearTie; cavity-wall-assembly-engine.shearTie = 240/120/21/1.2
+and cavity-wall-assembly.html now loads tie-profiles.js; every drawing label
+that hard-coded 168 / 84 / 18 / 10 / 1.5 (cavity-wall-drawing-service,
+tie-wall-drawing-service aria-label, tie-prototype-drawing-service dims and
+notes, cavity-wall-page schedule) reads the model / geometry instead. The
+design-data editor's product columns read tie-profiles when loaded.
+Not changed (not on the Ties sheet): the post's tie SLOT (SLOT_SPEC 18 x 50
+in the U/L orthographic services; postSlot 10 x 50 in the cavity assembly)
+and outer-tie-selection WALL_DEFAULTS.minimumOuterGap_mm 4 (Constants sheet
+minGap 6) - flagged to the owner.
+Tests updated: tie-prototype-tests (21 / 1.2 / 240 / 120 / notch and slot
+positions), cavity-wall-assembly-tests (240 shear tie).

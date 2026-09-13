@@ -60,12 +60,23 @@
   ]);
 
   function catalogueTies() {
-    const outer = outerTieList().map(t => ({
-      name: t.name, label: t.name, kind: "outer", posts: "U, L, DU",
-      nominal_mm: t.nominal_mm, actual_mm: t.actual_mm, width_mm: 21,
-      thickness_mm: t.nominal_mm >= 325 ? 1.5 : 1.2, catalogue_kN: OUTER_DEFAULT_KN
-    }));
-    return outer.concat(INNER_TIES.map(t => ({ ...t })));
+    const profiles = windpost.tieProfiles;
+    const profileOf = name => profiles && Array.isArray(profiles.profiles)
+      ? profiles.profiles.find(p => p.name === name) : null;
+    const outer = outerTieList().map(t => {
+      const profile = profileOf(t.name);
+      return {
+        name: t.name, label: t.name, kind: "outer", posts: "U, L, DU",
+        nominal_mm: t.nominal_mm, actual_mm: t.actual_mm,
+        width_mm: profile ? profile.width_mm : 21,
+        thickness_mm: profile ? profile.thickness_mm : (t.nominal_mm >= 325 ? 1.5 : 1.2),
+        catalogue_kN: OUTER_DEFAULT_KN
+      };
+    });
+    const shear = profiles && profiles.shearTie;
+    return outer.concat(INNER_TIES.map(t => t.name === "Shear tie" && shear
+      ? { ...t, actual_mm: shear.overallLength_mm, width_mm: shear.width_mm, thickness_mm: shear.thickness_mm }
+      : { ...t }));
   }
 
   const DESIGN_SPEC = Object.freeze([

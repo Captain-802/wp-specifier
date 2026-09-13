@@ -1291,6 +1291,79 @@ legend {
 
 </script>
   <script>
+(function initialiseTieProfiles(global) {
+  "use strict";
+
+  const windpost = global.Windpost = global.Windpost || {};
+
+  // Tie products as the approved workbook's Ties sheet lists them (the
+  // sheet is the authority, owner 13 Sep 2026): EDC25 ties 21 wide, 1.2 thick
+  // up to EDC25-300 and 1.5 from EDC25-325; Shear Tie 240 x 21 x 1.2;
+  // EDC25-U Tie 84 x 21 x 1.2 (in tie-wall-setup-engine).
+  const common = Object.freeze({
+      family: "EDC",
+      width_mm: 21,
+      thickness_mm: 1.2,
+      engagementNotchLength_mm: 7.6,
+      tailBeyondNotch_mm: 11.17,
+      leadingEndRadius_mm: 10.5,   // half the 21 mm width
+      assumedNotchDropEach_mm: 1,
+      referenceEndReliefDepth_mm: 2.25,
+      referenceEndReliefHalfHeight_mm: 4.5,
+      holesShown: false
+  });
+  const lengths = Object.freeze([
+    [100, 108],
+    [125, 133],
+    [150, 158],
+    [175, 183],
+    [200, 208],
+    [225, 233],
+    [250, 258],
+    [275, 283],
+    [300, 308],
+    [325, 333],
+    [350, 358],
+    [375, 383]
+  ]);
+  const edcProfiles = lengths.map(([nominal, overall]) =>
+    Object.freeze({
+      ...common,
+      name: `EDC25-${nominal}`,
+      nominalLength_mm: nominal,
+      overallLength_mm: overall,
+      thickness_mm: nominal >= 325 ? 1.5 : common.thickness_mm
+    })
+  );
+  const shearTie = Object.freeze({
+    family: "SHEAR",
+    name: "SHEAR TIE 240",
+    overallLength_mm: 240,
+    halfLength_mm: 120,
+    width_mm: 21,
+    thickness_mm: 1.2,
+    endRadius_mm: 5,
+    slotLength_mm: 10,
+    slotWidth_mm: 6,
+    slotRadius_mm: 3,
+    slotCentresFromEnd_mm: Object.freeze([10, 25]),
+    engagementNotchLength_mm: 7.6,
+    mirroredEngagement_mm: 11.17,
+    assumedSideNotchDepth_mm: 3,
+    holesShown: true
+  });
+  const profiles = Object.freeze([...edcProfiles, shearTie]);
+
+  function get(name) {
+    return profiles.find(profile => profile.name === name) ||
+      (/^SHEAR TIE/i.test(String(name || "")) ? shearTie : profiles[0]);
+  }
+
+  windpost.tieProfiles = Object.freeze({ profiles, shearTie, get });
+})(typeof window !== "undefined" ? window : globalThis);
+
+</script>
+  <script>
 (function initialiseOuterTieSelectionEngine(global) {
   "use strict";
 
@@ -1743,11 +1816,12 @@ legend {
       height_mm: 50,
       radius_mm: 5
     }),
+    // Shear Tie 240 x 21 x 1.2, as the workbook Ties sheet
     shearTie: Object.freeze({
-      overallLength_mm: 168,
-      halfLength_mm: 84,
-      width_mm: 10,
-      thickness_mm: 1.5,
+      overallLength_mm: 240,
+      halfLength_mm: 120,
+      width_mm: 21,
+      thickness_mm: 1.2,
       endRadius_mm: 5,
       holeWidth_mm: 6,
       holeLength_mm: 10,
@@ -2219,9 +2293,9 @@ legend {
     body += line(x0 - 10, cavityY, x1 + 10, cavityY, "centre");
     body += line(x0 - 10, outerY, x1 + 10, outerY, "centre");
 
-    body += dimH(postX - shearHalf, postX, innerY - 48, shearY - 6, "84");
-    body += dimH(postX, postX + shearHalf, innerY - 48, shearY - 6, "84");
-    body += dimH(postX - shearHalf, postX + shearHalf, innerY - 74, shearY - 6, "168 shear tie");
+    body += dimH(postX - shearHalf, postX, innerY - 48, shearY - 6, `${n(model.shearTie.halfLength_mm)}`);
+    body += dimH(postX, postX + shearHalf, innerY - 48, shearY - 6, `${n(model.shearTie.halfLength_mm)}`);
+    body += dimH(postX - shearHalf, postX + shearHalf, innerY - 74, shearY - 6, `${n(model.shearTie.overallLength_mm)} shear tie`);
 
     const dx = x1 + 25;
     body += dimV(innerY, cavityY, dx, x1, `${n(model.wall.innerLeafThickness_mm)} inner leaf`);
@@ -2233,7 +2307,7 @@ legend {
       `90 mm embedded into inner leaf`
     ], "start");
     body += callout(postX - 40, shearY, x0 + 20, innerY + 31, [
-      "168 × 10 × 1.5 mm two-way shear tie",
+      `${n(model.shearTie.overallLength_mm)} × ${n(model.shearTie.width_mm)} × ${model.shearTie.thickness_mm} mm two-way shear tie`,
       "4 no. 6 × 10 mm R3 slots"
     ], "start");
     body += callout(edcX, outerY + 18, x1 - 132, wallEndY + 46, [
@@ -2390,7 +2464,7 @@ legend {
     body += isoPrism(-plateB / 2, inner - left, -8, plateB, left + right, 8, C.steelDark, C.ink, .96, origin);
 
     model.tieSchedule.levels_mm.filter(level => level <= height).forEach((level) => {
-      body += isoPrism(-84, inner / 2 - 5, level - .75, 168, 10, 1.5, C.shear, C.shear, .98, origin);
+      body += isoPrism(-model.shearTie.halfLength_mm, inner / 2 - 5, level - .75, model.shearTie.overallLength_mm, model.shearTie.width_mm, model.shearTie.thickness_mm, C.shear, C.shear, .98, origin);
       const edcX = model.post.b_mm / 2 - 12.5;
       const usable = model.wallTie.actualTieLength_mm - model.wallTie.tieConnectionLength_mm;
       body += isoPrism(edcX, postY1 - 11.17, level - .75, 25, usable, 1.5, C.tie, C.tie, .98, origin);
@@ -5686,7 +5760,7 @@ legend {
         ["Section", model.section.name],
         ["Overall height", `${this.number(model.length_mm, 0)} mm`],
         ["Wall", `${this.number(model.wall.innerLeafThickness_mm, 0)} / ${this.number(model.wall.cavityWidth_mm, 0)} / ${this.number(model.wall.outerLeafThickness_mm, 1)} mm`],
-        ["Shear ties", `${model.tieSchedule.count} × 168 mm two-way`],
+        ["Shear ties", `${model.tieSchedule.count} × ${model.shearTie.overallLength_mm} mm two-way`],
         ["EDC ties", `${model.tieSchedule.count} × ${model.wallTie.outerTie}`],
         ["Base plate", plate.B && plate.tp
           ? `${this.number((Number(plate.leftPortion) || 0) + (Number(plate.plateLen) || 0), 0)} × ${this.number(plate.B, 0)} × ${this.number(plate.tp, 0)} mm`

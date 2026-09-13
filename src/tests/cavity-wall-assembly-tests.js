@@ -48,7 +48,7 @@ check("confirmed post-slot and shear-tie fabrication dimensions are locked", () 
       detail.shearTie.width_mm,
       detail.shearTie.thickness_mm
     ],
-    [168, 84, 10, 1.5]
+    [240, 120, 21, 1.2]
   );
   assert.deepStrictEqual(
     [
@@ -140,7 +140,7 @@ check("all four coordinated SVG views are generated", () => {
 });
 
 check("plan view carries the paired-tie geometry and EDC selection", () => {
-  assert(drawings.plan.includes("168 shear tie"));
+  assert(drawings.plan.includes("240 shear tie"));
   assert(drawings.plan.includes("EDC25-200 outer-leaf tie"));
   assert(drawings.plan.includes("Paired shear and EDC ties at the same elevation"));
 });
