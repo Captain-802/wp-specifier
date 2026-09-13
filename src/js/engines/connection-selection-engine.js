@@ -303,6 +303,23 @@
     const posts = Math.max(1, Number(options.postsCount) || 1);
     const totalPerPost = round(post.weight_kg + head.weight_kg + base.weight_kg, 3);
 
+    // ---- supply for all similar posts ---------------------------------------
+    // Every per-post quantity times the number of similar posts: what is
+    // actually ordered and delivered.
+    const supply = {
+      posts,
+      headBolts: head.applicable ? (Number(head.boltCount) || 0) * posts : 0,
+      baseBolts: (Number(base.boltCount) || 0) * posts,
+      innerTies: ties.innerCount * posts,
+      outerTies: ties.outerCount * posts,
+      debondingSleeves: ties.debondingSleeves * posts,
+      tieLevels: levels * posts,
+      postWeight_kg: round(post.weight_kg * posts, 3),
+      headWeight_kg: round(head.weight_kg * posts, 3),
+      baseWeight_kg: round(base.weight_kg * posts, 3),
+      totalWeight_kg: round(totalPerPost * posts, 3)
+    };
+
     return {
       valid: warnings.length === 0,
       warnings,
@@ -314,6 +331,7 @@
       ties,
       post,
       totalWeightPerPost_kg: totalPerPost,
+      supply,
       postsCount: posts,
       deliveries: Math.max(1, Number(options.deliveries) || 1),
       totalWeightAllPosts_kg: round(totalPerPost * posts, 3)

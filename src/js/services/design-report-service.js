@@ -45,6 +45,27 @@
     };
   }
 
+  // Supply for all similar posts: every per-post quantity times the number
+  // of posts, as ordered.
+  function supplyTable(c) {
+    const s = c.supply;
+    if (!s) return "";
+    const posts = `${format(s.posts, 0)} post${s.posts === 1 ? "" : "s"}`;
+    const headNa = !c.head.applicable;
+    return `<table class="supply-table">
+            <tr><th></th><th>Per post</th><th>${posts}</th></tr>
+            <tr><td>Windpost self weight</td><td>${format(c.post.weight_kg, 3)} kg</td><td>${format(s.postWeight_kg, 3)} kg</td></tr>
+            <tr><td>Head connection</td><td>${format(c.head.weight_kg, 3)} kg</td><td>${format(s.headWeight_kg, 3)} kg</td></tr>
+            <tr><td>Base connection</td><td>${format(c.base.weight_kg, 3)} kg</td><td>${format(s.baseWeight_kg, 3)} kg</td></tr>
+            <tr><td>Head connection bolts${headNa ? "" : ` (${escapeHtml(c.head.boltSku)})`}</td><td>${headNa ? "&mdash;" : format(c.head.boltCount, 0)}</td><td>${headNa ? "&mdash;" : format(s.headBolts, 0)}</td></tr>
+            <tr><td>Base connection bolts (${escapeHtml(c.base.boltSku)})</td><td>${format(c.base.boltCount, 0)}</td><td>${format(s.baseBolts, 0)}</td></tr>
+            <tr><td>Inner-leaf ties</td><td>${format(c.ties.innerCount, 0)}</td><td>${format(s.innerTies, 0)}</td></tr>
+            ${c.ties.outerCount ? `<tr><td>Outer-leaf ties (EDC)</td><td>${format(c.ties.outerCount, 0)}</td><td>${format(s.outerTies, 0)}</td></tr>` : ""}
+            ${c.ties.debondingSleeves ? `<tr><td>Debonding sleeves</td><td>${format(c.ties.debondingSleeves, 0)}</td><td>${format(s.debondingSleeves, 0)}</td></tr>` : ""}
+            <tr><td><strong>Total weight</strong></td><td><strong>${format(c.totalWeightPerPost_kg, 3)} kg</strong></td><td><strong>${format(s.totalWeight_kg, 3)} kg</strong></td></tr>
+          </table>`;
+  }
+
   function connectionsSection(c) {
     if (!c) return "";
     const headNa = !c.head.applicable;
@@ -62,8 +83,9 @@
             <tr><td>Head post bolts</td><td>${headNa ? "&mdash;" : cell(c.head.postBolt)}</td><td>Head connection bolts</td><td>${headNa ? "&mdash;" : `${format(c.head.boltCount, 0)} no. ${cell(c.head.boltSku)}${c.head.special ? " (special)" : ""}`}</td></tr>
             <tr><td>Base fixing</td><td>${cell(c.base.description.trim())}</td><td>Base connection</td><td>${cell(c.base.code || "&mdash;")}</td></tr>
             <tr><td>Base post bolts</td><td>${cell(c.base.postBolt)}</td><td>Base connection bolts</td><td>${format(c.base.boltCount, 0)} no. ${cell(c.base.boltSku)}${c.base.special ? " (special)" : ""}</td></tr>
-            <tr><td>Ties per post</td><td>${format(c.ties.innerCount, 0)} inner${c.ties.outerCount ? ` / ${format(c.ties.outerCount, 0)} outer` : ""}</td><td>Debonding sleeves</td><td>${format(c.ties.debondingSleeves, 0)}</td></tr>
+            <tr><td>Ties per post</td><td>${format(c.ties.innerCount, 0)} inner${c.ties.outerCount ? ` / ${format(c.ties.outerCount, 0)} outer` : ""}</td><td>Debonding sleeves per post</td><td>${format(c.ties.debondingSleeves, 0)}</td></tr>
           </table>
+          ${supplyTable(c)}
           <div class="calculation-grid compact">
             <div class="calc-line"><span>Post weight = blank &times; t &times; L &times; &rho;</span><strong>${format(c.post.blankWidth_mm, 2)} &times; L &times; ${format(c.post.kgPerMetre, 3)} kg/m &rarr; ${format(c.post.weight_kg, 3)} kg</strong></div>
             ${plateLines}

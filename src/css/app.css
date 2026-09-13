@@ -409,3 +409,7 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
 .design-data-note ul, .report-edits ul { margin: 6px 0 0; padding-left: 18px; font-size: 12px; color: #5b636c; }
 .design-data-note li, .report-edits li { margin: 2px 0; }
 @media print { .report-edits { break-inside: avoid; } }
+
+.supply-table { margin-top: 10px; }
+.supply-table th:not(:first-child), .supply-table td.num { text-align: right; }
+.supply-table th:last-child, .supply-table td:last-child { font-weight: 800; color: var(--navy); }

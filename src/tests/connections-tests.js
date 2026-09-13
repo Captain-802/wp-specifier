@@ -136,3 +136,30 @@ const report = W.designReportService.buildReport(lCase, lConn);
 assert(report.includes("5. Connections, bolts and weights") && report.includes("L-T2") && report.includes("11.112"), "the detailed report includes connections, bolts and weights");
 
 console.log(`\n${passed} checks passed.`);
+
+// ---- supply for all similar posts (13 Sep 2026) -----------------------------
+{
+  const sec = W.uSectionDatabase.sections.find((x) => x.name === "UP 90x60x4");
+  const one = W.connectionSelectionEngine.select({
+    type: "U", supportCondition: "simplySupported", loadType: "udl", length_mm: 2670, section: sec, finalCapacity_kN: 5, numberOfTies: 10,
+    headFixing: "U POST TO TIMBER JOIST BB", baseFixing: "U POST TO CONCRETE TOP ", headBoltFamily: "Stainless Steel Bolts", baseBoltFamily: "RGM BOLTS", postsCount: 1, deliveries: 1
+  });
+  const seven = W.connectionSelectionEngine.select({
+    type: "U", supportCondition: "simplySupported", loadType: "udl", length_mm: 2670, section: sec, finalCapacity_kN: 5, numberOfTies: 10,
+    headFixing: "U POST TO TIMBER JOIST BB", baseFixing: "U POST TO CONCRETE TOP ", headBoltFamily: "Stainless Steel Bolts", baseBoltFamily: "RGM BOLTS", postsCount: 7, deliveries: 2
+  });
+  assert(one.supply.posts === 1 && seven.supply.posts === 7);
+  assert(seven.supply.headBolts === one.head.boltCount * 7, "head bolts x posts");
+  assert(seven.supply.baseBolts === one.base.boltCount * 7, "base bolts x posts");
+  assert(seven.supply.baseBolts > 0 && seven.supply.headBolts > 0);
+  assert(seven.supply.innerTies === 70, "equal");
+  assert(seven.supply.outerTies === 70, "equal");
+  assert(seven.supply.totalWeight_kg === seven.totalWeightAllPosts_kg, "equal");
+  assert(Math.abs(seven.supply.postWeight_kg - one.post.weight_kg * 7) < 1e-6);
+  const report = W.designReportService.buildReport(
+    W.automaticSelectionEngine.runDesign({ type: "U", supportCondition: "simplySupported", loadType: "udl", mode: "manual", length_mm: 2670, selectedSectionName: "UP 90x60x4", wall: { innerLeafThickness_mm: 100, cavityWidth_mm: 150, outerLeafThickness_mm: 100 } }),
+    seven
+  );
+  assert(report.includes("7 posts") && report.includes(`>${seven.supply.baseBolts}<`), "the record prints the all-posts quantities");
+  console.log("PASS supply: bolts, ties and weights scale with the number of similar posts");
+}

@@ -22,9 +22,17 @@
           this.updateConditionalInputs();
           this.invalidateResult();
         }));
+      // Quantities (number of posts, deliveries, sleeves) do not change the
+      // design, so they re-run the supply figures live; anything else hides
+      // the result until it is run again.
+      const QUANTITY_INPUTS = ["posts-count", "deliveries", "debonding-sleeve"];
       this.form.querySelectorAll('input[type="number"], input[type="checkbox"], select').forEach((input) => {
-        input.addEventListener("input", () => this.invalidateResult());
-        input.addEventListener("change", () => this.invalidateResult());
+        const react = () => {
+          if (QUANTITY_INPUTS.includes(input.id) && this.lastDesign) { this.calculate(); return; }
+          this.invalidateResult();
+        };
+        input.addEventListener("input", react);
+        input.addEventListener("change", react);
       });
       ["head", "base"].forEach((end) => {
         document.getElementById(`${end}-fixing`).addEventListener("change", () => this.populateBoltFamilies(end));
@@ -349,6 +357,8 @@
         : (plate ? `<div><dt>Base plate</dt><dd>Special design (moment ${n(c.base.moment_kNm, 3)} kNm beyond the standard types)</dd></div>` : "");
       const warnings = c.warnings.length ? `<p style="color:#b3261e;margin:6px 0 0;font-size:12px">${c.warnings.map(e).join(" ")}</p>` : "";
       const notes = (c.notes || []).length ? `<p style="color:#8a5a00;margin:6px 0 0;font-size:12px">${c.notes.map(e).join(" ")}</p>` : "";
+      const s = c.supply || { posts: c.postsCount || 1, headBolts: 0, baseBolts: 0, innerTies: 0, outerTies: 0, debondingSleeves: 0, postWeight_kg: 0, headWeight_kg: 0, baseWeight_kg: 0, totalWeight_kg: c.totalWeightAllPosts_kg };
+      const postsLabel = `${n(s.posts, 0)} post${s.posts === 1 ? "" : "s"}`;
       return `<section class="result-block">
           <h3>Connections and bolts</h3>
           <table class="conn-table">
@@ -359,24 +369,35 @@
               ${row("Post bolts", headNa ? "&mdash;" : e(c.head.postBolt), e(c.base.postBolt))}
               ${row("Connection bolts", headNa ? "&mdash;" : `${e(c.head.boltSku)}${c.head.special ? " (special)" : ""}`, `${e(c.base.boltSku)}${c.base.special ? " (special)" : ""}`)}
               ${row("Bolt family", headNa ? "&mdash;" : e(c.head.boltFamily), e(c.base.boltFamily))}
-              ${row("No. of bolts", headNa ? "&mdash;" : n(c.head.boltCount, 0), n(c.base.boltCount, 0))}
-              ${row("Connection weight", headNa ? "&mdash;" : n(c.head.weight_kg, 3) + " kg", n(c.base.weight_kg, 3) + " kg")}
+              ${row("No. of bolts per post", headNa ? "&mdash;" : n(c.head.boltCount, 0), n(c.base.boltCount, 0))}
+              ${row(`No. of bolts for ${n(s.posts, 0)} post${s.posts === 1 ? "" : "s"}`, headNa ? "&mdash;" : `<strong>${n(s.headBolts, 0)}</strong>`, `<strong>${n(s.baseBolts, 0)}</strong>`)}
+              ${row("Connection weight per post", headNa ? "&mdash;" : n(c.head.weight_kg, 3) + " kg", n(c.base.weight_kg, 3) + " kg")}
             </tbody>
           </table>
           ${plateRows ? `<dl class="result-list">${plateRows}</dl>` : ""}
           ${warnings}${notes}
         </section>
         <section class="result-block">
-          <h3>Weights</h3>
+          <h3>Weights and supply</h3>
           <dl class="result-list">
             <div><dt>Fold (blank) width</dt><dd>${n(c.post.blankWidth_mm, 2)} mm</dd></div>
             <div><dt>Windpost self weight (${n(c.post.kgPerMetre, 3)} kg/m)</dt><dd>${n(c.post.weight_kg, 3)} kg</dd></div>
-            <div><dt>Head connection${c.head.special ? " (special)" : ""}</dt><dd>${n(c.head.weight_kg, 3)} kg</dd></div>
-            <div><dt>Base connection${c.base.special ? " (special)" : ""}</dt><dd>${n(c.base.weight_kg, 3)} kg</dd></div>
-            <div><dt>Ties per post</dt><dd>${n(c.ties.innerCount, 0)} inner${c.ties.outerCount ? ` + ${n(c.ties.outerCount, 0)} outer` : ""}${c.ties.debondingSleeves ? ` + ${n(c.ties.debondingSleeves, 0)} sleeves` : ""}</dd></div>
           </dl>
+          <table class="conn-table supply-table">
+            <thead><tr><th></th><th>Per post</th><th>${postsLabel}</th></tr></thead>
+            <tbody>
+              <tr><td>Windpost self weight</td><td class="num">${n(c.post.weight_kg, 3)} kg</td><td class="num">${n(s.postWeight_kg, 3)} kg</td></tr>
+              <tr><td>Head connection${c.head.special ? " (special)" : ""}</td><td class="num">${n(c.head.weight_kg, 3)} kg</td><td class="num">${n(s.headWeight_kg, 3)} kg</td></tr>
+              <tr><td>Base connection${c.base.special ? " (special)" : ""}</td><td class="num">${n(c.base.weight_kg, 3)} kg</td><td class="num">${n(s.baseWeight_kg, 3)} kg</td></tr>
+              <tr><td>Head connection bolts</td><td class="num">${headNa ? "&mdash;" : n(c.head.boltCount, 0)}</td><td class="num">${headNa ? "&mdash;" : n(s.headBolts, 0)}</td></tr>
+              <tr><td>Base connection bolts</td><td class="num">${n(c.base.boltCount, 0)}</td><td class="num">${n(s.baseBolts, 0)}</td></tr>
+              <tr><td>Inner-leaf ties (${e(c.type === "L" || c.type === "I" ? "shear ties" : "U ties")})</td><td class="num">${n(c.ties.innerCount, 0)}</td><td class="num">${n(s.innerTies, 0)}</td></tr>
+              ${c.ties.outerCount ? `<tr><td>Outer-leaf ties (EDC)</td><td class="num">${n(c.ties.outerCount, 0)}</td><td class="num">${n(s.outerTies, 0)}</td></tr>` : ""}
+              ${c.ties.debondingSleeves ? `<tr><td>Debonding sleeves</td><td class="num">${n(c.ties.debondingSleeves, 0)}</td><td class="num">${n(s.debondingSleeves, 0)}</td></tr>` : ""}
+            </tbody>
+          </table>
           <div class="weight-total"><span>Total weight per post</span><span>${n(c.totalWeightPerPost_kg, 3)} kg</span></div>
-          <div class="weight-total" style="border-top:0;padding-top:2px;font-weight:600"><span>${n(c.postsCount, 0)} posts &middot; ${n(c.deliveries, 0)} deliveries</span><span>${n(c.totalWeightAllPosts_kg, 3)} kg</span></div>
+          <div class="weight-total" style="border-top:0;padding-top:2px"><span>Total weight, ${postsLabel} &middot; ${n(c.deliveries, 0)} deliver${c.deliveries === 1 ? "y" : "ies"}</span><span>${n(s.totalWeight_kg, 3)} kg</span></div>
         </section>`;
     },
 

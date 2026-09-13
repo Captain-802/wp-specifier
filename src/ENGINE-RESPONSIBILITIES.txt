@@ -891,3 +891,17 @@ and outer-tie-selection WALL_DEFAULTS.minimumOuterGap_mm 4 (Constants sheet
 minGap 6) - flagged to the owner.
 Tests updated: tie-prototype-tests (21 / 1.2 / 240 / 120 / notch and slot
 positions), cavity-wall-assembly-tests (240 shear tie).
+
+SUPPLY FOR ALL SIMILAR POSTS (13 Sep 2026)
+------------------------------------------
+Owner: "number of bolts and other things shall change with number of
+windposts". connectionSelectionEngine.select() now returns `supply` = every
+per-post quantity x postsCount (headBolts, baseBolts, innerTies, outerTies,
+debondingSleeves, tieLevels, post/head/base weights, totalWeight_kg). The
+Selector's "Connections and bolts" table shows bolts per post AND for N
+posts; the "Weights and supply" block is a per-post / N-posts table (weights,
+bolts, ties, sleeves) with the totals; the calculation record carries the
+same table (supplyTable()). Changing Nos of similar posts, deliveries or the
+debonding-sleeve choice re-runs the current selection live instead of hiding
+the result (QUANTITY_INPUTS in app.js init). Test appended to
+tests/connections-tests.js.
