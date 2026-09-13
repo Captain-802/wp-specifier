@@ -37,6 +37,18 @@
     "FAZ II PLUS BOLTS": "FAZ II PLUS"
   });
   const NOT_APPLICABLE = "NOT APPLICABLE";
+
+  // Anchors, bolt SKUs and the SKU each connection uses come through the
+  // design-data editor when it is loaded (edits, additions and removals),
+  // else straight from the library.
+  const editable = () => windpost.designData || null;
+  function anchorRows() { const d = editable(); return d ? d.anchors() : DB.anchors; }
+  function boltSkuRows() { const d = editable(); return d ? d.boltSkus() : DB.boltSkus; }
+  function boltFor(connection, family) {
+    const d = editable();
+    if (d) return d.connectionBolt(connection.code, family);
+    return (connection.bolts && connection.bolts[family]) || "";
+  }
   const CANTILEVER_BASE_AUTO = "Standard plate type selected by base moment";
 
   const roundUp = (value, decimals) => {
@@ -81,7 +93,7 @@
   function selectAnchor(anchorFamily, role, finalCapacity_kN, minimumSize_mm) {
     const load = Number(finalCapacity_kN) / 2;
     const minimum = Number(minimumSize_mm) || 0;
-    const candidates = DB.anchors.filter((a) => a.family === anchorFamily && anchorSize_mm(a) >= minimum);
+    const candidates = anchorRows().filter((a) => a.family === anchorFamily && anchorSize_mm(a) >= minimum);
     if (!candidates.length || !Number.isFinite(load)) return null;
     const key = role === "shear" ? "shear" : "tension";
     const found = candidates.find((a) => load <= 2 * Number(a[key]));
@@ -89,7 +101,7 @@
   }
 
   function boltCount(sku, code, isAnchor) {
-    const row = DB.boltSkus.find((r) => r.sku === sku);
+    const row = boltSkuRows().find((r) => r.sku === sku);
     const count = row && row.counts ? Number(row.counts[code]) || 0 : 0;
     if (count > 0) return count;
     return isAnchor ? 2 : 0;
@@ -156,7 +168,7 @@
     if (connection.anchorRole && anchorFamily) {
       return { sku: selectAnchor(anchorFamily, connection.anchorRole, finalCapacity_kN, connection.minimumAnchorSize_mm) || "", isAnchor: true, family };
     }
-    const sku = (connection.bolts && connection.bolts[family]) || "";
+    const sku = boltFor(connection, family) || "";
     return { sku, isAnchor: Boolean(anchorFamily) && sku !== "N/A", family };
   }
 

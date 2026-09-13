@@ -51,8 +51,10 @@
       ixx: section.ixx_mm4,
       zxx: section.zxx_mm3,
       area: section.crossSectionalArea_mm2,
-      tieStrength: windpost.config.DEFAULT_TIE_STRENGTH_KN[section.type] ??
-        windpost.config.DEFAULT_TIE_STRENGTH_KN.L,
+      tieStrength: windpost.designData
+        ? windpost.designData.familyCapacity(section.type)
+        : (windpost.config.DEFAULT_TIE_STRENGTH_KN[section.type] ??
+          windpost.config.DEFAULT_TIE_STRENGTH_KN.L),
       firstTieSpacing: parameters.firstTieSpacing,
       standardTieSpacing: parameters.standardTieSpacing,
       secantFy: parameters.secantFy,

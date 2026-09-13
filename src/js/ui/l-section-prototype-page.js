@@ -15,6 +15,10 @@
       this.slotSpacingInput = document.getElementById("prototype-slot-spacing");
       this.loadTypeSelect = document.getElementById("prototype-load-type");
       this.backToSelector = document.getElementById("back-to-selector");
+      // the Selector's edited design data (tie capacities) apply here too
+      if (windpost.designData) {
+        try { windpost.designData.load(global.localStorage); } catch (error) { /* storage blocked */ }
+      }
       this.drawing = document.getElementById("orthographic-drawing");
       this.baseplateDrawing = document.getElementById(
         "cantilever-baseplate-drawing"

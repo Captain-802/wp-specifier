@@ -23,6 +23,7 @@
       "js/engines/result-selection-engine.js",
       "js/engines/windpost-calculation-engine.js",
       "js/engines/outer-tie-selection-engine.js",
+      "js/engines/design-data-engine.js",
       "js/engines/automatic-selection-engine.js",
       "js/engines/connection-selection-engine.js"
     ],

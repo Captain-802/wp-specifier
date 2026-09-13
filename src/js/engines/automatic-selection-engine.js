@@ -23,10 +23,27 @@
     connectionCapacityCap: ""
   });
 
-  function sharedCalculationInputs(type) {
+  // The assumptions a run actually uses: the catalogue defaults with any
+  // edits from the design-data editor (windpost.designData) on top. They
+  // travel on the design object so the report prints the figures used.
+  function currentDesignDefaults() {
+    const data = windpost.designData;
+    return { ...DESIGN_DEFAULTS, ...(data ? data.designValues() : {}) };
+  }
+
+  // Tie strength per level: the weaker of the inner tie and the outer tie
+  // the wall selected, each with its own editable capacity; the catalogue
+  // family figure when the design-data engine is not loaded.
+  function tieStrengthFor(type, wall) {
+    const data = windpost.designData;
+    if (data) return data.levelCapacity(type, wall && wall.innerTie, wall && wall.outerTie);
+    return windpost.config.DEFAULT_TIE_STRENGTH_KN[type];
+  }
+
+  function sharedCalculationInputs(type, wall) {
     return {
-      ...DESIGN_DEFAULTS,
-      tieStrength: windpost.config.DEFAULT_TIE_STRENGTH_KN[type]
+      ...currentDesignDefaults(),
+      tieStrength: tieStrengthFor(type, wall)
     };
   }
 
@@ -55,8 +72,10 @@
 
   function evaluateSection(section, options) {
     const properties = getSectionProperties(section);
+    // the wall first: the outer tie it selects sets the level capacity
+    const wall = calculateWallAndTie(section, options.wall);
     const calculation = getCalculatedDesignValues({
-      ...sharedCalculationInputs(options.type),
+      ...sharedCalculationInputs(options.type, wall),
       length: options.length_mm,
       ixx: properties.ixx_mm4,
       zxx: properties.zxx_mm3,
@@ -64,7 +83,6 @@
       supportCondition: options.supportCondition,
       loadType: options.loadType
     });
-    const wall = calculateWallAndTie(section, options.wall);
     const requiredLoad = Number(options.requiredLoad_kN);
     const hasRequiredLoad = Number.isFinite(requiredLoad) && requiredLoad > 0;
     const finalCapacity = calculation.valid ? Number(calculation.ultimateDesignValue) : 0;
@@ -146,7 +164,7 @@
           normalized.loadType
         ),
         inputs: normalized,
-        designDefaults: { ...DESIGN_DEFAULTS }
+        designDefaults: currentDesignDefaults()
       };
     }
 
@@ -176,12 +194,14 @@
         normalized.loadType
       ),
       inputs: normalized,
-      designDefaults: { ...DESIGN_DEFAULTS }
+      designDefaults: currentDesignDefaults()
     };
   }
 
   windpost.automaticSelectionEngine = Object.freeze({
     DESIGN_DEFAULTS,
+    currentDesignDefaults,
+    tieStrengthFor,
     calculateDemandActions,
     evaluateSection,
     runDesign

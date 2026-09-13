@@ -820,3 +820,54 @@ for U-B1A/U-B1B/I-B1A/I-B1B and DU-T4 in the workbook Bolts sheet; the
 Aug-2026 "editable design assumptions / tie strengths per post, load case and
 leaf" fork that was live on wp-specifier is NOT in V.03 (different lineage).
 Tests: tests/deployment-tests.js (8 checks); 22 suites.
+
+EDITABLE DESIGN DATA (13 Sep 2026)
+-----------------------------------
+Owner: port the August fork's editable assumptions "just like the Excel table,
+separate capacity for each tie", the fold blank "the same as the Excel", and a
+bolt editing sheet to add / remove / modify bolts.
+  * js/engines/design-data-engine.js (windpost.designData) — pure override
+    store over the catalogue, laid out as the workbook sheets:
+      Ties          one capacity per tie product (EDC25-100..375, Shear Tie,
+                    EDC25-U Tie) with the Ties-sheet columns (nominal, actual,
+                    width, thk). levelCapacity(type, innerTie, outerTie) =
+                    min(inner, outer); DU counted per level (not x2), as the
+                    approved workbook, so catalogue values reproduce U/DU 1.713
+                    (U tie governs), L/I 2.250 exactly. Catalogue: EDC rows =
+                    max family figure (2.25), U tie 1.713, Shear tie 2.25.
+      Constants     fy, E, secant fy, secant n, first / standard tie spacing,
+                    10 mm cap (bounded).
+      Anchors       Bolts sheet A: shear / tension per anchor SKU; add / remove.
+      Bolt SKUs     Bolts sheet C: description + quantity under every
+                    connection code; add / remove SKUs.
+      Connections   the SKU each connection uses per bolt family.
+    serialize()/restore() (project JSON), load(localStorage) persistence
+    (key windpost.designData.v1, written on every change), edits() summary
+    lines, reset(area).
+  * Engines read through it when loaded: automatic-selection-engine
+    (evaluateSection now computes the wall FIRST, then tieStrength =
+    designData.levelCapacity(type, wall.innerTie, wall.outerTie); design
+    values = currentDesignDefaults()); windpost-calculation-engine returns
+    tieStrength; connection-selection-engine anchors()/boltSkus()/
+    connectionBolt() via anchorRows()/boltSkuRows()/boltFor(); the report
+    prints the tie strength used and a "Design data edited" section; the
+    Detailing page loads the engine + localStorage so its capacity check
+    uses familyCapacity(type).
+  * js/ui/design-data-editor.js (windpost.designDataEditor.mount) — tabs
+    Ties / Design constants / Anchors / Bolt SKUs & quantities / Connection
+    bolts; change-event delegation (no inline handlers); edited rows
+    highlighted; Reset this table / Reset all. index.html hosts it in the
+    "Design data" details (replacing the locked defaults grid) with a badge;
+    app.js initDesignData()/onDesignDataChange() re-run the selection, the
+    project JSON carries designData, the result panel shows the edits.
+  * Fold blank = Excel: u-section-orthographic calculateBlank() develops the
+    U on the workbook basis (two legs of a, web b: 2a + b - 4(r+t) +
+    pi(r+0.38t), rounded to 2 dp) unless config.FOLD_WIDTH_BASIS is
+    "developed", so the drawn blank, its dimension, the FOLD WIDTH label, the
+    DXF and the weight all carry the workbook number. The production
+    validation "fold-width" check now passes and records the geometric
+    development for the record.
+  * tests/design-data-tests.js (9 checks); 23 suites.
+Known data notes for the owner: the app draws the shear tie 168 mm long
+(tie-profiles) while the workbook Ties sheet lists Shear Tie 240 mm; the
+editor shows the workbook figures for the product columns.

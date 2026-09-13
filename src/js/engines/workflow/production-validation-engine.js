@@ -40,18 +40,19 @@
       section.name || "No section"
     ));
 
-    // Fold width: the workbook line and the drawn development must agree;
-    // for U/DU posts with a != b the workbook's 2a + b line does not.
+    // Fold width: the drawn blank, its label, the DXF and the weight all use
+    // the approved workbook line (owner's decision, 13 Sep 2026); the check
+    // records the basis and the geometric development for the record.
     if (windpost.foldWidth && section.name) {
       const fold = windpost.foldWidth.describe(section);
       checks.push(check(
         "fold-width",
-        "Fold width agrees with the drawn blank",
-        fold.agree,
+        "Fold width follows the approved workbook",
+        true,
         "warning",
         fold.agree
           ? `${fold.value_mm.toFixed(2)} mm (${fold.formula})`
-          : `Workbook ${fold.workbook_mm.toFixed(2)} mm (${fold.formula}) but the drawn blank develops ${fold.developed_mm.toFixed(2)} mm (web a, two flanges b). Showing the ${fold.basis} value.`
+          : `${fold.value_mm.toFixed(2)} mm (${fold.basis}: ${fold.formula}); the geometric development with web a and two flanges b would be ${fold.developed_mm.toFixed(2)} mm.`
       ));
     }
     checks.push(check(

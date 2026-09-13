@@ -250,18 +250,10 @@
           </div>
         </section>
 
-        <details class="defaults-panel">
-          <summary><span>Design assumptions</span><small>Locked to the existing designer defaults</small></summary>
-          <div class="defaults-grid">
-            <div><span>Allowable stress</span><strong>127.27 N/mm²</strong></div>
-            <div><span>Initial E</span><strong>200 kN/mm²</strong></div>
-            <div><span>Secant f<sub>y</sub></span><strong>210 N/mm²</strong></div>
-            <div><span>Secant exponent</span><strong>n = 7</strong></div>
-            <div><span>U / DU tie strength</span><strong>1.713 kN</strong></div>
-            <div><span>L / I tie strength</span><strong>2.250 kN</strong></div>
-            <div><span>First / standard spacing</span><strong>225 / 225 mm</strong></div>
-            <div><span>10 mm deflection cap</span><strong>Not applied</strong></div>
-          </div>
+        <details class="defaults-panel design-data" id="design-data">
+          <summary><span>Design data</span><small>Tie capacities, design constants, anchors, bolts and connection bolts, laid out as in the workbook</small><b id="design-data-badge" class="badge">Catalogue values</b></summary>
+          <p class="design-data-hint">Edit any figure below. Edited values are highlighted, kept in this browser, saved inside the project JSON and listed on the calculation record. The catalogue itself is never changed: <em>Reset</em> returns to it.</p>
+          <div id="design-data-editor" class="design-data-editor"></div>
         </details>
 
         <div class="form-actions">
@@ -342,6 +334,7 @@
   <script src="./js/engines/result-selection-engine.js"></script>
   <script src="./js/engines/windpost-calculation-engine.js"></script>
   <script src="./js/engines/outer-tie-selection-engine.js"></script>
+  <script src="./js/engines/design-data-engine.js"></script>
   <script src="./js/engines/automatic-selection-engine.js"></script>
   <script src="./js/engines/connection-selection-engine.js"></script>
   <script src="./js/services/design-report-service.js"></script>
@@ -392,6 +385,7 @@
   <script src="./js/engines/workflow/project-file-engine.js"></script>
   <script src="./js/engines/selector/selector-baseplate-routing-engine.js"></script>
   <script src="./js/engines/selector/baseplate-drawing-routing-engine.js"></script>
+  <script src="./js/ui/design-data-editor.js"></script>
   <script src="./js/ui/app.js"></script>
 </body>
 </html>

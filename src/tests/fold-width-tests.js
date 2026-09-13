@@ -74,11 +74,11 @@ check("the post weight uses the engine (workbook basis) for every family", () =>
   });
 });
 
-check("the validator warns when the workbook fold width and the drawn blank disagree", () => {
+check("the validator records the workbook fold width (owner's basis) and the geometric development for the record", () => {
   const V = W.productionValidationEngine;
   const warn = V.validate({ section: find(W.uSectionDatabase, "UP 55x60x4"), orthographic: { length_mm: 900, slotPlacement: { levels_mm: [] } } });
   const item = warn.checks.find(c => c.id === "fold-width");
-  assert(item && !item.pass && item.severity === "warning", "U 55x60x4 warns");
+  assert(item && item.pass, "U 55x60x4 passes on the workbook basis (13 Sep 2026 owner decision)");
   assert(/153\.62/.test(item.detail) && /158\.62/.test(item.detail), item.detail);
   const fine = V.validate({ section: find(W.lSectionDatabase, "LP 125x70x6"), orthographic: { length_mm: 900, slotPlacement: { levels_mm: [] } } });
   const ok = fine.checks.find(c => c.id === "fold-width");

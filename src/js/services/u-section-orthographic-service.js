@@ -67,8 +67,6 @@
     const outerRadius = innerRadius + thickness;
     if (
       ![a, b, thickness, kFactor].every(Number.isFinite) ||
-      a <= 2 * outerRadius ||
-      b <= outerRadius ||
       thickness <= 0 ||
       kFactor < 0 ||
       kFactor > 1
@@ -76,11 +74,24 @@
       throw new Error("The selected U section has invalid flat-blank geometry.");
     }
 
-    const flangeStraight_mm = b - outerRadius;
-    const webStraight_mm = a - 2 * outerRadius;
+    // The approved workbook develops a U as two legs of a and a web of b
+    // (2a + b - 4(r + t) + pi(r + 0.38t)); the drawn blank follows the same
+    // basis as the fold-width figure so the drawing, the label, the DXF and
+    // the weight all carry the workbook's number. config.FOLD_WIDTH_BASIS
+    // "developed" draws the geometric development instead (web a, legs b).
+    const workbookBasis = !(windpost.config && windpost.config.FOLD_WIDTH_BASIS === "developed");
+    const legOutside = workbookBasis ? a : b;
+    const webOutside = workbookBasis ? b : a;
+    if (legOutside <= outerRadius || webOutside <= 2 * outerRadius) {
+      throw new Error("The selected U section has invalid flat-blank geometry.");
+    }
+    const flangeStraight_mm = legOutside - outerRadius;
+    const webStraight_mm = webOutside - 2 * outerRadius;
     const bendAllowance_mm = Math.PI / 2 * (innerRadius + kFactor * thickness);
-    const blankLength_mm =
-      2 * flangeStraight_mm + 2 * bendAllowance_mm + webStraight_mm;
+    // rounded to 2 dp, as the workbook's fold-width line is
+    const blankLength_mm = Math.round(
+      (2 * flangeStraight_mm + 2 * bendAllowance_mm + webStraight_mm) * 100
+    ) / 100;
 
     return Object.freeze({
       outsideWeb_mm: a,
@@ -303,9 +314,8 @@
       ? "url(#steel-section-hatch)"
       : "#fff";
     const length_mm = Math.max(300, Math.min(12000, Number(requestedLength_mm) || 900));
-    // Fold width per the approved workbook (shared engine). The drawn blank
-    // is the geometric development (web a, two flanges b); the two differ
-    // for a != b and the production validation says so.
+    // Fold width per the approved workbook (shared engine); calculateBlank
+    // draws the blank on the same basis, so the label and the drawing agree.
     const foldWidth = windpost.foldWidth ? windpost.foldWidth.describe(section) : null;
     const blank = calculateBlank(section, options && options.kFactor);
     const slot = createSlotGeometry(SLOT_SPEC);

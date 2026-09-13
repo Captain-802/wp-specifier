@@ -51,6 +51,51 @@
       });
       this.setDetailingAvailable(false);
       this.updateConditionalInputs();
+      this.initDesignData();
+    },
+
+    // The editable design data (tie capacities, constants, anchors, bolts):
+    // edits saved in this browser are read back, the editor is mounted, and
+    // any change re-runs the current selection.
+    initDesignData() {
+      const data = windpost.designData;
+      if (!data) return;
+      try { data.load(global.localStorage); } catch (error) { /* storage blocked */ }
+      const host = document.getElementById("design-data-editor");
+      if (host && windpost.designDataEditor) {
+        this.designDataEditor = windpost.designDataEditor.mount(host, {
+          onChange: () => this.onDesignDataChange()
+        });
+      }
+      this.updateDesignDataBadge();
+    },
+
+    onDesignDataChange() {
+      this.updateDesignDataBadge();
+      this.populateSpecialSkus();
+      if (this.lastDesign) this.calculate();
+      else this.invalidateResult();
+    },
+
+    updateDesignDataBadge() {
+      const badge = document.getElementById("design-data-badge");
+      const data = windpost.designData;
+      if (!badge || !data) return;
+      const edits = data.edits();
+      badge.textContent = edits.count
+        ? `${edits.count} value${edits.count === 1 ? "" : "s"} edited`
+        : "Catalogue values";
+      badge.classList.toggle("is-edited", edits.count > 0);
+    },
+
+    designDataNoteHtml() {
+      const data = windpost.designData;
+      const edits = data ? data.edits() : null;
+      if (!edits || !edits.count) return "";
+      return `<section class="result-block design-data-note">
+          <h3>Design data edited <span class="badge is-edited">${edits.count}</span></h3>
+          <ul>${edits.lines.slice(0, 12).map(line => `<li>${this.escape(line)}</li>`).join("")}${edits.lines.length > 12 ? `<li>… and ${edits.lines.length - 12} more (see the calculation record)</li>` : ""}</ul>
+        </section>`;
     },
 
     setProjectStatus(message, failed) {
@@ -65,7 +110,8 @@
       const options = this.readOptions();
       const project = engine.create("selector", {
         options,
-        hasSuccessfulDesign: Boolean(this.lastDesign)
+        hasSuccessfulDesign: Boolean(this.lastDesign),
+        designData: windpost.designData ? windpost.designData.serialize() : null
       }, {
         sectionName: this.lastDesign && this.lastDesign.selected &&
           this.lastDesign.selected.section &&
@@ -92,6 +138,13 @@
       if (!options) {
         this.setProjectStatus("The project contains no selector inputs.", true);
         return;
+      }
+      // the design data the project was calculated with (catalogue when absent)
+      if (windpost.designData) {
+        windpost.designData.restore(project.data.designData || null);
+        if (this.designDataEditor) this.designDataEditor.refresh();
+        this.updateDesignDataBadge();
+        this.populateSpecialSkus();
       }
       const choose = (name, value) => {
         const input = document.querySelector(
@@ -215,7 +268,8 @@
 
     populateSpecialSkus() {
       const db = windpost.connectionsDatabase;
-      const skus = (db && db.boltSkus ? db.boltSkus : []).map((row) => row.sku);
+      const rows = windpost.designData ? windpost.designData.boltSkus() : (db && db.boltSkus ? db.boltSkus : []);
+      const skus = rows.map((row) => row.sku);
       ["special-head-sku", "special-base-sku"].forEach((id) => {
         const select = document.getElementById(id);
         select.innerHTML = skus.map((sku) => `<option value="${this.escape(sku)}">${this.escape(sku)}</option>`).join("");
@@ -491,6 +545,7 @@
               <div><dt>Wall construction</dt><dd>${this.number(wall.innerLeafThickness_mm, 0)} / ${this.number(wall.cavityWidth_mm, 0)} / ${this.number(wall.outerLeafThickness_mm, 0)} mm</dd></div>
             </dl>
           </section>
+          ${this.designDataNoteHtml()}
           ${alternatives}
           ${this.connectionsBlockHtml(connections)}
           ${this.duConnectionDrawingsHtml(section, connections)}

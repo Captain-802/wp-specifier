@@ -364,3 +364,48 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
   .report-conclusion strong { font-size: 15pt; color: #0d6448; }
   .report-conclusion em { font-size: 8pt; }
 }
+
+/* ---- Design data editor (Ties / Constants / Anchors / Bolts / Connection bolts) ---- */
+.defaults-panel.design-data summary { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #e8edf1; color: #3f4f5c; font-size: 11px; font-weight: 700; letter-spacing: .02em; }
+.badge.is-edited { background: #fff1c2; color: #7a5200; }
+.design-data-hint { margin: 8px 0 10px; color: var(--muted); font-size: 12px; }
+.design-data-editor { border: 1px solid var(--line); border-radius: 8px; background: #fff; padding: 10px; }
+.dd-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.dd-tab { border: 1px solid var(--line); background: #f4f6f8; color: var(--navy); border-radius: 6px; padding: 6px 10px; font-size: 12px; font-weight: 700; cursor: pointer; }
+.dd-tab.is-active { background: var(--navy); color: #fff; border-color: var(--navy); }
+.dd-tab .badge { margin-left: 4px; }
+.dd-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.dd-toolbar .dd-status { flex: 1; font-size: 12px; font-weight: 700; color: var(--muted); }
+.dd-toolbar .secondary-button { padding: 5px 10px; font-size: 12px; }
+.dd-notice { margin: 0 0 8px; padding: 6px 10px; background: #fdecea; color: #b3261e; font-size: 12px; font-weight: 700; border-radius: 6px; }
+.dd-table-wrap { overflow: auto; max-height: 460px; border: 1px solid #e7ebef; border-radius: 6px; }
+.dd-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; }
+.dd-table th, .dd-table td { padding: 4px 6px; border-bottom: 1px solid #e7ebef; vertical-align: middle; white-space: nowrap; text-align: left; }
+.dd-table thead th { position: sticky; top: 0; background: #f4f6f8; color: var(--muted); font-weight: 700; z-index: 2; }
+.dd-table td.num, .dd-table th.num { text-align: right; }
+.dd-table .dd-name { font-weight: 700; color: var(--navy); }
+.dd-table .dd-name small, .dd-table td small { display: block; font-weight: 400; color: var(--muted); font-size: 11px; white-space: normal; }
+.dd-table .dd-catalogue { color: var(--muted); font-family: Consolas, "Courier New", monospace; }
+.dd-table input[type="number"] { width: 84px; padding: 3px 5px; border: 1px solid #cfd6dd; border-radius: 4px; text-align: right; font: inherit; }
+.dd-table input[type="text"] { width: 100%; min-width: 160px; padding: 3px 5px; border: 1px solid #cfd6dd; border-radius: 4px; font: inherit; }
+.dd-table select { padding: 3px 4px; border: 1px solid #cfd6dd; border-radius: 4px; font: inherit; max-width: 240px; }
+.dd-table tr.is-edited td input, .dd-table tr.is-edited td select { background: #fff6d6; border-color: #d4a72c; }
+.dd-table tr.is-added th, .dd-table tr.is-added td:first-child { color: #7a5200; }
+.dd-table tr.dd-group td { background: #f8fafb; color: var(--muted); font-weight: 700; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; }
+.dd-matrix-wrap { max-height: 520px; }
+.dd-matrix .dd-sticky { position: sticky; left: 0; background: #fff; z-index: 1; }
+.dd-matrix thead .dd-sticky { z-index: 3; background: #f4f6f8; }
+.dd-matrix .dd-code { writing-mode: vertical-rl; transform: rotate(180deg); text-align: left; padding: 6px 2px; font-size: 11px; }
+.dd-matrix input[type="number"] { width: 46px; padding: 2px 3px; }
+.dd-matrix .dd-desc input { min-width: 220px; }
+.dd-remove { border: 1px solid #e0b4b0; background: #fff; color: #b3261e; border-radius: 4px; width: 24px; height: 24px; cursor: pointer; font-size: 14px; line-height: 1; }
+.dd-add { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; padding: 8px; background: #f8fafb; border: 1px dashed var(--line); border-radius: 6px; }
+.dd-add input, .dd-add select { padding: 4px 6px; border: 1px solid #cfd6dd; border-radius: 4px; font: inherit; font-size: 12px; }
+.dd-add input[type="text"] { min-width: 180px; flex: 1; }
+.dd-add input[type="number"] { width: 100px; }
+.dd-add .secondary-button { padding: 5px 10px; font-size: 12px; }
+.dd-note { margin: 8px 0 0; color: var(--muted); font-size: 11.5px; line-height: 1.45; }
+.design-data-note ul, .report-edits ul { margin: 6px 0 0; padding-left: 18px; font-size: 12px; color: #5b636c; }
+.design-data-note li, .report-edits li { margin: 2px 0; }
+@media print { .report-edits { break-inside: avoid; } }

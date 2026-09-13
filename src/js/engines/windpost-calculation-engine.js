@@ -100,6 +100,7 @@
         safeLoadDeflectionBased,
         safeLoadBendingMomentBased,
         totalTiesCapacity,
+        tieStrength: tieStrengthValue,
         ...selectedResults,
         numberOfTies,
         calculationDetails: {

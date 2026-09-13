@@ -34,6 +34,17 @@ Simply-supported base plates follow the standard types U-B3A / U-B3B /
 L-B2A / L-B2B (by section depth); cantilever plates are sized by the
 base-plate designer. DXF export uses the firm's layer standard (AutoCAD 2000).
 
+## Editable design data
+
+The Selector's **Design data** panel lays the workbook's editable sheets out
+in the page: a capacity for every tie product (Ties sheet), the design
+constants, anchor capacities, bolt SKUs with their quantity under each
+connection code (add / remove / modify), and the SKU each connection uses per
+bolt family. A tie level is as strong as its weaker tie (inner tie or the EDC
+tie the wall selects); a DU is counted per level as the workbook. Edits are
+highlighted, kept in the browser, saved inside the project JSON and printed on
+the calculation record; *Reset* returns to the catalogue.
+
 ## Working on it
 
     cd src

@@ -109,6 +109,7 @@ tests/
   parapet-tests.js             Parapet matrix + photographed ULS UDL values
   photo-mode-tests.js          Realistic (photo) drawing mode + inlined approval views
   deployment-tests.js          Built-page links, hand-off gating of drawn connections, DXF hatch codes, DU elevation edges
+  design-data-tests.js         Editable design data: per-tie capacities, constants, anchors, bolt SKUs, connection bolts, workbook-basis U blank
   random-tests.js              1600 randomised end-to-end invariant checks
   baseplate-tests.js           Shared design + U/L geometry and UI routing checks
   cavity-wall-assembly-tests.js L-post masonry/tie/drawing geometry checks

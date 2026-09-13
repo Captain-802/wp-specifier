@@ -374,6 +374,51 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
   .report-conclusion em { font-size: 8pt; }
 }
 
+/* ---- Design data editor (Ties / Constants / Anchors / Bolts / Connection bolts) ---- */
+.defaults-panel.design-data summary { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #e8edf1; color: #3f4f5c; font-size: 11px; font-weight: 700; letter-spacing: .02em; }
+.badge.is-edited { background: #fff1c2; color: #7a5200; }
+.design-data-hint { margin: 8px 0 10px; color: var(--muted); font-size: 12px; }
+.design-data-editor { border: 1px solid var(--line); border-radius: 8px; background: #fff; padding: 10px; }
+.dd-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.dd-tab { border: 1px solid var(--line); background: #f4f6f8; color: var(--navy); border-radius: 6px; padding: 6px 10px; font-size: 12px; font-weight: 700; cursor: pointer; }
+.dd-tab.is-active { background: var(--navy); color: #fff; border-color: var(--navy); }
+.dd-tab .badge { margin-left: 4px; }
+.dd-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.dd-toolbar .dd-status { flex: 1; font-size: 12px; font-weight: 700; color: var(--muted); }
+.dd-toolbar .secondary-button { padding: 5px 10px; font-size: 12px; }
+.dd-notice { margin: 0 0 8px; padding: 6px 10px; background: #fdecea; color: #b3261e; font-size: 12px; font-weight: 700; border-radius: 6px; }
+.dd-table-wrap { overflow: auto; max-height: 460px; border: 1px solid #e7ebef; border-radius: 6px; }
+.dd-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; }
+.dd-table th, .dd-table td { padding: 4px 6px; border-bottom: 1px solid #e7ebef; vertical-align: middle; white-space: nowrap; text-align: left; }
+.dd-table thead th { position: sticky; top: 0; background: #f4f6f8; color: var(--muted); font-weight: 700; z-index: 2; }
+.dd-table td.num, .dd-table th.num { text-align: right; }
+.dd-table .dd-name { font-weight: 700; color: var(--navy); }
+.dd-table .dd-name small, .dd-table td small { display: block; font-weight: 400; color: var(--muted); font-size: 11px; white-space: normal; }
+.dd-table .dd-catalogue { color: var(--muted); font-family: Consolas, "Courier New", monospace; }
+.dd-table input[type="number"] { width: 84px; padding: 3px 5px; border: 1px solid #cfd6dd; border-radius: 4px; text-align: right; font: inherit; }
+.dd-table input[type="text"] { width: 100%; min-width: 160px; padding: 3px 5px; border: 1px solid #cfd6dd; border-radius: 4px; font: inherit; }
+.dd-table select { padding: 3px 4px; border: 1px solid #cfd6dd; border-radius: 4px; font: inherit; max-width: 240px; }
+.dd-table tr.is-edited td input, .dd-table tr.is-edited td select { background: #fff6d6; border-color: #d4a72c; }
+.dd-table tr.is-added th, .dd-table tr.is-added td:first-child { color: #7a5200; }
+.dd-table tr.dd-group td { background: #f8fafb; color: var(--muted); font-weight: 700; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; }
+.dd-matrix-wrap { max-height: 520px; }
+.dd-matrix .dd-sticky { position: sticky; left: 0; background: #fff; z-index: 1; }
+.dd-matrix thead .dd-sticky { z-index: 3; background: #f4f6f8; }
+.dd-matrix .dd-code { writing-mode: vertical-rl; transform: rotate(180deg); text-align: left; padding: 6px 2px; font-size: 11px; }
+.dd-matrix input[type="number"] { width: 46px; padding: 2px 3px; }
+.dd-matrix .dd-desc input { min-width: 220px; }
+.dd-remove { border: 1px solid #e0b4b0; background: #fff; color: #b3261e; border-radius: 4px; width: 24px; height: 24px; cursor: pointer; font-size: 14px; line-height: 1; }
+.dd-add { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; padding: 8px; background: #f8fafb; border: 1px dashed var(--line); border-radius: 6px; }
+.dd-add input, .dd-add select { padding: 4px 6px; border: 1px solid #cfd6dd; border-radius: 4px; font: inherit; font-size: 12px; }
+.dd-add input[type="text"] { min-width: 180px; flex: 1; }
+.dd-add input[type="number"] { width: 100px; }
+.dd-add .secondary-button { padding: 5px 10px; font-size: 12px; }
+.dd-note { margin: 8px 0 0; color: var(--muted); font-size: 11.5px; line-height: 1.45; }
+.design-data-note ul, .report-edits ul { margin: 6px 0 0; padding-left: 18px; font-size: 12px; color: #5b636c; }
+.design-data-note li, .report-edits li { margin: 2px 0; }
+@media print { .report-edits { break-inside: avoid; } }
+
 </style>
 </head>
 <body>
@@ -618,18 +663,10 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
           </div>
         </section>
 
-        <details class="defaults-panel">
-          <summary><span>Design assumptions</span><small>Locked to the existing designer defaults</small></summary>
-          <div class="defaults-grid">
-            <div><span>Allowable stress</span><strong>127.27 N/mm²</strong></div>
-            <div><span>Initial E</span><strong>200 kN/mm²</strong></div>
-            <div><span>Secant f<sub>y</sub></span><strong>210 N/mm²</strong></div>
-            <div><span>Secant exponent</span><strong>n = 7</strong></div>
-            <div><span>U / DU tie strength</span><strong>1.713 kN</strong></div>
-            <div><span>L / I tie strength</span><strong>2.250 kN</strong></div>
-            <div><span>First / standard spacing</span><strong>225 / 225 mm</strong></div>
-            <div><span>10 mm deflection cap</span><strong>Not applied</strong></div>
-          </div>
+        <details class="defaults-panel design-data" id="design-data">
+          <summary><span>Design data</span><small>Tie capacities, design constants, anchors, bolts and connection bolts, laid out as in the workbook</small><b id="design-data-badge" class="badge">Catalogue values</b></summary>
+          <p class="design-data-hint">Edit any figure below. Edited values are highlighted, kept in this browser, saved inside the project JSON and listed on the calculation record. The catalogue itself is never changed: <em>Reset</em> returns to it.</p>
+          <div id="design-data-editor" class="design-data-editor"></div>
         </details>
 
         <div class="form-actions">
@@ -5575,6 +5612,7 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
         safeLoadDeflectionBased,
         safeLoadBendingMomentBased,
         totalTiesCapacity,
+        tieStrength: tieStrengthValue,
         ...selectedResults,
         numberOfTies,
         calculationDetails: {
@@ -5852,6 +5890,533 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
 
 </script>
   <script>
+(function initialiseDesignDataEngine(global) {
+  "use strict";
+
+  // Editable design data, laid out like the workbook sheets:
+  //
+  //   Ties         one capacity per tie product (EDC25-100 ... EDC25-375,
+  //                Shear Tie, EDC25-U Tie), as the Ties sheet lists them.
+  //                A tie level is a chain wind -> outer leaf -> EDC tie ->
+  //                post -> inner tie -> inner leaf, so the level capacity is
+  //                the weaker of the two ties. A DU carries two ties per
+  //                level; its capacity is counted per level, as the approved
+  //                workbook does, so the catalogue figures reproduce exactly:
+  //                U / DU 1.713 (governed by the U tie), L / I 2.250.
+  //   Constants    the design assumptions (fy, E, secant curve, tie spacing).
+  //   Bolts A      anchor capacities (family / anchor / SKU / shear / tension).
+  //   Bolts C      bolt SKUs with the quantity under every connection code.
+  //   Connections  the SKU each connection uses per bolt family.
+  //
+  // The catalogue never changes; edits live in an override store that the
+  // engines read through. Edits persist in this browser (localStorage, when
+  // available) and travel inside the project JSON, and every edited figure
+  // is reported so a saved calculation is never mistaken for catalogue values.
+  // Pure data engine: no DOM.
+
+  const windpost = global.Windpost = global.Windpost || {};
+  const VERSION = 1;
+  const STORAGE_KEY = "windpost.designData.v1";
+
+  const config = windpost.config || {};
+  const P = (windpost.parameters && windpost.parameters.design) || {};
+  const DB = windpost.connectionsDatabase || { connections: [], anchors: [], boltSkus: [] };
+  const FAMILY_STRENGTH = config.DEFAULT_TIE_STRENGTH_KN || { U: 1.713, L: 2.25, DU: 1.713, I: 2.25 };
+
+  const BOLT_FAMILIES = Object.freeze(["Stainless Steel Bolts", "RGM BOLTS", "FAZ II BOLTS", "FAZ II PLUS BOLTS"]);
+  const ANCHOR_FAMILIES = Object.freeze(["RGM", "FAZ II", "FAZ II PLUS"]);
+
+  // ---- catalogue ------------------------------------------------------------
+
+  // Outer ties: the selection engine's list when loaded, else the Ties sheet.
+  const TIES_SHEET = Object.freeze([
+    [100, 108], [125, 133], [150, 158], [175, 183], [200, 208], [225, 233],
+    [250, 258], [275, 283], [300, 308], [325, 333], [350, 358], [375, 383]
+  ]);
+
+  function outerTieList() {
+    const engine = windpost.outerTieSelectionEngine;
+    if (engine && Array.isArray(engine.TIE_LIST) && engine.TIE_LIST.length) {
+      return engine.TIE_LIST.map(t => ({ name: t.name, nominal_mm: t.nominal_mm, actual_mm: t.actual_mm }));
+    }
+    return TIES_SHEET.map(([nominal, actual]) => ({ name: `EDC25-${nominal}`, nominal_mm: nominal, actual_mm: actual }));
+  }
+
+  // The catalogue tie rows. Capacities: the EDC (outer) ties carry the
+  // stronger family figure, the U tie the U figure and the shear tie the L
+  // figure, so min(inner, outer) gives the published level strengths.
+  const OUTER_DEFAULT_KN = Math.max(Number(FAMILY_STRENGTH.U) || 0, Number(FAMILY_STRENGTH.L) || 0);
+  const INNER_TIES = Object.freeze([
+    { name: "U tie", label: "EDC25-U Tie", kind: "inner", posts: "U, DU", nominal_mm: null, actual_mm: 84, width_mm: 21, thickness_mm: 1.2, catalogue_kN: Number(FAMILY_STRENGTH.U) },
+    { name: "Shear tie", label: "Shear Tie", kind: "inner", posts: "L, I", nominal_mm: null, actual_mm: 240, width_mm: 21, thickness_mm: 1.2, catalogue_kN: Number(FAMILY_STRENGTH.L) }
+  ]);
+
+  function catalogueTies() {
+    const outer = outerTieList().map(t => ({
+      name: t.name, label: t.name, kind: "outer", posts: "U, L, DU",
+      nominal_mm: t.nominal_mm, actual_mm: t.actual_mm, width_mm: 21,
+      thickness_mm: t.nominal_mm >= 325 ? 1.5 : 1.2, catalogue_kN: OUTER_DEFAULT_KN
+    }));
+    return outer.concat(INNER_TIES.map(t => ({ ...t })));
+  }
+
+  const DESIGN_SPEC = Object.freeze([
+    { key: "fy", label: "Allowable stress", hint: "fy in bending = 210 / 1.1 / 1.5", unit: "N/mm²", decimals: 2, min: 1, max: 2000, value: P.fy ?? 127.27 },
+    { key: "e", label: "Initial E", hint: "Young's modulus", unit: "kN/mm²", decimals: 0, min: 1, max: 1000, value: P.e ?? 200 },
+    { key: "secantFy", label: "Secant fy", hint: "Ramberg-Osgood 0.2 % proof stress", unit: "N/mm²", decimals: 2, min: 1, max: 2000, value: P.secantFy ?? 210 },
+    { key: "secantN", label: "Secant exponent", hint: "Ramberg-Osgood n", unit: "", decimals: 2, min: 1, max: 100, value: P.secantN ?? 7 },
+    { key: "firstTieSpacing", label: "First tie spacing", hint: "base to first tie", unit: "mm", decimals: 0, min: 1, max: 5000, value: P.firstTieSpacing ?? 225 },
+    { key: "standardTieSpacing", label: "Standard tie spacing", hint: "tie to tie", unit: "mm", decimals: 0, min: 1, max: 5000, value: P.standardTieSpacing ?? 225 },
+    { key: "apply10mmLimit", label: "10 mm deflection cap", hint: "cap the deflection limit at 10 mm", type: "boolean", value: false }
+  ]);
+
+  function catalogueAnchors() {
+    return (DB.anchors || []).map(a => ({ family: a.family, name: a.name, sku: a.sku, shear: Number(a.shear), tension: Number(a.tension) }));
+  }
+
+  function catalogueBoltSkus() {
+    return (DB.boltSkus || []).map(r => ({ sku: r.sku, description: r.description || "", counts: { ...(r.counts || {}) } }));
+  }
+
+  // Connection codes in the workbook's column order: every code that carries
+  // a quantity, then any connection the library adds.
+  function boltCodes() {
+    const seen = [];
+    const add = code => { if (code && !seen.includes(code)) seen.push(code); };
+    (DB.boltSkus || []).forEach(r => Object.keys(r.counts || {}).forEach(add));
+    (DB.connections || []).forEach(c => add(c.code));
+    return seen;
+  }
+
+  // ---- override store -------------------------------------------------------
+
+  const empty = () => ({
+    version: VERSION,
+    ties: {}, design: {},
+    anchors: {}, anchorsAdded: [], anchorsRemoved: [],
+    boltSkus: {}, boltSkusAdded: [], boltSkusRemoved: [],
+    connectionBolts: {}
+  });
+
+  let store = empty();
+  let storage = null;
+  const listeners = new Set();
+
+  function clone(value) {
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function finite(value) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function notify() {
+    if (storage) {
+      try { storage.setItem(STORAGE_KEY, JSON.stringify(store)); } catch (error) { /* storage blocked */ }
+    }
+    listeners.forEach(fn => { try { fn(); } catch (error) { /* listener error */ } });
+  }
+
+  // ---- ties -----------------------------------------------------------------
+
+  function tieRows() {
+    return catalogueTies().map(row => {
+      const edited = Object.prototype.hasOwnProperty.call(store.ties, row.name);
+      return { ...row, capacity_kN: edited ? store.ties[row.name] : row.catalogue_kN, edited };
+    });
+  }
+
+  function tieCapacity(name) {
+    if (Object.prototype.hasOwnProperty.call(store.ties, name)) return store.ties[name];
+    const row = catalogueTies().find(t => t.name === name);
+    return row ? row.catalogue_kN : null;
+  }
+
+  function setTieCapacity(name, value) {
+    const row = catalogueTies().find(t => t.name === name);
+    if (!row) return false;
+    const n = finite(value);
+    if (n === null || n < 0 || n > 1000) return false;
+    if (Math.abs(n - row.catalogue_kN) < 1e-12) delete store.ties[name];
+    else store.ties[name] = n;
+    notify();
+    return true;
+  }
+
+  function innerTieName(type) {
+    return type === "L" || type === "I" ? "Shear tie" : "U tie";
+  }
+
+  // The level capacity for a post: the weaker of its inner tie and the
+  // outer tie the wall selected. Counted per level for every family (a DU's
+  // second tie is shown on the schedule, not added to the capacity), as the
+  // approved workbook does.
+  function levelCapacity(type, innerTie, outerTie) {
+    const inner = tieCapacity(innerTieName(type));
+    if (type === "I" || !outerTie || outerTie === "None") return inner;
+    const outer = tieCapacity(outerTie);
+    return outer === null ? inner : Math.min(inner, outer);
+  }
+
+  // Without a wall (no outer tie known yet): the catalogue level strength.
+  function familyCapacity(type) {
+    const inner = tieCapacity(innerTieName(type));
+    if (type === "I") return inner;
+    const outers = tieRows().filter(t => t.kind === "outer").map(t => t.capacity_kN);
+    return outers.length ? Math.min(inner, Math.max(...outers)) : inner;
+  }
+
+  // ---- design assumptions ---------------------------------------------------
+
+  function designSpec() {
+    return DESIGN_SPEC.map(d => {
+      const edited = Object.prototype.hasOwnProperty.call(store.design, d.key);
+      return { ...d, catalogue: d.value, current: edited ? store.design[d.key] : d.value, edited };
+    });
+  }
+
+  function designValues() {
+    const out = {};
+    DESIGN_SPEC.forEach(d => {
+      out[d.key] = Object.prototype.hasOwnProperty.call(store.design, d.key) ? store.design[d.key] : d.value;
+    });
+    return out;
+  }
+
+  function setDesign(key, value) {
+    const spec = DESIGN_SPEC.find(d => d.key === key);
+    if (!spec) return false;
+    let v;
+    if (spec.type === "boolean") v = Boolean(value);
+    else {
+      v = finite(value);
+      if (v === null || v < spec.min || v > spec.max) return false;
+    }
+    if (v === spec.value) delete store.design[key];
+    else store.design[key] = v;
+    notify();
+    return true;
+  }
+
+  // ---- anchors --------------------------------------------------------------
+
+  function anchors() {
+    const rows = catalogueAnchors()
+      .filter(a => !store.anchorsRemoved.includes(a.sku))
+      .map(a => {
+        const o = store.anchors[a.sku];
+        return { ...a, catalogue: { shear: a.shear, tension: a.tension },
+          shear: o && o.shear != null ? o.shear : a.shear,
+          tension: o && o.tension != null ? o.tension : a.tension,
+          edited: Boolean(o), added: false };
+      });
+    store.anchorsAdded.forEach(a => rows.push({ ...clone(a), catalogue: null, edited: true, added: true }));
+    return rows;
+  }
+
+  function setAnchor(sku, values) {
+    const added = store.anchorsAdded.find(a => a.sku === sku);
+    const target = added || catalogueAnchors().find(a => a.sku === sku);
+    if (!target) return false;
+    const shear = values.shear == null ? null : finite(values.shear);
+    const tension = values.tension == null ? null : finite(values.tension);
+    if ((values.shear != null && (shear === null || shear < 0)) || (values.tension != null && (tension === null || tension < 0))) return false;
+    if (added) {
+      if (shear !== null) added.shear = shear;
+      if (tension !== null) added.tension = tension;
+    } else {
+      const o = { ...(store.anchors[sku] || {}) };
+      if (shear !== null) o.shear = shear;
+      if (tension !== null) o.tension = tension;
+      if (o.shear === target.shear) delete o.shear;
+      if (o.tension === target.tension) delete o.tension;
+      if (Object.keys(o).length) store.anchors[sku] = o; else delete store.anchors[sku];
+    }
+    notify();
+    return true;
+  }
+
+  function addAnchor(row) {
+    const sku = String(row && row.sku || "").trim();
+    const family = String(row && row.family || "").trim();
+    const shear = finite(row && row.shear), tension = finite(row && row.tension);
+    if (!sku || !ANCHOR_FAMILIES.includes(family) || shear === null || tension === null || shear < 0 || tension < 0) return false;
+    if (anchors().some(a => a.sku === sku)) return false;
+    const removedIndex = store.anchorsRemoved.indexOf(sku);
+    if (removedIndex >= 0) store.anchorsRemoved.splice(removedIndex, 1);
+    store.anchorsAdded.push({ family, name: String(row.name || sku).trim(), sku, shear, tension });
+    notify();
+    return true;
+  }
+
+  function removeAnchor(sku) {
+    const addedIndex = store.anchorsAdded.findIndex(a => a.sku === sku);
+    if (addedIndex >= 0) store.anchorsAdded.splice(addedIndex, 1);
+    else if (catalogueAnchors().some(a => a.sku === sku)) {
+      if (!store.anchorsRemoved.includes(sku)) store.anchorsRemoved.push(sku);
+      delete store.anchors[sku];
+    } else return false;
+    notify();
+    return true;
+  }
+
+  // ---- bolt SKUs and quantities --------------------------------------------
+
+  function boltSkus() {
+    const rows = catalogueBoltSkus()
+      .filter(r => !store.boltSkusRemoved.includes(r.sku))
+      .map(r => {
+        const o = store.boltSkus[r.sku];
+        const counts = { ...r.counts, ...((o && o.counts) || {}) };
+        return { sku: r.sku, description: o && o.description != null ? o.description : r.description,
+          counts, catalogue: { description: r.description, counts: r.counts },
+          edited: Boolean(o), added: false };
+      });
+    store.boltSkusAdded.forEach(r => rows.push({ ...clone(r), catalogue: null, edited: true, added: true }));
+    return rows;
+  }
+
+  function boltSku(sku) {
+    return boltSkus().find(r => r.sku === sku) || null;
+  }
+
+  function setBoltSku(sku, values) {
+    const added = store.boltSkusAdded.find(r => r.sku === sku);
+    const base = added || catalogueBoltSkus().find(r => r.sku === sku);
+    if (!base) return false;
+    if (added) {
+      if (values.description != null) added.description = String(values.description);
+      if (values.counts) Object.keys(values.counts).forEach(code => {
+        const n = finite(values.counts[code]);
+        if (n !== null && n >= 0) added.counts[code] = Math.round(n);
+      });
+    } else {
+      const o = store.boltSkus[sku] ? clone(store.boltSkus[sku]) : { counts: {} };
+      if (values.description != null) {
+        if (String(values.description) === base.description) delete o.description;
+        else o.description = String(values.description);
+      }
+      if (values.counts) Object.keys(values.counts).forEach(code => {
+        const n = finite(values.counts[code]);
+        if (n === null || n < 0) return;
+        const rounded = Math.round(n);
+        if (rounded === (Number(base.counts[code]) || 0)) delete o.counts[code];
+        else o.counts[code] = rounded;
+      });
+      if (o.description == null && !Object.keys(o.counts).length) delete store.boltSkus[sku];
+      else store.boltSkus[sku] = o;
+    }
+    notify();
+    return true;
+  }
+
+  function addBoltSku(row) {
+    const sku = String(row && row.sku || "").trim();
+    if (!sku || boltSkus().some(r => r.sku === sku)) return false;
+    const removedIndex = store.boltSkusRemoved.indexOf(sku);
+    if (removedIndex >= 0) store.boltSkusRemoved.splice(removedIndex, 1);
+    const counts = {};
+    Object.keys((row && row.counts) || {}).forEach(code => {
+      const n = finite(row.counts[code]);
+      if (n !== null && n >= 0) counts[code] = Math.round(n);
+    });
+    store.boltSkusAdded.push({ sku, description: String(row && row.description || ""), counts });
+    notify();
+    return true;
+  }
+
+  function removeBoltSku(sku) {
+    const addedIndex = store.boltSkusAdded.findIndex(r => r.sku === sku);
+    if (addedIndex >= 0) store.boltSkusAdded.splice(addedIndex, 1);
+    else if (catalogueBoltSkus().some(r => r.sku === sku)) {
+      if (!store.boltSkusRemoved.includes(sku)) store.boltSkusRemoved.push(sku);
+      delete store.boltSkus[sku];
+    } else return false;
+    notify();
+    return true;
+  }
+
+  // ---- the bolt each connection uses ----------------------------------------
+
+  function connectionBoltRows() {
+    return (DB.connections || []).map(c => {
+      const o = store.connectionBolts[c.code] || {};
+      const bolts = {};
+      BOLT_FAMILIES.forEach(f => { bolts[f] = f in o ? o[f] : ((c.bolts && c.bolts[f]) || "N/A"); });
+      return { code: c.code, description: c.description, family: c.family, position: c.position,
+        materialClass: c.materialClass, postBolt: c.postBolt, anchorRole: c.anchorRole || "",
+        bolts, catalogue: { ...(c.bolts || {}) }, edited: Object.keys(o).length > 0 };
+    });
+  }
+
+  function connectionBolt(code, family) {
+    const o = store.connectionBolts[code];
+    if (o && family in o) return o[family];
+    const c = (DB.connections || []).find(x => x.code === code);
+    return c && c.bolts ? (c.bolts[family] || "N/A") : "N/A";
+  }
+
+  function setConnectionBolt(code, family, sku) {
+    const c = (DB.connections || []).find(x => x.code === code);
+    if (!c || !BOLT_FAMILIES.includes(family)) return false;
+    const value = String(sku || "N/A").trim() || "N/A";
+    const catalogueValue = (c.bolts && c.bolts[family]) || "N/A";
+    const o = { ...(store.connectionBolts[code] || {}) };
+    if (value === catalogueValue) delete o[family]; else o[family] = value;
+    if (Object.keys(o).length) store.connectionBolts[code] = o; else delete store.connectionBolts[code];
+    notify();
+    return true;
+  }
+
+  // ---- summary, persistence -------------------------------------------------
+
+  function edits() {
+    const lines = [];
+    const fmt = (v, d = 3) => Number(v).toFixed(d);
+    tieRows().filter(t => t.edited).forEach(t => lines.push(`${t.label} capacity ${fmt(t.catalogue_kN)} -> ${fmt(t.capacity_kN)} kN`));
+    designSpec().filter(d => d.edited).forEach(d => lines.push(`${d.label} ${d.type === "boolean" ? (d.catalogue ? "on" : "off") : fmt(d.catalogue, d.decimals)} -> ${d.type === "boolean" ? (d.current ? "on" : "off") : fmt(d.current, d.decimals)}${d.unit ? " " + d.unit : ""}`));
+    anchors().forEach(a => {
+      if (a.added) lines.push(`Anchor ${a.name} (${a.sku}) added: shear ${fmt(a.shear, 1)}, tension ${fmt(a.tension, 1)} kN`);
+      else if (a.edited) lines.push(`Anchor ${a.name} shear ${fmt(a.catalogue.shear, 1)} -> ${fmt(a.shear, 1)}, tension ${fmt(a.catalogue.tension, 1)} -> ${fmt(a.tension, 1)} kN`);
+    });
+    store.anchorsRemoved.forEach(sku => lines.push(`Anchor ${sku} removed`));
+    boltSkus().forEach(r => {
+      if (r.added) lines.push(`Bolt ${r.sku} added${Object.keys(r.counts).length ? " (" + Object.keys(r.counts).filter(c => r.counts[c] > 0).map(c => `${c}: ${r.counts[c]}`).join(", ") + ")" : ""}`);
+      else if (r.edited) {
+        const o = store.boltSkus[r.sku] || {};
+        if (o.description != null) lines.push(`Bolt ${r.sku} description edited`);
+        Object.keys(o.counts || {}).forEach(code => lines.push(`Bolt ${r.sku} quantity under ${code} ${Number(r.catalogue.counts[code]) || 0} -> ${o.counts[code]}`));
+      }
+    });
+    store.boltSkusRemoved.forEach(sku => lines.push(`Bolt ${sku} removed`));
+    Object.keys(store.connectionBolts).forEach(code => {
+      Object.keys(store.connectionBolts[code]).forEach(family => {
+        const c = (DB.connections || []).find(x => x.code === code);
+        lines.push(`${code} ${family}: ${(c && c.bolts && c.bolts[family]) || "N/A"} -> ${store.connectionBolts[code][family]}`);
+      });
+    });
+    return {
+      count: lines.length,
+      lines,
+      byArea: {
+        ties: Object.keys(store.ties).length,
+        design: Object.keys(store.design).length,
+        anchors: Object.keys(store.anchors).length + store.anchorsAdded.length + store.anchorsRemoved.length,
+        boltSkus: Object.keys(store.boltSkus).length + store.boltSkusAdded.length + store.boltSkusRemoved.length,
+        connectionBolts: Object.keys(store.connectionBolts).length
+      }
+    };
+  }
+
+  function reset(area) {
+    const fresh = empty();
+    if (!area) store = fresh;
+    else if (area === "ties") store.ties = {};
+    else if (area === "design") store.design = {};
+    else if (area === "anchors") { store.anchors = {}; store.anchorsAdded = []; store.anchorsRemoved = []; }
+    else if (area === "boltSkus") { store.boltSkus = {}; store.boltSkusAdded = []; store.boltSkusRemoved = []; }
+    else if (area === "connectionBolts") store.connectionBolts = {};
+    else return false;
+    notify();
+    return true;
+  }
+
+  function serialize() {
+    return clone(store);
+  }
+
+  // Accepts a serialized store (or null to clear). Unknown keys and bad
+  // values are dropped, so a hand-edited file cannot break the engines.
+  function restore(value) {
+    const fresh = empty();
+    if (value && typeof value === "object") {
+      const src = value;
+      const ties = catalogueTies();
+      Object.keys(src.ties || {}).forEach(name => {
+        const n = finite(src.ties[name]);
+        if (ties.some(t => t.name === name) && n !== null && n >= 0) fresh.ties[name] = n;
+      });
+      Object.keys(src.design || {}).forEach(key => {
+        const spec = DESIGN_SPEC.find(d => d.key === key);
+        if (!spec) return;
+        if (spec.type === "boolean") fresh.design[key] = Boolean(src.design[key]);
+        else { const n = finite(src.design[key]); if (n !== null && n >= spec.min && n <= spec.max) fresh.design[key] = n; }
+      });
+      Object.keys(src.anchors || {}).forEach(sku => {
+        const o = src.anchors[sku] || {}; const out = {};
+        if (finite(o.shear) !== null) out.shear = finite(o.shear);
+        if (finite(o.tension) !== null) out.tension = finite(o.tension);
+        if (Object.keys(out).length) fresh.anchors[sku] = out;
+      });
+      (src.anchorsAdded || []).forEach(a => {
+        if (a && a.sku && ANCHOR_FAMILIES.includes(a.family) && finite(a.shear) !== null && finite(a.tension) !== null) {
+          fresh.anchorsAdded.push({ family: a.family, name: String(a.name || a.sku), sku: String(a.sku), shear: finite(a.shear), tension: finite(a.tension) });
+        }
+      });
+      (src.anchorsRemoved || []).forEach(sku => { if (typeof sku === "string") fresh.anchorsRemoved.push(sku); });
+      Object.keys(src.boltSkus || {}).forEach(sku => {
+        const o = src.boltSkus[sku] || {}; const out = { counts: {} };
+        if (o.description != null) out.description = String(o.description);
+        Object.keys(o.counts || {}).forEach(code => { const n = finite(o.counts[code]); if (n !== null && n >= 0) out.counts[code] = Math.round(n); });
+        if (out.description != null || Object.keys(out.counts).length) fresh.boltSkus[sku] = out;
+      });
+      (src.boltSkusAdded || []).forEach(r => {
+        if (!r || !r.sku) return;
+        const counts = {};
+        Object.keys(r.counts || {}).forEach(code => { const n = finite(r.counts[code]); if (n !== null && n >= 0) counts[code] = Math.round(n); });
+        fresh.boltSkusAdded.push({ sku: String(r.sku), description: String(r.description || ""), counts });
+      });
+      (src.boltSkusRemoved || []).forEach(sku => { if (typeof sku === "string") fresh.boltSkusRemoved.push(sku); });
+      Object.keys(src.connectionBolts || {}).forEach(code => {
+        const o = src.connectionBolts[code] || {}; const out = {};
+        BOLT_FAMILIES.forEach(f => { if (typeof o[f] === "string" && o[f].trim()) out[f] = o[f].trim(); });
+        if (Object.keys(out).length) fresh.connectionBolts[code] = out;
+      });
+    }
+    store = fresh;
+    notify();
+    return true;
+  }
+
+  // Bind a Storage (localStorage): reads any saved edits now, writes on
+  // every change. Missing or blocked storage is fine.
+  function load(target) {
+    storage = target && typeof target.getItem === "function" ? target : null;
+    if (!storage) return false;
+    try {
+      const text = storage.getItem(STORAGE_KEY);
+      if (!text) return false;
+      const parsed = JSON.parse(text);
+      const saved = storage;
+      storage = null;              // restore() must not write back while loading
+      restore(parsed);
+      storage = saved;
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }
+
+  windpost.designData = Object.freeze({
+    VERSION, STORAGE_KEY, BOLT_FAMILIES, ANCHOR_FAMILIES,
+    tieRows, tieCapacity, setTieCapacity, innerTieName, levelCapacity, familyCapacity,
+    designSpec, designValues, setDesign,
+    anchors, setAnchor, addAnchor, removeAnchor,
+    boltSkus, boltSku, setBoltSku, addBoltSku, removeBoltSku, boltCodes,
+    connectionBoltRows, connectionBolt, setConnectionBolt,
+    edits, reset, serialize, restore, load, subscribe
+  });
+
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = windpost.designData;
+  }
+})(typeof window !== "undefined" ? window : globalThis);
+
+</script>
+  <script>
 (function initialiseAutomaticSelectionEngine(global) {
   "use strict";
 
@@ -5877,10 +6442,27 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
     connectionCapacityCap: ""
   });
 
-  function sharedCalculationInputs(type) {
+  // The assumptions a run actually uses: the catalogue defaults with any
+  // edits from the design-data editor (windpost.designData) on top. They
+  // travel on the design object so the report prints the figures used.
+  function currentDesignDefaults() {
+    const data = windpost.designData;
+    return { ...DESIGN_DEFAULTS, ...(data ? data.designValues() : {}) };
+  }
+
+  // Tie strength per level: the weaker of the inner tie and the outer tie
+  // the wall selected, each with its own editable capacity; the catalogue
+  // family figure when the design-data engine is not loaded.
+  function tieStrengthFor(type, wall) {
+    const data = windpost.designData;
+    if (data) return data.levelCapacity(type, wall && wall.innerTie, wall && wall.outerTie);
+    return windpost.config.DEFAULT_TIE_STRENGTH_KN[type];
+  }
+
+  function sharedCalculationInputs(type, wall) {
     return {
-      ...DESIGN_DEFAULTS,
-      tieStrength: windpost.config.DEFAULT_TIE_STRENGTH_KN[type]
+      ...currentDesignDefaults(),
+      tieStrength: tieStrengthFor(type, wall)
     };
   }
 
@@ -5909,8 +6491,10 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
 
   function evaluateSection(section, options) {
     const properties = getSectionProperties(section);
+    // the wall first: the outer tie it selects sets the level capacity
+    const wall = calculateWallAndTie(section, options.wall);
     const calculation = getCalculatedDesignValues({
-      ...sharedCalculationInputs(options.type),
+      ...sharedCalculationInputs(options.type, wall),
       length: options.length_mm,
       ixx: properties.ixx_mm4,
       zxx: properties.zxx_mm3,
@@ -5918,7 +6502,6 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
       supportCondition: options.supportCondition,
       loadType: options.loadType
     });
-    const wall = calculateWallAndTie(section, options.wall);
     const requiredLoad = Number(options.requiredLoad_kN);
     const hasRequiredLoad = Number.isFinite(requiredLoad) && requiredLoad > 0;
     const finalCapacity = calculation.valid ? Number(calculation.ultimateDesignValue) : 0;
@@ -6000,7 +6583,7 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
           normalized.loadType
         ),
         inputs: normalized,
-        designDefaults: { ...DESIGN_DEFAULTS }
+        designDefaults: currentDesignDefaults()
       };
     }
 
@@ -6030,12 +6613,14 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
         normalized.loadType
       ),
       inputs: normalized,
-      designDefaults: { ...DESIGN_DEFAULTS }
+      designDefaults: currentDesignDefaults()
     };
   }
 
   windpost.automaticSelectionEngine = Object.freeze({
     DESIGN_DEFAULTS,
+    currentDesignDefaults,
+    tieStrengthFor,
     calculateDemandActions,
     evaluateSection,
     runDesign
@@ -6083,6 +6668,18 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
     "FAZ II PLUS BOLTS": "FAZ II PLUS"
   });
   const NOT_APPLICABLE = "NOT APPLICABLE";
+
+  // Anchors, bolt SKUs and the SKU each connection uses come through the
+  // design-data editor when it is loaded (edits, additions and removals),
+  // else straight from the library.
+  const editable = () => windpost.designData || null;
+  function anchorRows() { const d = editable(); return d ? d.anchors() : DB.anchors; }
+  function boltSkuRows() { const d = editable(); return d ? d.boltSkus() : DB.boltSkus; }
+  function boltFor(connection, family) {
+    const d = editable();
+    if (d) return d.connectionBolt(connection.code, family);
+    return (connection.bolts && connection.bolts[family]) || "";
+  }
   const CANTILEVER_BASE_AUTO = "Standard plate type selected by base moment";
 
   const roundUp = (value, decimals) => {
@@ -6127,7 +6724,7 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
   function selectAnchor(anchorFamily, role, finalCapacity_kN, minimumSize_mm) {
     const load = Number(finalCapacity_kN) / 2;
     const minimum = Number(minimumSize_mm) || 0;
-    const candidates = DB.anchors.filter((a) => a.family === anchorFamily && anchorSize_mm(a) >= minimum);
+    const candidates = anchorRows().filter((a) => a.family === anchorFamily && anchorSize_mm(a) >= minimum);
     if (!candidates.length || !Number.isFinite(load)) return null;
     const key = role === "shear" ? "shear" : "tension";
     const found = candidates.find((a) => load <= 2 * Number(a[key]));
@@ -6135,7 +6732,7 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
   }
 
   function boltCount(sku, code, isAnchor) {
-    const row = DB.boltSkus.find((r) => r.sku === sku);
+    const row = boltSkuRows().find((r) => r.sku === sku);
     const count = row && row.counts ? Number(row.counts[code]) || 0 : 0;
     if (count > 0) return count;
     return isAnchor ? 2 : 0;
@@ -6202,7 +6799,7 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
     if (connection.anchorRole && anchorFamily) {
       return { sku: selectAnchor(anchorFamily, connection.anchorRole, finalCapacity_kN, connection.minimumAnchorSize_mm) || "", isAnchor: true, family };
     }
-    const sku = (connection.bolts && connection.bolts[family]) || "";
+    const sku = boltFor(connection, family) || "";
     return { sku, isAnchor: Boolean(anchorFamily) && sku !== "N/A", family };
   }
 
@@ -6452,6 +7049,19 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
         </section>`;
   }
 
+  // Every figure the engineer changed in the design-data editor, so the
+  // record never passes edited values off as catalogue ones.
+  function designDataSection() {
+    const data = windpost.designData;
+    const edits = data ? data.edits() : null;
+    if (!edits || !edits.count) return "";
+    return `<section class="report-section report-edits">
+          <h3>Design data edited for this calculation</h3>
+          <p>${edits.count} value${edits.count === 1 ? "" : "s"} differ from the catalogue (tie capacities, design constants, anchors, bolts or the bolt a connection uses):</p>
+          <ul>${edits.lines.map(line => `<li>${escapeHtml(line)}</li>`).join("")}</ul>
+        </section>`;
+  }
+
   function buildReport(design, connections) {
     if (!design || !design.selected) return "";
     const { selected, inputs, demandActions, designDefaults } = design;
@@ -6514,9 +7124,11 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
             <tr><td>I<sub>xx</sub></td><td>${format(properties.ixx_mm4, 2)} mm⁴</td><td>Z<sub>xx</sub></td><td>${format(properties.zxx_mm3, 2)} mm³</td></tr>
             <tr><td>Allowable stress, f<sub>y</sub></td><td>${format(designDefaults.fy)} N/mm²</td><td>Initial E</td><td>${format(designDefaults.e, 0)} kN/mm²</td></tr>
             <tr><td>Secant proof strength</td><td>${format(designDefaults.secantFy)} N/mm²</td><td>Ramberg–Osgood n</td><td>${format(designDefaults.secantN, 0)}</td></tr>
-            <tr><td>Tie strength</td><td>${format(windpost.config.DEFAULT_TIE_STRENGTH_KN[section.type], 3)} kN/tie</td><td>Tie spacing</td><td>${format(designDefaults.standardTieSpacing, 0)} mm c/c</td></tr>
+            <tr><td>Tie strength</td><td>${format((calculation.tieStrength ?? windpost.config.DEFAULT_TIE_STRENGTH_KN[section.type]), 3)} kN/tie</td><td>Tie spacing</td><td>${format(designDefaults.standardTieSpacing, 0)} mm c/c</td></tr>
           </table>
         </section>
+
+        ${designDataSection()}
 
         <section class="report-section">
           <h3>3. Structural analysis</h3>
@@ -6545,7 +7157,7 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
             <div class="calc-line"><span>E<sub>mb</sub> = L<sub>actual</sub> − 18.77 − g</span><strong>${format(wall.actualTieLength_mm, 0)} − 18.77 − ${format(wall.outerGap_mm, 1)} = ${format(wall.outerEmbedment_mm, 1)} mm</strong></div>`}
             ${innerTieCalculation}
             <div class="calc-line"><span>${tieEquation}</span><strong>${tieSubstitution}</strong></div>
-            <div class="calc-line"><span>Ultimate tie capacity</span><strong>${format(calculation.numberOfTies, 0)} × ${format(windpost.config.DEFAULT_TIE_STRENGTH_KN[section.type], 3)} = ${format(calculation.totalTiesCapacity, 3)} kN</strong></div>
+            <div class="calc-line"><span>Ultimate tie capacity</span><strong>${format(calculation.numberOfTies, 0)} × ${format((calculation.tieStrength ?? windpost.config.DEFAULT_TIE_STRENGTH_KN[section.type]), 3)} = ${format(calculation.totalTiesCapacity, 3)} kN</strong></div>
           </div>
         </section>
 
@@ -10923,6 +11535,208 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
 
 </script>
   <script>
+(function initialiseDesignDataEditor(global) {
+  "use strict";
+
+  // The design-data editor: the workbook's Ties, Constants, Bolts (anchors +
+  // SKU quantities) and Connections (bolt per family) tables, editable in
+  // place. Talks only to windpost.designData; the page re-runs the
+  // selection through onChange. No inline handlers (CSP-safe).
+
+  const windpost = global.Windpost = global.Windpost || {};
+
+  const TABS = Object.freeze([
+    { key: "ties", label: "Ties", area: "ties" },
+    { key: "design", label: "Design constants", area: "design" },
+    { key: "anchors", label: "Anchors", area: "anchors" },
+    { key: "boltSkus", label: "Bolt SKUs & quantities", area: "boltSkus" },
+    { key: "connectionBolts", label: "Connection bolts", area: "connectionBolts" }
+  ]);
+
+  const escape = value => String(value ?? "")
+    .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+  const num = (value, decimals) => Number.isFinite(Number(value)) ? Number(value).toFixed(decimals) : "";
+
+  function mount(host, options) {
+    const data = windpost.designData;
+    if (!host || !data) return null;
+    const onChange = options && typeof options.onChange === "function" ? options.onChange : () => {};
+    let active = "ties";
+    let notice = "";
+
+    function tiesPanel() {
+      const rows = data.tieRows();
+      const line = t => `<tr class="${t.edited ? "is-edited" : ""}">
+        <td class="dd-name">${escape(t.label)}</td>
+        <td>${escape(t.posts)}</td>
+        <td class="num">${t.nominal_mm == null ? "—" : escape(t.nominal_mm)}</td>
+        <td class="num">${escape(t.actual_mm)}</td>
+        <td class="num">${escape(t.width_mm)}</td>
+        <td class="num">${escape(t.thickness_mm)}</td>
+        <td class="num"><input type="number" step="0.001" min="0" value="${num(t.capacity_kN, 3)}" data-area="ties" data-key="${escape(t.name)}" aria-label="${escape(t.label)} capacity kN"></td>
+        <td class="num dd-catalogue">${num(t.catalogue_kN, 3)}</td>
+      </tr>`;
+      return `<div class="dd-table-wrap"><table class="dd-table">
+        <thead><tr><th>Tie</th><th>Used by</th><th>Nominal (mm)</th><th>Actual length (mm)</th><th>Width (mm)</th><th>Thk (mm)</th><th>Capacity (kN)</th><th>Catalogue (kN)</th></tr></thead>
+        <tbody>${rows.filter(t => t.kind === "outer").map(line).join("")}
+        <tr class="dd-group"><td colspan="8">Inner-leaf ties</td></tr>
+        ${rows.filter(t => t.kind === "inner").map(line).join("")}</tbody></table></div>
+        <p class="dd-note">A tie level is only as strong as its weaker tie: level capacity = min(inner tie, outer tie selected for the wall). A DU carries two ties per level; its capacity is counted per level, as the approved workbook does. Catalogue: U / DU 1.713 kN (U tie governs), L / I 2.250 kN.</p>`;
+    }
+
+    function designPanel() {
+      const rows = data.designSpec().map(d => `<tr class="${d.edited ? "is-edited" : ""}">
+        <td class="dd-name">${escape(d.label)}<small>${escape(d.hint)}</small></td>
+        <td class="num">${d.type === "boolean"
+          ? `<input type="checkbox" ${d.current ? "checked" : ""} data-area="design" data-key="${escape(d.key)}" aria-label="${escape(d.label)}">`
+          : `<input type="number" step="any" min="${d.min}" max="${d.max}" value="${num(d.current, d.decimals)}" data-area="design" data-key="${escape(d.key)}" aria-label="${escape(d.label)}">`}</td>
+        <td>${escape(d.unit)}</td>
+        <td class="num dd-catalogue">${d.type === "boolean" ? (d.catalogue ? "on" : "off") : num(d.catalogue, d.decimals)}</td>
+      </tr>`).join("");
+      return `<div class="dd-table-wrap"><table class="dd-table dd-narrow">
+        <thead><tr><th>Constant</th><th>Value</th><th>Unit</th><th>Catalogue</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    }
+
+    function anchorsPanel() {
+      const rows = data.anchors().map(a => `<tr class="${a.edited ? "is-edited" : ""}${a.added ? " is-added" : ""}">
+        <td>${escape(a.family)}</td>
+        <td class="dd-name">${escape(a.name)}</td>
+        <td>${escape(a.sku)}</td>
+        <td class="num"><input type="number" step="0.1" min="0" value="${num(a.shear, 1)}" data-area="anchors" data-key="${escape(a.sku)}" data-field="shear" aria-label="${escape(a.name)} shear kN"></td>
+        <td class="num"><input type="number" step="0.1" min="0" value="${num(a.tension, 1)}" data-area="anchors" data-key="${escape(a.sku)}" data-field="tension" aria-label="${escape(a.name)} tension kN"></td>
+        <td class="num dd-catalogue">${a.catalogue ? `${num(a.catalogue.shear, 1)} / ${num(a.catalogue.tension, 1)}` : "added"}</td>
+        <td><button type="button" class="dd-remove" data-action="remove-anchor" data-key="${escape(a.sku)}" title="Remove this anchor">&times;</button></td>
+      </tr>`).join("");
+      const families = data.ANCHOR_FAMILIES.map(f => `<option value="${escape(f)}">${escape(f)}</option>`).join("");
+      return `<div class="dd-table-wrap"><table class="dd-table">
+        <thead><tr><th>Family</th><th>Anchor</th><th>SKU</th><th>Shear (kN)</th><th>Tension (kN)</th><th>Catalogue shear / tension</th><th></th></tr></thead>
+        <tbody>${rows}</tbody></table></div>
+        <div class="dd-add" data-form="anchor">
+          <select data-add="family" aria-label="New anchor family">${families}</select>
+          <input type="text" data-add="name" placeholder="Anchor (e.g. RGM 20)" aria-label="New anchor name">
+          <input type="text" data-add="sku" placeholder="SKU" aria-label="New anchor SKU">
+          <input type="number" step="0.1" min="0" data-add="shear" placeholder="Shear kN" aria-label="New anchor shear">
+          <input type="number" step="0.1" min="0" data-add="tension" placeholder="Tension kN" aria-label="New anchor tension">
+          <button type="button" class="secondary-button" data-action="add-anchor">Add anchor</button>
+        </div>
+        <p class="dd-note">Anchors are chosen by load: the smallest anchor of the selected family whose capacity (tension or shear, per the connection) satisfies final ULS capacity / 2 &le; 2 &times; capacity. The size in the SKU name (M10, M12 ...) sets the M12-minimum rule for slotted plates.</p>`;
+    }
+
+    function boltSkusPanel() {
+      const codes = data.boltCodes();
+      const rows = data.boltSkus().map(r => `<tr class="${r.edited ? "is-edited" : ""}${r.added ? " is-added" : ""}">
+        <th class="dd-sticky dd-name">${escape(r.sku)}</th>
+        <td class="dd-desc"><input type="text" value="${escape(r.description)}" data-area="boltSkus" data-key="${escape(r.sku)}" data-field="description" aria-label="${escape(r.sku)} description"></td>
+        ${codes.map(code => `<td class="num"><input type="number" step="1" min="0" value="${Number(r.counts[code]) || 0}" data-area="boltSkus" data-key="${escape(r.sku)}" data-field="count" data-code="${escape(code)}" aria-label="${escape(r.sku)} quantity under ${escape(code)}"></td>`).join("")}
+        <td><button type="button" class="dd-remove" data-action="remove-bolt" data-key="${escape(r.sku)}" title="Remove this bolt">&times;</button></td>
+      </tr>`).join("");
+      return `<div class="dd-table-wrap dd-matrix-wrap"><table class="dd-table dd-matrix">
+        <thead><tr><th class="dd-sticky">SKU</th><th>Description</th>${codes.map(c => `<th class="dd-code">${escape(c)}</th>`).join("")}<th></th></tr></thead>
+        <tbody>${rows}</tbody></table></div>
+        <div class="dd-add" data-form="bolt">
+          <input type="text" data-add="sku" placeholder="SKU (e.g. KM12/120  M12X120 Set Screw)" aria-label="New bolt SKU">
+          <input type="text" data-add="description" placeholder="Description" aria-label="New bolt description">
+          <button type="button" class="secondary-button" data-action="add-bolt">Add bolt</button>
+        </div>
+        <p class="dd-note">Quantity of each SKU supplied under every connection code, as the workbook's Bolts sheet. A new SKU starts at 0 everywhere: type its quantities, then choose it for a connection under <em>Connection bolts</em>. Anchors (RG / FAZ) take their quantity from here too when it is listed, else 2.</p>`;
+    }
+
+    function connectionBoltsPanel() {
+      const skus = data.boltSkus().map(r => r.sku);
+      const families = data.BOLT_FAMILIES;
+      const optionsFor = (current) => {
+        const list = ["N/A", "WELD", ...skus];
+        if (current && !list.includes(current)) list.push(current);
+        return list.map(v => `<option value="${escape(v)}" ${v === current ? "selected" : ""}>${escape(v)}</option>`).join("");
+      };
+      const rows = data.connectionBoltRows().map(c => `<tr class="${c.edited ? "is-edited" : ""}">
+        <th class="dd-sticky dd-name">${escape(c.code)}</th>
+        <td>${escape(c.description)}<small>${escape(c.family)} · ${escape(c.position)}${c.materialClass ? " · " + escape(c.materialClass) : ""}${c.anchorRole ? " · anchor by " + escape(c.anchorRole) : ""}</small></td>
+        <td>${escape(c.postBolt || "")}</td>
+        ${families.map(f => `<td><select data-area="connectionBolts" data-key="${escape(c.code)}" data-field="${escape(f)}" aria-label="${escape(c.code)} ${escape(f)}">${optionsFor(c.bolts[f])}</select>${c.catalogue[f] && c.catalogue[f] !== c.bolts[f] ? `<small class="dd-catalogue">was ${escape(c.catalogue[f])}</small>` : ""}</td>`).join("")}
+      </tr>`).join("");
+      return `<div class="dd-table-wrap dd-matrix-wrap"><table class="dd-table dd-matrix">
+        <thead><tr><th class="dd-sticky">Code</th><th>Fixing</th><th>Post bolt</th>${families.map(f => `<th>${escape(f)}</th>`).join("")}</tr></thead>
+        <tbody>${rows}</tbody></table></div>
+        <p class="dd-note">The SKU a connection is supplied with under each bolt family. Connections into concrete pick their anchor by load from the Anchors table instead (the RGM / FAZ columns then only need to be different from N/A to offer that family).</p>`;
+    }
+
+    function render() {
+      const edits = data.edits();
+      const tabs = TABS.map(t => {
+        const count = edits.byArea[t.area] || 0;
+        return `<button type="button" role="tab" class="dd-tab ${t.key === active ? "is-active" : ""}" data-action="tab" data-key="${t.key}" aria-selected="${t.key === active}">${escape(t.label)}${count ? ` <b class="badge is-edited">${count}</b>` : ""}</button>`;
+      }).join("");
+      const panel = { ties: tiesPanel, design: designPanel, anchors: anchorsPanel, boltSkus: boltSkusPanel, connectionBolts: connectionBoltsPanel }[active]();
+      host.innerHTML = `<div class="dd-tabs" role="tablist">${tabs}</div>
+        <div class="dd-toolbar">
+          <span class="dd-status">${edits.count ? `${edits.count} value${edits.count === 1 ? "" : "s"} edited` : "Catalogue values"}</span>
+          <button type="button" class="secondary-button" data-action="reset-table">Reset this table</button>
+          <button type="button" class="secondary-button" data-action="reset-all">Reset all to catalogue</button>
+        </div>
+        ${notice ? `<p class="dd-notice" role="alert">${escape(notice)}</p>` : ""}
+        <div class="dd-panel" data-panel="${active}">${panel}</div>`;
+      notice = "";
+    }
+
+    function readAdd(form, name) {
+      const el = host.querySelector(`[data-form="${form}"] [data-add="${name}"]`);
+      return el ? el.value : "";
+    }
+
+    function applyChange(target) {
+      const area = target.dataset.area, key = target.dataset.key, field = target.dataset.field;
+      let ok = true;
+      if (area === "ties") ok = data.setTieCapacity(key, target.value);
+      else if (area === "design") ok = data.setDesign(key, target.type === "checkbox" ? target.checked : target.value);
+      else if (area === "anchors") ok = data.setAnchor(key, { [field]: target.value });
+      else if (area === "boltSkus") ok = field === "description"
+        ? data.setBoltSku(key, { description: target.value })
+        : data.setBoltSku(key, { counts: { [target.dataset.code]: target.value } });
+      else if (area === "connectionBolts") ok = data.setConnectionBolt(key, field, target.value);
+      else return;
+      if (!ok) notice = "That value was not accepted (out of range or unknown row); the previous value is kept.";
+      render();
+      onChange();
+    }
+
+    function applyAction(button) {
+      const action = button.dataset.action, key = button.dataset.key;
+      if (action === "tab") { active = key; render(); return; }
+      if (action === "reset-table") { data.reset(TABS.find(t => t.key === active).area); render(); onChange(); return; }
+      if (action === "reset-all") { data.reset(); render(); onChange(); return; }
+      if (action === "remove-anchor") { data.removeAnchor(key); render(); onChange(); return; }
+      if (action === "remove-bolt") { data.removeBoltSku(key); render(); onChange(); return; }
+      if (action === "add-anchor") {
+        const ok = data.addAnchor({ family: readAdd("anchor", "family"), name: readAdd("anchor", "name"), sku: readAdd("anchor", "sku"), shear: readAdd("anchor", "shear"), tension: readAdd("anchor", "tension") });
+        if (!ok) notice = "Give the new anchor a unique SKU, a family and its shear and tension capacities.";
+        render(); onChange(); return;
+      }
+      if (action === "add-bolt") {
+        const ok = data.addBoltSku({ sku: readAdd("bolt", "sku"), description: readAdd("bolt", "description") });
+        if (!ok) notice = "Give the new bolt a unique SKU.";
+        render(); onChange();
+      }
+    }
+
+    host.addEventListener("change", event => {
+      const target = event.target;
+      if (target && target.dataset && target.dataset.area) applyChange(target);
+    });
+    host.addEventListener("click", event => {
+      const button = event.target && event.target.closest ? event.target.closest("[data-action]") : null;
+      if (button && host.contains(button)) applyAction(button);
+    });
+
+    render();
+    return Object.freeze({ refresh: render, show: key => { if (TABS.some(t => t.key === key)) { active = key; render(); } } });
+  }
+
+  windpost.designDataEditor = Object.freeze({ mount, TABS });
+})(typeof window !== "undefined" ? window : globalThis);
+
+</script>
+  <script>
 (function initialiseSelectorApplication(global) {
   "use strict";
 
@@ -10976,6 +11790,51 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
       });
       this.setDetailingAvailable(false);
       this.updateConditionalInputs();
+      this.initDesignData();
+    },
+
+    // The editable design data (tie capacities, constants, anchors, bolts):
+    // edits saved in this browser are read back, the editor is mounted, and
+    // any change re-runs the current selection.
+    initDesignData() {
+      const data = windpost.designData;
+      if (!data) return;
+      try { data.load(global.localStorage); } catch (error) { /* storage blocked */ }
+      const host = document.getElementById("design-data-editor");
+      if (host && windpost.designDataEditor) {
+        this.designDataEditor = windpost.designDataEditor.mount(host, {
+          onChange: () => this.onDesignDataChange()
+        });
+      }
+      this.updateDesignDataBadge();
+    },
+
+    onDesignDataChange() {
+      this.updateDesignDataBadge();
+      this.populateSpecialSkus();
+      if (this.lastDesign) this.calculate();
+      else this.invalidateResult();
+    },
+
+    updateDesignDataBadge() {
+      const badge = document.getElementById("design-data-badge");
+      const data = windpost.designData;
+      if (!badge || !data) return;
+      const edits = data.edits();
+      badge.textContent = edits.count
+        ? `${edits.count} value${edits.count === 1 ? "" : "s"} edited`
+        : "Catalogue values";
+      badge.classList.toggle("is-edited", edits.count > 0);
+    },
+
+    designDataNoteHtml() {
+      const data = windpost.designData;
+      const edits = data ? data.edits() : null;
+      if (!edits || !edits.count) return "";
+      return `<section class="result-block design-data-note">
+          <h3>Design data edited <span class="badge is-edited">${edits.count}</span></h3>
+          <ul>${edits.lines.slice(0, 12).map(line => `<li>${this.escape(line)}</li>`).join("")}${edits.lines.length > 12 ? `<li>… and ${edits.lines.length - 12} more (see the calculation record)</li>` : ""}</ul>
+        </section>`;
     },
 
     setProjectStatus(message, failed) {
@@ -10990,7 +11849,8 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
       const options = this.readOptions();
       const project = engine.create("selector", {
         options,
-        hasSuccessfulDesign: Boolean(this.lastDesign)
+        hasSuccessfulDesign: Boolean(this.lastDesign),
+        designData: windpost.designData ? windpost.designData.serialize() : null
       }, {
         sectionName: this.lastDesign && this.lastDesign.selected &&
           this.lastDesign.selected.section &&
@@ -11017,6 +11877,13 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
       if (!options) {
         this.setProjectStatus("The project contains no selector inputs.", true);
         return;
+      }
+      // the design data the project was calculated with (catalogue when absent)
+      if (windpost.designData) {
+        windpost.designData.restore(project.data.designData || null);
+        if (this.designDataEditor) this.designDataEditor.refresh();
+        this.updateDesignDataBadge();
+        this.populateSpecialSkus();
       }
       const choose = (name, value) => {
         const input = document.querySelector(
@@ -11140,7 +12007,8 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
 
     populateSpecialSkus() {
       const db = windpost.connectionsDatabase;
-      const skus = (db && db.boltSkus ? db.boltSkus : []).map((row) => row.sku);
+      const rows = windpost.designData ? windpost.designData.boltSkus() : (db && db.boltSkus ? db.boltSkus : []);
+      const skus = rows.map((row) => row.sku);
       ["special-head-sku", "special-base-sku"].forEach((id) => {
         const select = document.getElementById(id);
         select.innerHTML = skus.map((sku) => `<option value="${this.escape(sku)}">${this.escape(sku)}</option>`).join("");
@@ -11416,6 +12284,7 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
               <div><dt>Wall construction</dt><dd>${this.number(wall.innerLeafThickness_mm, 0)} / ${this.number(wall.cavityWidth_mm, 0)} / ${this.number(wall.outerLeafThickness_mm, 0)} mm</dd></div>
             </dl>
           </section>
+          ${this.designDataNoteHtml()}
           ${alternatives}
           ${this.connectionsBlockHtml(connections)}
           ${this.duConnectionDrawingsHtml(section, connections)}
