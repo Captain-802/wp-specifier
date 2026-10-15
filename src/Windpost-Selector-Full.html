@@ -442,6 +442,10 @@ details.design-data-step > summary.design-data-summary::after {
 details.design-data-step[open] > summary.design-data-summary::after { content: "2"; }
 details.design-data-step > summary.design-data-summary:hover h3 { color: #0f766e; }
 
+
+/* The hidden attribute must win over the badge's own display rule. */
+.badge[hidden], [hidden] { display: none !important; }
+
 </style>
 </head>
 <body>
