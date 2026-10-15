@@ -24,7 +24,7 @@
     const data = windpost.designData;
     if (!host || !data) return null;
     const onChange = options && typeof options.onChange === "function" ? options.onChange : () => {};
-    let active = "ties";
+    let active = "design";  // open on the constants, the most-edited table
     let notice = "";
 
     function tiesPanel() {

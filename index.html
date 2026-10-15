@@ -11768,7 +11768,7 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
     const data = windpost.designData;
     if (!host || !data) return null;
     const onChange = options && typeof options.onChange === "function" ? options.onChange : () => {};
-    let active = "ties";
+    let active = "design";  // open on the constants, the most-edited table
     let notice = "";
 
     function tiesPanel() {
