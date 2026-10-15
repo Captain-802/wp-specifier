@@ -15,7 +15,10 @@ context.window.window = context.window;
   "js/data/standard-section-heights.js",
   "js/data/u-section-database.js",
   "js/data/l-section-database.js",
+  "js/data/du-section-database.js",
+  "js/data/i-section-database.js",
   "js/data/section-profiles.js",
+  "js/engines/custom-section-properties-engine.js",
   "js/engines/secant-modulus-engine.js",
   "js/engines/load-case-engine.js",
   "js/engines/tie-capacity-engine.js",
@@ -173,6 +176,52 @@ const manual = W.automaticSelectionEngine.runDesign({
   wall: { innerLeafThickness_mm: 100, cavityWidth_mm: 150, outerLeafThickness_mm: 100 }
 });
 assert(manual.valid && manual.selected.section.name === "UP 105x60x5" && manual.inputs.length_mm === 2835, "manual section mode calculates the chosen section at an arbitrary height");
+
+// A custom section must reproduce the catalogue exactly when it is given a
+// catalogue section's dimensions — same properties, capacity, tie and wall.
+(function customSectionMatchesCatalogue() {
+  const engine = context.window.Windpost.customSectionPropertiesEngine;
+  const profiles = context.window.Windpost.sectionProfileEngine;
+  const run = context.window.Windpost.automaticSelectionEngine.runDesign;
+  let checked = 0;
+  ["U", "L", "DU", "I"].forEach((type) => {
+    profiles.getSections(type, "simplySupported").forEach((s) => {
+      const p = engine.calculate(type, s.a_mm, s.b_mm, s.t_mm, s.innerRadius_mm, false);
+      assert(p.valid, `custom geometry is valid for ${s.name}`);
+      ["crossSectionalArea_mm2", "ixx_mm4", "zxx_mm3"].forEach((field) => {
+        const got = { crossSectionalArea_mm2: p.area, ixx_mm4: p.ixx, zxx_mm3: p.zxx }[field];
+        const want = s[field];
+        assert(Math.abs(got - want) / Math.max(Math.abs(want), 1) < 1e-6,
+          `${s.name} ${field} from geometry matches the catalogue`);
+      });
+      checked += 1;
+    });
+  });
+  assert(checked >= 80, "every catalogue section was checked against the geometry calculator");
+})();
+assert(true, "custom sections reproduce every catalogue section's properties");
+
+(function customDesignMatchesCatalogueDesign() {
+  const run = context.window.Windpost.automaticSelectionEngine.runDesign;
+  const wall = { innerLeafThickness_mm: 100, cavityWidth_mm: 150, outerLeafThickness_mm: 100 };
+  const cases = [
+    ["U", "UP 90x60x6", { a_mm: 90, b_mm: 60, t_mm: 6, r_mm: 9 }, "cantilever"],
+    ["L", "LP 125x70x4", { a_mm: 125, b_mm: 70, t_mm: 4, r_mm: 6 }, "cantilever"],
+    ["DU", "DU 60x60x6", { a_mm: 60, b_mm: 60, t_mm: 6, r_mm: 9 }, "simplySupported"],
+    ["I", "I_90 X 8", { a_mm: 90, b_mm: null, t_mm: 8, r_mm: 0 }, "simplySupported"]
+  ];
+  cases.forEach(([type, name, custom, supportCondition]) => {
+    const base = { type, supportCondition, loadType: "udl", length_mm: 2000, wall, connections: {} };
+    const cat = run({ ...base, mode: "manual", selectedSectionName: name });
+    const cus = run({ ...base, mode: "custom", custom: { ...custom, sharpEdges: false } });
+    assert(cat.selected && cus.selected, `${type} custom and catalogue both calculate`);
+    assert(Math.abs(cat.selected.finalCapacity_kN - cus.selected.finalCapacity_kN) < 1e-9,
+      `${type}: custom final capacity equals the catalogue section`);
+    assert(cat.selected.wall.outerTie === cus.selected.wall.outerTie,
+      `${type}: custom selects the same outer tie`);
+  });
+})();
+assert(true, "a custom section designs identically to the same catalogue section");
 
 const indexHtml = fs.readFileSync(path.join(root, "index.html"), "utf8");
 assert(!/(?:src|href)=["']https?:\/\//i.test(indexHtml), "the application has no external web dependencies");

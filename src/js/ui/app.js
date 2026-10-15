@@ -38,6 +38,12 @@
         document.getElementById(`${end}-fixing`).addEventListener("change", () => this.populateBoltFamilies(end));
         document.getElementById(`special-${end}`).addEventListener("change", () => this.updateSpecialRows());
       });
+      ["custom-a", "custom-b", "custom-t", "custom-r", "custom-sharp"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener("input", () => this.updateCustomFields());
+        el.addEventListener("change", () => this.updateCustomFields());
+      });
       this.populateSpecialSkus();
       this.updateSpecialRows();
       document.getElementById("close-details").addEventListener("click", () => this.hideDetails());
@@ -224,6 +230,8 @@
         : "Required total ULS UDL load <b>*</b>";
       document.getElementById("automatic-input").classList.toggle("hidden", mode !== "automatic");
       document.getElementById("manual-input").classList.toggle("hidden", mode !== "manual");
+      document.getElementById("custom-input").classList.toggle("hidden", mode !== "custom");
+      this.updateCustomFields();
       this.populateSections(type, support);
       this.populateFixings(type, support);
     },
@@ -428,6 +436,7 @@
         length_mm: Number(document.getElementById("height").value),
         requiredLoad_kN: mode === "automatic" ? Number(document.getElementById("required-load").value) : null,
         selectedSectionName: document.getElementById("section-select").value,
+        custom: this.readCustomGeometry(),
         wall: {
           innerLeafThickness_mm: Number(document.getElementById("inner-leaf").value),
           cavityWidth_mm: Number(document.getElementById("cavity").value),
@@ -435,6 +444,47 @@
         },
         connections: this.readConnectionInputs()
       };
+    },
+
+    readCustomGeometry() {
+      const value = (id) => Number(document.getElementById(id).value);
+      return {
+        a_mm: value("custom-a"),
+        b_mm: value("custom-b"),
+        t_mm: value("custom-t"),
+        r_mm: value("custom-r"),
+        sharpEdges: document.getElementById("custom-sharp").checked,
+        name: document.getElementById("custom-name").value
+      };
+    },
+
+    // An I post is a flat plate, so it has no width or fold radius; a sharp
+    // U/L has no radius either. Hide what does not apply and show the
+    // properties as they are typed.
+    updateCustomFields() {
+      const engine = windpost.customSectionPropertiesEngine;
+      const type = this.selectedValue("windpostType");
+      const isFlat = type === "I";
+      const sharp = document.getElementById("custom-sharp").checked;
+      document.getElementById("custom-b-field").classList.toggle("hidden", isFlat);
+      document.getElementById("custom-sharp-field").classList.toggle("hidden", isFlat);
+      document.getElementById("custom-r-field").classList.toggle("hidden", isFlat || sharp);
+      const host = document.getElementById("custom-properties");
+      if (!host || !engine) return;
+      const g = this.readCustomGeometry();
+      const props = engine.calculate(type, g.a_mm, g.b_mm, g.t_mm, g.r_mm, g.sharpEdges);
+      if (!props.valid) {
+        host.classList.add("is-invalid");
+        host.innerHTML = `<strong>${this.escape(props.error || "Invalid geometry.")}</strong>`;
+        return;
+      }
+      host.classList.remove("is-invalid");
+      host.innerHTML = `<dl>
+        <div><dt>Area</dt><dd>${this.number(props.area, 2)} mm&sup2;</dd></div>
+        <div><dt>Ixx</dt><dd>${this.number(props.ixx, 2)} mm&#8308;</dd></div>
+        <div><dt>Zxx min</dt><dd>${this.number(props.zxx, 2)} mm&sup3;</dd></div>
+        <div><dt>Ybar</dt><dd>${this.number(props.ybar, 2)} mm</dd></div>
+      </dl>`;
     },
 
     selectorFileName() {

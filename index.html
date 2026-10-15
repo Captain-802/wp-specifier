@@ -446,6 +446,22 @@ details.design-data-step > summary.design-data-summary:hover h3 { color: #0f766e
 /* The hidden attribute must win over the badge's own display rule. */
 .badge[hidden], [hidden] { display: none !important; }
 
+
+/* Custom section: geometry inputs and the live property readout. */
+.custom-note { margin: 0 0 10px; font-size: .85rem; color: #5b636c; }
+.custom-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.custom-check { display: flex; align-items: center; gap: 8px; margin: 10px 0; padding: 8px 10px;
+  background: #fffbe6; border: 1px solid #f0e2a8; border-radius: 8px; font-size: .9rem; }
+.custom-check input { width: auto; }
+.custom-properties { margin-top: 12px; padding: 10px 12px; border-radius: 8px;
+  background: #eef7f1; border: 1px solid #cfe6d8; font-size: .9rem; }
+.custom-properties.is-invalid { background: #fdeceb; border-color: #f3c7c3; color: #8a2a22; }
+.custom-properties dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 4px 16px; margin: 0; }
+.custom-properties dl div { display: flex; justify-content: space-between; gap: 10px; }
+.custom-properties dt { color: #44525c; }
+.custom-properties dd { margin: 0; font-weight: 700; color: #102743; }
+
 </style>
 </head>
 <body>
@@ -587,11 +603,12 @@ details.design-data-step > summary.design-data-summary:hover h3 { color: #0f766e
         <section class="form-step" aria-labelledby="step-four-title">
           <div class="step-heading">
             <span>4</span>
-            <div><h3 id="step-four-title">Choose how to design</h3><p>Automatically select a post or calculate a chosen catalogue section.</p></div>
+            <div><h3 id="step-four-title">Choose how to design</h3><p>Automatically select a post, calculate a chosen catalogue section, or enter a custom section.</p></div>
           </div>
           <div class="segmented-control" role="radiogroup" aria-label="Design mode">
             <label><input type="radio" name="designMode" value="automatic" checked><span>Enter required load</span></label>
             <label><input type="radio" name="designMode" value="manual"><span>Choose a section</span></label>
+            <label><input type="radio" name="designMode" value="custom"><span>Custom section</span></label>
           </div>
           <div id="automatic-input" class="conditional-block">
             <label class="field featured-field">
@@ -599,6 +616,18 @@ details.design-data-step > summary.design-data-summary:hover h3 { color: #0f766e
               <span class="input-with-unit"><input id="required-load" type="number" value="13" min="0.001" step="0.01" inputmode="decimal"><em>kN</em></span>
               <small>The software selects the first available standard section with sufficient final capacity.</small>
             </label>
+          </div>
+          <div id="custom-input" class="conditional-block hidden">
+            <p class="custom-note">Enter the outer dimensions and the inner fold radius. The properties are worked out with the same calculator that produced the catalogues, so a custom section entered with catalogue dimensions returns the catalogue values.</p>
+            <div class="custom-grid">
+              <label class="field"><span>Overall height, a <b>*</b></span><span class="input-with-unit"><input id="custom-a" type="number" value="125" min="1" step="0.01" inputmode="decimal"><em>mm</em></span></label>
+              <label class="field" id="custom-b-field"><span>Overall width, b <b>*</b></span><span class="input-with-unit"><input id="custom-b" type="number" value="70" min="1" step="0.01" inputmode="decimal"><em>mm</em></span></label>
+              <label class="field"><span>Thickness, t <b>*</b></span><span class="input-with-unit"><input id="custom-t" type="number" value="4" min="0.01" step="0.01" inputmode="decimal"><em>mm</em></span></label>
+              <label class="field" id="custom-r-field"><span>Inner fold radius, r</span><span class="input-with-unit"><input id="custom-r" type="number" value="6" min="0" step="0.01" inputmode="decimal"><em>mm</em></span></label>
+            </div>
+            <label class="custom-check" id="custom-sharp-field"><input id="custom-sharp" type="checkbox"><span>Sharp square edges / zero fold radius</span></label>
+            <label class="field"><span>Section name</span><input id="custom-name" type="text" placeholder="Custom L 125x70x4" autocomplete="off"></label>
+            <div id="custom-properties" class="custom-properties" aria-live="polite"></div>
           </div>
           <div id="manual-input" class="conditional-block hidden">
             <label class="field featured-field">
@@ -6743,6 +6772,41 @@ details.design-data-step > summary.design-data-summary:hover h3 { color: #0f766e
     return { valid: false, message, evaluations, strongest };
   }
 
+  // A custom windpost: the user gives the geometry, the same calculator that
+  // generated the catalogues gives the properties, and from there it is an
+  // ordinary section — identical capacity, wall and tie treatment.
+  function buildCustomSection(o) {
+    const engine = windpost.customSectionPropertiesEngine;
+    if (!engine) return { error: "The custom section calculator is not loaded." };
+    const g = o.custom || {};
+    const a = Number(g.a_mm), b = Number(g.b_mm), t = Number(g.t_mm), r = Number(g.r_mm) || 0;
+    const props = engine.calculate(o.type, a, b, t, r, Boolean(g.sharpEdges));
+    if (!props.valid) return { error: props.error || "Enter a valid custom section geometry." };
+    const label = o.type === "I"
+      ? `Custom I ${a}x${t}`
+      : `Custom ${o.type} ${a}x${b}x${t}`;
+    return {
+      section: {
+        type: o.type,
+        shape: o.type,
+        name: g.name && String(g.name).trim() ? String(g.name).trim() : label,
+        custom: true,
+        a_mm: a,
+        b_mm: o.type === "I" ? null : b,
+        t_mm: t,
+        innerRadius_mm: o.type === "I" ? 0 : r,
+        outerRadius_mm: o.type === "I" ? t : r + t,
+        crossSectionalArea_mm2: props.area,
+        centroidY_mm: props.ybar,
+        ixx_mm4: props.ixx,
+        zTop_mm3: props.zTop,
+        zBottom_mm3: props.zBottom,
+        zxx_mm3: props.zxx,
+        supportCondition: "all"
+      }
+    };
+  }
+
   function runDesign(options) {
     const normalized = {
       ...options,
@@ -6754,6 +6818,30 @@ details.design-data-step > summary.design-data-summary:hover h3 { color: #0f766e
 
     const sections = getSections(normalized.type, normalized.supportCondition);
     if (!sections.length) return createFailure("No catalogue sections are available for this selection.");
+
+    if (normalized.mode === "custom") {
+      const built = buildCustomSection(normalized);
+      if (built.error) return createFailure(built.error);
+      const selected = evaluateSection(built.section, normalized);
+      return {
+        valid: selected.calculation.valid && selected.wall.suitable,
+        mode: "custom",
+        message: selected.wall.suitable
+          ? "Custom section calculated successfully."
+          : selected.wall.reason,
+        selected,
+        alternatives: [],
+        evaluations: [selected],
+        demandActions: calculateDemandActions(
+          null,
+          normalized.length_mm,
+          normalized.supportCondition,
+          normalized.loadType
+        ),
+        inputs: normalized,
+        designDefaults: currentDesignDefaults()
+      };
+    }
 
     if (normalized.mode === "manual") {
       const section = sections.find((item) => item.name === normalized.selectedSectionName);
@@ -6810,7 +6898,7 @@ details.design-data-step > summary.design-data-summary:hover h3 { color: #0f766e
   }
 
   windpost.automaticSelectionEngine = Object.freeze({
-    DESIGN_DEFAULTS,
+    DESIGN_DEFAULTS, buildCustomSection,
     currentDesignDefaults,
     tieStrengthFor,
     calculateDemandActions,
@@ -12002,6 +12090,142 @@ details.design-data-step > summary.design-data-summary:hover h3 { color: #0f766e
 
 </script>
   <script>
+(function initialiseCustomSectionPropertiesEngine(global) {
+  "use strict";
+
+  // Cold-formed section property calculator for CUSTOM windposts.
+  //
+  // Same mathematics as tools/lib/section-geometry.js, which generated the
+  // U, L, DU and I catalogues, so a custom section entered with a catalogue
+  // section's dimensions returns that catalogue section's properties. Verified
+  // against all 87 catalogue entries to < 1e-6 relative.
+  //
+  //   U  rounded or sharp channel
+  //   L  rounded or sharp angle
+  //   DU two U channels welded back to back: area, Ixx and Zxx are 2x the U
+  //   I  flat plate a x t, so A = a*t, Ixx = t*a^3/12, Zxx = Ixx/(a/2)
+  //
+  // Inputs are outer height a, outer width b, thickness t and the INNER fold
+  // radius r. Returns { valid, area, ixx, zxx, ybar, zTop, zBottom }.
+
+  const windpost = global.Windpost = global.Windpost || {};
+
+  function invalidResult(error) {
+    return { valid: false, error, area: 0, ixx: 0, zxx: 0, ybar: 0, zTop: 0, zBottom: 0 };
+  }
+
+  function calculateGeometrySection(shape, aInput, bInput, tInput, rInput, sharpEdges) {
+    const a = parseFloat(aInput);
+    const b = parseFloat(bInput);
+    const t = parseFloat(tInput);
+    const r = parseFloat(rInput) || 0;
+
+    if (!Number.isFinite(a) || !Number.isFinite(b) || !Number.isFinite(t) || !Number.isFinite(r) ||
+        a <= 0 || b <= 0 || t <= 0 || r < 0) {
+      return invalidResult("Invalid geometry.");
+    }
+
+    if (shape === "U") {
+      if (sharpEdges) {
+        if (a <= 2 * t || b <= t) return invalidResult("Invalid sharp U-section geometry.");
+        const Aw = a * t; const yw = a / 2; const Ixw = t * Math.pow(a, 3) / 12;
+        const wf = b - t; const Af = wf * t; const yTop = a - t / 2; const yBottom = t / 2; const Ixf = wf * Math.pow(t, 3) / 12;
+        const area = Aw + 2 * Af; const ybar = a / 2;
+        const ixx = Ixw + Aw * Math.pow(yw - ybar, 2) + Ixf + Af * Math.pow(yTop - ybar, 2) + Ixf + Af * Math.pow(yBottom - ybar, 2);
+        const zTop = ixx / (a - ybar); const zBottom = ixx / ybar;
+        return { valid: true, area, ixx, zxx: Math.min(zTop, zBottom), ybar, zTop, zBottom };
+      }
+      const R = r + t;
+      if (2 * R >= a || b <= R) return invalidResult("Invalid rounded U-section geometry.");
+      const hw = a - 2 * R; const Aw = hw * t; const yw = a / 2; const Ixw = t * Math.pow(hw, 3) / 12;
+      const wf = b - R; const Af = wf * t; const yTop = a - t / 2; const yBottom = t / 2; const Ixf = wf * Math.pow(t, 3) / 12;
+      const Ac = (Math.PI / 4) * (Math.pow(R, 2) - Math.pow(r, 2));
+      const rbar = (4 / (3 * Math.PI)) * (Math.pow(R, 3) - Math.pow(r, 3)) / (Math.pow(R, 2) - Math.pow(r, 2));
+      const Ibase = (Math.PI / 16) * (Math.pow(R, 4) - Math.pow(r, 4)); const Ic = Ibase - Ac * Math.pow(rbar, 2);
+      const ycBottom = R - rbar; const ycTop = a - ycBottom;
+      const area = Aw + 2 * Af + 2 * Ac; const ybar = a / 2;
+      const ixx = Ixw + Aw * Math.pow(yw - ybar, 2) + Ixf + Af * Math.pow(yTop - ybar, 2) + Ixf + Af * Math.pow(yBottom - ybar, 2) + Ic + Ac * Math.pow(ycTop - ybar, 2) + Ic + Ac * Math.pow(ycBottom - ybar, 2);
+      const zTop = ixx / (a - ybar); const zBottom = ixx / ybar;
+      return { valid: true, area, ixx, zxx: Math.min(zTop, zBottom), ybar, zTop, zBottom };
+    }
+
+    if (shape === "L") {
+      if (sharpEdges) {
+        if (a <= t || b <= t) return invalidResult("Invalid sharp L-section geometry.");
+        const Av = a * t; const yv = a / 2; const Ixv = t * Math.pow(a, 3) / 12;
+        const wh = b - t; const Ah = wh * t; const yh = t / 2; const Ixh = wh * Math.pow(t, 3) / 12;
+        const area = Av + Ah; const ybar = (Av * yv + Ah * yh) / area;
+        const ixx = Ixv + Av * Math.pow(yv - ybar, 2) + Ixh + Ah * Math.pow(yh - ybar, 2);
+        const zTop = ixx / (a - ybar); const zBottom = ixx / ybar;
+        return { valid: true, area, ixx, zxx: Math.min(zTop, zBottom), ybar, zTop, zBottom };
+      }
+      const R = r + t;
+      if (a <= R || b <= R) return invalidResult("Invalid rounded L-section geometry.");
+      const hv = a - R; const Av = hv * t; const yv = R + hv / 2; const Ixv = t * Math.pow(hv, 3) / 12;
+      const wh = b - R; const Ah = wh * t; const yh = t / 2; const Ixh = wh * Math.pow(t, 3) / 12;
+      const Ac = (Math.PI / 4) * (Math.pow(R, 2) - Math.pow(r, 2));
+      const rbar = (4 / (3 * Math.PI)) * (Math.pow(R, 3) - Math.pow(r, 3)) / (Math.pow(R, 2) - Math.pow(r, 2));
+      const Ibase = (Math.PI / 16) * (Math.pow(R, 4) - Math.pow(r, 4)); const Ic = Ibase - Ac * Math.pow(rbar, 2);
+      const yc = R - rbar;
+      const area = Av + Ah + Ac; const ybar = (Av * yv + Ah * yh + Ac * yc) / area;
+      const ixx = Ixv + Av * Math.pow(yv - ybar, 2) + Ixh + Ah * Math.pow(yh - ybar, 2) + Ic + Ac * Math.pow(yc - ybar, 2);
+      const zTop = ixx / (a - ybar); const zBottom = ixx / ybar;
+      return { valid: true, area, ixx, zxx: Math.min(zTop, zBottom), ybar, zTop, zBottom };
+    }
+
+    return invalidResult("Unsupported section type.");
+  }
+
+  function flatPlate(a, t) {
+    const area = a * t;
+    const ixx = t * Math.pow(a, 3) / 12;
+    const ybar = a / 2;
+    const z = ixx / ybar;
+    return { valid: true, area, ixx, zxx: z, ybar, zTop: z, zBottom: z };
+  }
+
+  // type is the windpost family: "U", "L", "DU" or "I".
+  function calculate(type, a, b, t, r, sharpEdges) {
+    const height = parseFloat(a), thickness = parseFloat(t);
+    if (type === "I") {
+      if (!Number.isFinite(height) || !Number.isFinite(thickness) || height <= 0 || thickness <= 0) {
+        return invalidResult("Invalid flat-plate geometry.");
+      }
+      return flatPlate(height, thickness);
+    }
+    if (type === "DU") {
+      const one = calculateGeometrySection("U", a, b, t, r, sharpEdges);
+      if (!one.valid) return one;
+      return {
+        valid: true, area: one.area * 2, ixx: one.ixx * 2, zxx: one.zxx * 2,
+        ybar: one.ybar, zTop: one.zTop * 2, zBottom: one.zBottom * 2
+      };
+    }
+    if (type === "U" || type === "L") {
+      return calculateGeometrySection(type, a, b, t, r, sharpEdges);
+    }
+    return invalidResult("Unsupported section type.");
+  }
+
+  // What each family needs from the user.
+  const FIELDS = Object.freeze({
+    U:  Object.freeze(["a", "b", "t", "r"]),
+    DU: Object.freeze(["a", "b", "t", "r"]),
+    L:  Object.freeze(["a", "b", "t", "r"]),
+    I:  Object.freeze(["a", "t"])
+  });
+
+  windpost.customSectionPropertiesEngine = Object.freeze({
+    calculate, calculateGeometrySection, FIELDS
+  });
+
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = windpost.customSectionPropertiesEngine;
+  }
+})(typeof window !== "undefined" ? window : globalThis);
+
+</script>
+  <script>
 (function initialiseSelectorApplication(global) {
   "use strict";
 
@@ -12041,6 +12265,12 @@ details.design-data-step > summary.design-data-summary:hover h3 { color: #0f766e
       ["head", "base"].forEach((end) => {
         document.getElementById(`${end}-fixing`).addEventListener("change", () => this.populateBoltFamilies(end));
         document.getElementById(`special-${end}`).addEventListener("change", () => this.updateSpecialRows());
+      });
+      ["custom-a", "custom-b", "custom-t", "custom-r", "custom-sharp"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener("input", () => this.updateCustomFields());
+        el.addEventListener("change", () => this.updateCustomFields());
       });
       this.populateSpecialSkus();
       this.updateSpecialRows();
@@ -12228,6 +12458,8 @@ details.design-data-step > summary.design-data-summary:hover h3 { color: #0f766e
         : "Required total ULS UDL load <b>*</b>";
       document.getElementById("automatic-input").classList.toggle("hidden", mode !== "automatic");
       document.getElementById("manual-input").classList.toggle("hidden", mode !== "manual");
+      document.getElementById("custom-input").classList.toggle("hidden", mode !== "custom");
+      this.updateCustomFields();
       this.populateSections(type, support);
       this.populateFixings(type, support);
     },
@@ -12432,6 +12664,7 @@ details.design-data-step > summary.design-data-summary:hover h3 { color: #0f766e
         length_mm: Number(document.getElementById("height").value),
         requiredLoad_kN: mode === "automatic" ? Number(document.getElementById("required-load").value) : null,
         selectedSectionName: document.getElementById("section-select").value,
+        custom: this.readCustomGeometry(),
         wall: {
           innerLeafThickness_mm: Number(document.getElementById("inner-leaf").value),
           cavityWidth_mm: Number(document.getElementById("cavity").value),
@@ -12439,6 +12672,47 @@ details.design-data-step > summary.design-data-summary:hover h3 { color: #0f766e
         },
         connections: this.readConnectionInputs()
       };
+    },
+
+    readCustomGeometry() {
+      const value = (id) => Number(document.getElementById(id).value);
+      return {
+        a_mm: value("custom-a"),
+        b_mm: value("custom-b"),
+        t_mm: value("custom-t"),
+        r_mm: value("custom-r"),
+        sharpEdges: document.getElementById("custom-sharp").checked,
+        name: document.getElementById("custom-name").value
+      };
+    },
+
+    // An I post is a flat plate, so it has no width or fold radius; a sharp
+    // U/L has no radius either. Hide what does not apply and show the
+    // properties as they are typed.
+    updateCustomFields() {
+      const engine = windpost.customSectionPropertiesEngine;
+      const type = this.selectedValue("windpostType");
+      const isFlat = type === "I";
+      const sharp = document.getElementById("custom-sharp").checked;
+      document.getElementById("custom-b-field").classList.toggle("hidden", isFlat);
+      document.getElementById("custom-sharp-field").classList.toggle("hidden", isFlat);
+      document.getElementById("custom-r-field").classList.toggle("hidden", isFlat || sharp);
+      const host = document.getElementById("custom-properties");
+      if (!host || !engine) return;
+      const g = this.readCustomGeometry();
+      const props = engine.calculate(type, g.a_mm, g.b_mm, g.t_mm, g.r_mm, g.sharpEdges);
+      if (!props.valid) {
+        host.classList.add("is-invalid");
+        host.innerHTML = `<strong>${this.escape(props.error || "Invalid geometry.")}</strong>`;
+        return;
+      }
+      host.classList.remove("is-invalid");
+      host.innerHTML = `<dl>
+        <div><dt>Area</dt><dd>${this.number(props.area, 2)} mm&sup2;</dd></div>
+        <div><dt>Ixx</dt><dd>${this.number(props.ixx, 2)} mm&#8308;</dd></div>
+        <div><dt>Zxx min</dt><dd>${this.number(props.zxx, 2)} mm&sup3;</dd></div>
+        <div><dt>Ybar</dt><dd>${this.number(props.ybar, 2)} mm</dd></div>
+      </dl>`;
     },
 
     selectorFileName() {

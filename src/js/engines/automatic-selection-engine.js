@@ -132,6 +132,41 @@
     return { valid: false, message, evaluations, strongest };
   }
 
+  // A custom windpost: the user gives the geometry, the same calculator that
+  // generated the catalogues gives the properties, and from there it is an
+  // ordinary section — identical capacity, wall and tie treatment.
+  function buildCustomSection(o) {
+    const engine = windpost.customSectionPropertiesEngine;
+    if (!engine) return { error: "The custom section calculator is not loaded." };
+    const g = o.custom || {};
+    const a = Number(g.a_mm), b = Number(g.b_mm), t = Number(g.t_mm), r = Number(g.r_mm) || 0;
+    const props = engine.calculate(o.type, a, b, t, r, Boolean(g.sharpEdges));
+    if (!props.valid) return { error: props.error || "Enter a valid custom section geometry." };
+    const label = o.type === "I"
+      ? `Custom I ${a}x${t}`
+      : `Custom ${o.type} ${a}x${b}x${t}`;
+    return {
+      section: {
+        type: o.type,
+        shape: o.type,
+        name: g.name && String(g.name).trim() ? String(g.name).trim() : label,
+        custom: true,
+        a_mm: a,
+        b_mm: o.type === "I" ? null : b,
+        t_mm: t,
+        innerRadius_mm: o.type === "I" ? 0 : r,
+        outerRadius_mm: o.type === "I" ? t : r + t,
+        crossSectionalArea_mm2: props.area,
+        centroidY_mm: props.ybar,
+        ixx_mm4: props.ixx,
+        zTop_mm3: props.zTop,
+        zBottom_mm3: props.zBottom,
+        zxx_mm3: props.zxx,
+        supportCondition: "all"
+      }
+    };
+  }
+
   function runDesign(options) {
     const normalized = {
       ...options,
@@ -143,6 +178,30 @@
 
     const sections = getSections(normalized.type, normalized.supportCondition);
     if (!sections.length) return createFailure("No catalogue sections are available for this selection.");
+
+    if (normalized.mode === "custom") {
+      const built = buildCustomSection(normalized);
+      if (built.error) return createFailure(built.error);
+      const selected = evaluateSection(built.section, normalized);
+      return {
+        valid: selected.calculation.valid && selected.wall.suitable,
+        mode: "custom",
+        message: selected.wall.suitable
+          ? "Custom section calculated successfully."
+          : selected.wall.reason,
+        selected,
+        alternatives: [],
+        evaluations: [selected],
+        demandActions: calculateDemandActions(
+          null,
+          normalized.length_mm,
+          normalized.supportCondition,
+          normalized.loadType
+        ),
+        inputs: normalized,
+        designDefaults: currentDesignDefaults()
+      };
+    }
 
     if (normalized.mode === "manual") {
       const section = sections.find((item) => item.name === normalized.selectedSectionName);
@@ -199,7 +258,7 @@
   }
 
   windpost.automaticSelectionEngine = Object.freeze({
-    DESIGN_DEFAULTS,
+    DESIGN_DEFAULTS, buildCustomSection,
     currentDesignDefaults,
     tieStrengthFor,
     calculateDemandActions,

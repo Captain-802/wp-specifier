@@ -147,11 +147,12 @@
         <section class="form-step" aria-labelledby="step-four-title">
           <div class="step-heading">
             <span>4</span>
-            <div><h3 id="step-four-title">Choose how to design</h3><p>Automatically select a post or calculate a chosen catalogue section.</p></div>
+            <div><h3 id="step-four-title">Choose how to design</h3><p>Automatically select a post, calculate a chosen catalogue section, or enter a custom section.</p></div>
           </div>
           <div class="segmented-control" role="radiogroup" aria-label="Design mode">
             <label><input type="radio" name="designMode" value="automatic" checked><span>Enter required load</span></label>
             <label><input type="radio" name="designMode" value="manual"><span>Choose a section</span></label>
+            <label><input type="radio" name="designMode" value="custom"><span>Custom section</span></label>
           </div>
           <div id="automatic-input" class="conditional-block">
             <label class="field featured-field">
@@ -159,6 +160,18 @@
               <span class="input-with-unit"><input id="required-load" type="number" value="13" min="0.001" step="0.01" inputmode="decimal"><em>kN</em></span>
               <small>The software selects the first available standard section with sufficient final capacity.</small>
             </label>
+          </div>
+          <div id="custom-input" class="conditional-block hidden">
+            <p class="custom-note">Enter the outer dimensions and the inner fold radius. The properties are worked out with the same calculator that produced the catalogues, so a custom section entered with catalogue dimensions returns the catalogue values.</p>
+            <div class="custom-grid">
+              <label class="field"><span>Overall height, a <b>*</b></span><span class="input-with-unit"><input id="custom-a" type="number" value="125" min="1" step="0.01" inputmode="decimal"><em>mm</em></span></label>
+              <label class="field" id="custom-b-field"><span>Overall width, b <b>*</b></span><span class="input-with-unit"><input id="custom-b" type="number" value="70" min="1" step="0.01" inputmode="decimal"><em>mm</em></span></label>
+              <label class="field"><span>Thickness, t <b>*</b></span><span class="input-with-unit"><input id="custom-t" type="number" value="4" min="0.01" step="0.01" inputmode="decimal"><em>mm</em></span></label>
+              <label class="field" id="custom-r-field"><span>Inner fold radius, r</span><span class="input-with-unit"><input id="custom-r" type="number" value="6" min="0" step="0.01" inputmode="decimal"><em>mm</em></span></label>
+            </div>
+            <label class="custom-check" id="custom-sharp-field"><input id="custom-sharp" type="checkbox"><span>Sharp square edges / zero fold radius</span></label>
+            <label class="field"><span>Section name</span><input id="custom-name" type="text" placeholder="Custom L 125x70x4" autocomplete="off"></label>
+            <div id="custom-properties" class="custom-properties" aria-live="polite"></div>
           </div>
           <div id="manual-input" class="conditional-block hidden">
             <label class="field featured-field">
@@ -381,6 +394,7 @@
   <script src="./js/engines/selector/selector-baseplate-routing-engine.js"></script>
   <script src="./js/engines/selector/baseplate-drawing-routing-engine.js"></script>
   <script src="./js/ui/design-data-editor.js"></script>
+  <script src="./js/engines/custom-section-properties-engine.js"></script>
   <script src="./js/ui/app.js"></script>
 </body>
 </html>

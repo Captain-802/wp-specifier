@@ -436,3 +436,19 @@ details.design-data-step > summary.design-data-summary:hover h3 { color: #0f766e
 
 /* The hidden attribute must win over the badge's own display rule. */
 .badge[hidden], [hidden] { display: none !important; }
+
+
+/* Custom section: geometry inputs and the live property readout. */
+.custom-note { margin: 0 0 10px; font-size: .85rem; color: #5b636c; }
+.custom-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.custom-check { display: flex; align-items: center; gap: 8px; margin: 10px 0; padding: 8px 10px;
+  background: #fffbe6; border: 1px solid #f0e2a8; border-radius: 8px; font-size: .9rem; }
+.custom-check input { width: auto; }
+.custom-properties { margin-top: 12px; padding: 10px 12px; border-radius: 8px;
+  background: #eef7f1; border: 1px solid #cfe6d8; font-size: .9rem; }
+.custom-properties.is-invalid { background: #fdeceb; border-color: #f3c7c3; color: #8a2a22; }
+.custom-properties dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 4px 16px; margin: 0; }
+.custom-properties dl div { display: flex; justify-content: space-between; gap: 10px; }
+.custom-properties dt { color: #44525c; }
+.custom-properties dd { margin: 0; font-weight: 700; color: #102743; }
