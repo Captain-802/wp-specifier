@@ -37,6 +37,20 @@
   // Nominal designation lengths, kept for reference/back-compat.
   const EDC_TIE_LENGTHS_MM = Object.freeze(TIE_LIST.map((t) => t.nominal_mm));
 
+  // The outer tie list is editable: sizes can be added, removed or re-measured
+  // in the design data. Selection therefore reads the live list per call and
+  // falls back to the catalogue when nothing has been edited.
+  function tieList() {
+    const data = windpost.designData;
+    const live = data && typeof data.outerTieSizes === "function"
+      ? data.outerTieSizes() : null;
+    const rows = Array.isArray(live) && live.length ? live : TIE_LIST;
+    return rows
+      .filter((t) => t && Number.isFinite(Number(t.actual_mm)) && Number(t.actual_mm) > 0)
+      .map((t) => ({ name: t.name, nominal_mm: t.nominal_mm, actual_mm: Number(t.actual_mm) }))
+      .sort((a, b) => a.actual_mm - b.actual_mm);
+  }
+
   const WALL_DEFAULTS = Object.freeze({
     uInnerClearance_mm: P.uInnerClearance_mm ?? 6,
     uTieActualLength_mm: P.uTieActualLength_mm ?? 84,
@@ -195,12 +209,13 @@
       outerGap_mm + W.minimumOuterEmbedment_mm;
     // The actual tie length a suitable tie must reach.
     const requiredActualLength_mm = requiredProjection_mm + tieConnectionLength_mm(W);
-    const selectedTie = TIE_LIST.find(
+    const TIES = tieList();
+    const selectedTie = TIES.find(
       (tie) => usableProjection_mm(tie.actual_mm, W) + 1e-9 >= requiredProjection_mm
     );
 
     if (!selectedTie) {
-      const longestTie = TIE_LIST[TIE_LIST.length - 1];
+      const longestTie = TIES[TIES.length - 1];
       return invalidResult(
         `The required outer tie exceeds ${longestTie ? longestTie.name : "the longest available tie"}.`,
         {
@@ -258,7 +273,7 @@
 
   windpost.outerTieSelectionEngine = Object.freeze({
     EDC_TIE_LENGTHS_MM,
-    TIE_LIST,
+    TIE_LIST, tieList,
     WALL_DEFAULTS,
     calculateWallAndTie
   });

@@ -42,7 +42,10 @@
       this.updateSpecialRows();
       document.getElementById("close-details").addEventListener("click", () => this.hideDetails());
       document.getElementById("print-report").addEventListener("click", () => this.downloadPdf());
-      this.detailingTab.addEventListener("click", () => this.openDetailing());
+      // The detailing tab is switched off for this release, so it may be absent.
+      if (this.detailingTab) {
+        this.detailingTab.addEventListener("click", () => this.openDetailing());
+      }
       this.projectFileInput = document.getElementById("project-json-file");
       this.projectStatus = document.getElementById("project-file-status");
       document.getElementById("save-project-json").addEventListener(

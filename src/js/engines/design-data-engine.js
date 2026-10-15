@@ -123,6 +123,7 @@
   const empty = () => ({
     version: VERSION,
     ties: {}, design: {},
+    tieFields: {}, tiesAdded: [], tiesRemoved: [],
     anchors: {}, anchorsAdded: [], anchorsRemoved: [],
     boltSkus: {}, boltSkusAdded: [], boltSkusRemoved: [],
     connectionBolts: {}
@@ -150,11 +151,83 @@
 
   // ---- ties -----------------------------------------------------------------
 
+  const TIE_GEOMETRY = ["nominal_mm", "actual_mm", "width_mm", "thickness_mm"];
+
   function tieRows() {
-    return catalogueTies().map(row => {
-      const edited = Object.prototype.hasOwnProperty.call(store.ties, row.name);
-      return { ...row, capacity_kN: edited ? store.ties[row.name] : row.catalogue_kN, edited };
+    const rows = catalogueTies()
+      .filter(row => !store.tiesRemoved.includes(row.name))
+      .map(row => ({ ...row, added: false }));
+    store.tiesAdded.forEach(t => rows.push({
+      name: t.name, label: t.name, kind: "outer", posts: "U, L, DU",
+      nominal_mm: t.nominal_mm, actual_mm: t.actual_mm,
+      width_mm: t.width_mm, thickness_mm: t.thickness_mm,
+      catalogue_kN: t.capacity_kN, added: true
+    }));
+    return rows.map(row => {
+      const fields = store.tieFields[row.name] || {};
+      const capEdited = Object.prototype.hasOwnProperty.call(store.ties, row.name);
+      const out = { ...row, catalogue: { ...row } };
+      TIE_GEOMETRY.forEach(key => {
+        if (Number.isFinite(Number(fields[key]))) out[key] = Number(fields[key]);
+      });
+      out.capacity_kN = capEdited ? store.ties[row.name] : row.catalogue_kN;
+      out.edited = capEdited || Object.keys(fields).length > 0 || row.added;
+      return out;
+    }).sort((a, b) => (a.kind === b.kind)
+      ? (Number(a.actual_mm) || 0) - (Number(b.actual_mm) || 0)
+      : (a.kind === "outer" ? -1 : 1));
+  }
+
+  // The outer tie sizes the selection engine actually uses.
+  function outerTieSizes() {
+    return tieRows().filter(t => t.kind === "outer")
+      .map(t => ({ name: t.name, nominal_mm: t.nominal_mm, actual_mm: t.actual_mm }));
+  }
+
+  function setTieField(name, key, value) {
+    if (!TIE_GEOMETRY.includes(key)) return false;
+    const row = tieRows().find(t => t.name === name);
+    if (!row) return false;
+    const v = finite(value);
+    if (v === null || v < 0) return false;
+    const added = store.tiesAdded.find(t => t.name === name);
+    if (added) { added[key] = v; notify(); return true; }
+    const o = store.tieFields[name] || (store.tieFields[name] = {});
+    if (v === Number(row.catalogue[key])) delete o[key]; else o[key] = v;
+    if (!Object.keys(o).length) delete store.tieFields[name];
+    notify();
+    return true;
+  }
+
+  function addTie(row) {
+    const name = String(row && row.name || "").trim();
+    if (!name) return false;
+    if (tieRows().some(t => t.name === name)) return false;
+    const actual = finite(row && row.actual_mm);
+    if (actual === null || actual <= 0) return false;
+    const removedIndex = store.tiesRemoved.indexOf(name);
+    if (removedIndex >= 0) store.tiesRemoved.splice(removedIndex, 1);
+    store.tiesAdded.push({
+      name,
+      nominal_mm: finite(row.nominal_mm) ?? actual,
+      actual_mm: actual,
+      width_mm: finite(row.width_mm) ?? 21,
+      thickness_mm: finite(row.thickness_mm) ?? 1.2,
+      capacity_kN: finite(row.capacity_kN) ?? OUTER_DEFAULT_KN
     });
+    notify();
+    return true;
+  }
+
+  function removeTie(name) {
+    const addedIndex = store.tiesAdded.findIndex(t => t.name === name);
+    if (addedIndex >= 0) store.tiesAdded.splice(addedIndex, 1);
+    else if (catalogueTies().some(t => t.name === name && t.kind === "outer")) {
+      if (!store.tiesRemoved.includes(name)) store.tiesRemoved.push(name);
+      delete store.ties[name]; delete store.tieFields[name];
+    } else return false;
+    notify();
+    return true;
   }
 
   function tieCapacity(name) {
@@ -404,7 +477,23 @@
   function edits() {
     const lines = [];
     const fmt = (v, d = 3) => Number(v).toFixed(d);
-    tieRows().filter(t => t.edited).forEach(t => lines.push(`${t.label} capacity ${fmt(t.catalogue_kN)} -> ${fmt(t.capacity_kN)} kN`));
+    tieRows().forEach(t => {
+      if (t.added) {
+        lines.push(`Tie ${t.name} added: ${fmt(t.actual_mm, 1)} mm actual, ${fmt(t.capacity_kN)} kN`);
+        return;
+      }
+      if (!t.edited) return;
+      if (Number(t.capacity_kN) !== Number(t.catalogue_kN)) {
+        lines.push(`${t.label} capacity ${fmt(t.catalogue_kN)} -> ${fmt(t.capacity_kN)} kN`);
+      }
+      TIE_GEOMETRY.forEach(key => {
+        const was = Number(t.catalogue[key]), now = Number(t[key]);
+        if (Number.isFinite(was) && Number.isFinite(now) && was !== now) {
+          lines.push(`${t.label} ${key.replace("_mm", "")} ${fmt(was, 2)} -> ${fmt(now, 2)} mm`);
+        }
+      });
+    });
+    store.tiesRemoved.forEach(name => lines.push(`Tie ${name} removed`));
     designSpec().filter(d => d.edited).forEach(d => lines.push(`${d.label} ${d.type === "boolean" ? (d.catalogue ? "on" : "off") : fmt(d.catalogue, d.decimals)} -> ${d.type === "boolean" ? (d.current ? "on" : "off") : fmt(d.current, d.decimals)}${d.unit ? " " + d.unit : ""}`));
     anchors().forEach(a => {
       if (a.added) lines.push(`Anchor ${a.name} (${a.sku}) added: shear ${fmt(a.shear, 1)}, tension ${fmt(a.tension, 1)} kN`);
@@ -442,7 +531,7 @@
   function reset(area) {
     const fresh = empty();
     if (!area) store = fresh;
-    else if (area === "ties") store.ties = {};
+    else if (area === "ties") { store.ties = {}; store.tieFields = {}; store.tiesAdded = []; store.tiesRemoved = []; }
     else if (area === "design") store.design = {};
     else if (area === "anchors") { store.anchors = {}; store.anchorsAdded = []; store.anchorsRemoved = []; }
     else if (area === "boltSkus") { store.boltSkus = {}; store.boltSkusAdded = []; store.boltSkusRemoved = []; }
@@ -466,6 +555,30 @@
       Object.keys(src.ties || {}).forEach(name => {
         const n = finite(src.ties[name]);
         if (ties.some(t => t.name === name) && n !== null && n >= 0) fresh.ties[name] = n;
+      });
+      (Array.isArray(src.tiesRemoved) ? src.tiesRemoved : []).forEach(name => {
+        if (ties.some(t => t.name === name)) fresh.tiesRemoved.push(String(name));
+      });
+      (Array.isArray(src.tiesAdded) ? src.tiesAdded : []).forEach(row => {
+        const name = String(row && row.name || "").trim();
+        const actual = finite(row && row.actual_mm);
+        if (!name || actual === null || actual <= 0) return;
+        if (fresh.tiesAdded.some(t => t.name === name)) return;
+        fresh.tiesAdded.push({
+          name, actual_mm: actual,
+          nominal_mm: finite(row.nominal_mm) ?? actual,
+          width_mm: finite(row.width_mm) ?? 21,
+          thickness_mm: finite(row.thickness_mm) ?? 1.2,
+          capacity_kN: finite(row.capacity_kN) ?? OUTER_DEFAULT_KN
+        });
+      });
+      Object.keys(src.tieFields || {}).forEach(name => {
+        const o = src.tieFields[name] || {}; const out = {};
+        TIE_GEOMETRY.forEach(key => {
+          const n = finite(o[key]);
+          if (n !== null && n >= 0) out[key] = n;
+        });
+        if (Object.keys(out).length) fresh.tieFields[name] = out;
       });
       Object.keys(src.design || {}).forEach(key => {
         const spec = DESIGN_SPEC.find(d => d.key === key);
@@ -534,6 +647,7 @@
     VERSION, STORAGE_KEY, BOLT_FAMILIES, ANCHOR_FAMILIES,
     tieRows, tieCapacity, setTieCapacity, innerTieName, levelCapacity, familyCapacity,
     designSpec, designValues, setDesign,
+    outerTieSizes, setTieField, addTie, removeTie,
     anchors, setAnchor, addAnchor, removeAnchor,
     boltSkus, boltSku, setBoltSku, addBoltSku, removeBoltSku, boltCodes,
     connectionBoltRows, connectionBolt, setConnectionBolt,

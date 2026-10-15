@@ -29,22 +29,37 @@
 
     function tiesPanel() {
       const rows = data.tieRows();
+      const geo = (t, key, step) => `<td class="num"><input type="number" step="${step}" min="0" value="${escape(t[key])}" data-area="ties" data-field="${key}" data-key="${escape(t.name)}" aria-label="${escape(t.label)} ${key}"></td>`;
       const line = t => `<tr class="${t.edited ? "is-edited" : ""}">
-        <td class="dd-name">${escape(t.label)}</td>
+        <td class="dd-name">${escape(t.label)}${t.added ? ' <b class="badge is-edited">added</b>' : ""}</td>
         <td>${escape(t.posts)}</td>
-        <td class="num">${t.nominal_mm == null ? "—" : escape(t.nominal_mm)}</td>
-        <td class="num">${escape(t.actual_mm)}</td>
-        <td class="num">${escape(t.width_mm)}</td>
-        <td class="num">${escape(t.thickness_mm)}</td>
-        <td class="num"><input type="number" step="0.001" min="0" value="${num(t.capacity_kN, 3)}" data-area="ties" data-key="${escape(t.name)}" aria-label="${escape(t.label)} capacity kN"></td>
+        <td class="num">${t.nominal_mm == null ? "&mdash;" : `<input type="number" step="1" min="0" value="${escape(t.nominal_mm)}" data-area="ties" data-field="nominal_mm" data-key="${escape(t.name)}" aria-label="${escape(t.label)} nominal">`}</td>
+        ${geo(t, "actual_mm", "0.01")}
+        ${geo(t, "width_mm", "0.1")}
+        ${geo(t, "thickness_mm", "0.01")}
+        <td class="num"><input type="number" step="0.001" min="0" value="${num(t.capacity_kN, 3)}" data-area="ties" data-field="capacity_kN" data-key="${escape(t.name)}" aria-label="${escape(t.label)} capacity kN"></td>
         <td class="num dd-catalogue">${num(t.catalogue_kN, 3)}</td>
+        <td>${t.kind === "outer"
+          ? `<button type="button" class="dd-remove" data-action="remove-tie" data-key="${escape(t.name)}" aria-label="Remove ${escape(t.label)}">Remove</button>`
+          : ""}</td>
       </tr>`;
       return `<div class="dd-table-wrap"><table class="dd-table">
-        <thead><tr><th>Tie</th><th>Used by</th><th>Nominal (mm)</th><th>Actual length (mm)</th><th>Width (mm)</th><th>Thk (mm)</th><th>Capacity (kN)</th><th>Catalogue (kN)</th></tr></thead>
+        <thead><tr><th>Tie</th><th>Used by</th><th>Nominal (mm)</th><th>Actual length (mm)</th><th>Width (mm)</th><th>Thk (mm)</th><th>Capacity (kN)</th><th>Catalogue (kN)</th><th></th></tr></thead>
         <tbody>${rows.filter(t => t.kind === "outer").map(line).join("")}
-        <tr class="dd-group"><td colspan="8">Inner-leaf ties</td></tr>
+        <tr class="dd-add" data-form="tie">
+          <td class="dd-name"><input type="text" data-add="name" placeholder="EDC25-400" aria-label="New tie name"></td>
+          <td>U, L, DU</td>
+          <td class="num"><input type="number" step="1" min="0" data-add="nominal_mm" placeholder="400" aria-label="New tie nominal"></td>
+          <td class="num"><input type="number" step="0.01" min="0" data-add="actual_mm" placeholder="408" aria-label="New tie actual length"></td>
+          <td class="num"><input type="number" step="0.1" min="0" data-add="width_mm" placeholder="21" aria-label="New tie width"></td>
+          <td class="num"><input type="number" step="0.01" min="0" data-add="thickness_mm" placeholder="1.5" aria-label="New tie thickness"></td>
+          <td class="num"><input type="number" step="0.001" min="0" data-add="capacity_kN" placeholder="2.25" aria-label="New tie capacity"></td>
+          <td></td>
+          <td><button type="button" class="secondary-button" data-action="add-tie">Add tie</button></td>
+        </tr>
+        <tr class="dd-group"><td colspan="9">Inner-leaf ties</td></tr>
         ${rows.filter(t => t.kind === "inner").map(line).join("")}</tbody></table></div>
-        <p class="dd-note">A tie level is only as strong as its weaker tie: level capacity = min(inner tie, outer tie selected for the wall). A DU carries two ties per level; its capacity is counted per level, as the approved workbook does. Catalogue: U / DU 1.713 kN (U tie governs), L / I 2.250 kN.</p>`;
+        <p class="dd-note">Outer tie sizes can be added, removed or re-measured; the selector picks the shortest tie whose actual length reaches the outer leaf, so <strong>actual length</strong> drives selection. A tie level is only as strong as its weaker tie: level capacity = min(inner tie, outer tie selected for the wall). A DU carries two ties per level. Catalogue: U / DU 1.713 kN (U tie governs), L / I 2.250 kN.</p>`;
     }
 
     function designPanel() {
@@ -150,7 +165,9 @@
     function applyChange(target) {
       const area = target.dataset.area, key = target.dataset.key, field = target.dataset.field;
       let ok = true;
-      if (area === "ties") ok = data.setTieCapacity(key, target.value);
+      if (area === "ties") ok = (field && field !== "capacity_kN")
+        ? data.setTieField(key, field, target.value)
+        : data.setTieCapacity(key, target.value);
       else if (area === "design") ok = data.setDesign(key, target.type === "checkbox" ? target.checked : target.value);
       else if (area === "anchors") ok = data.setAnchor(key, { [field]: target.value });
       else if (area === "boltSkus") ok = field === "description"
@@ -168,6 +185,14 @@
       if (action === "tab") { active = key; render(); return; }
       if (action === "reset-table") { data.reset(TABS.find(t => t.key === active).area); render(); onChange(); return; }
       if (action === "reset-all") { data.reset(); render(); onChange(); return; }
+      if (action === "remove-tie") { data.removeTie(key); render(); onChange(); return; }
+      if (action === "add-tie") {
+        const ok = data.addTie({ name: readAdd("tie", "name"), nominal_mm: readAdd("tie", "nominal_mm"),
+          actual_mm: readAdd("tie", "actual_mm"), width_mm: readAdd("tie", "width_mm"),
+          thickness_mm: readAdd("tie", "thickness_mm"), capacity_kN: readAdd("tie", "capacity_kN") });
+        if (!ok) notice = "Give the new tie a unique name and an actual length in mm.";
+        render(); onChange(); return;
+      }
       if (action === "remove-anchor") { data.removeAnchor(key); render(); onChange(); return; }
       if (action === "remove-bolt") { data.removeBoltSku(key); render(); onChange(); return; }
       if (action === "add-anchor") {

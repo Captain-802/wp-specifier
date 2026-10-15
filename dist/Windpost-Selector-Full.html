@@ -5677,6 +5677,20 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
   // Nominal designation lengths, kept for reference/back-compat.
   const EDC_TIE_LENGTHS_MM = Object.freeze(TIE_LIST.map((t) => t.nominal_mm));
 
+  // The outer tie list is editable: sizes can be added, removed or re-measured
+  // in the design data. Selection therefore reads the live list per call and
+  // falls back to the catalogue when nothing has been edited.
+  function tieList() {
+    const data = windpost.designData;
+    const live = data && typeof data.outerTieSizes === "function"
+      ? data.outerTieSizes() : null;
+    const rows = Array.isArray(live) && live.length ? live : TIE_LIST;
+    return rows
+      .filter((t) => t && Number.isFinite(Number(t.actual_mm)) && Number(t.actual_mm) > 0)
+      .map((t) => ({ name: t.name, nominal_mm: t.nominal_mm, actual_mm: Number(t.actual_mm) }))
+      .sort((a, b) => a.actual_mm - b.actual_mm);
+  }
+
   const WALL_DEFAULTS = Object.freeze({
     uInnerClearance_mm: P.uInnerClearance_mm ?? 6,
     uTieActualLength_mm: P.uTieActualLength_mm ?? 84,
@@ -5835,12 +5849,13 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
       outerGap_mm + W.minimumOuterEmbedment_mm;
     // The actual tie length a suitable tie must reach.
     const requiredActualLength_mm = requiredProjection_mm + tieConnectionLength_mm(W);
-    const selectedTie = TIE_LIST.find(
+    const TIES = tieList();
+    const selectedTie = TIES.find(
       (tie) => usableProjection_mm(tie.actual_mm, W) + 1e-9 >= requiredProjection_mm
     );
 
     if (!selectedTie) {
-      const longestTie = TIE_LIST[TIE_LIST.length - 1];
+      const longestTie = TIES[TIES.length - 1];
       return invalidResult(
         `The required outer tie exceeds ${longestTie ? longestTie.name : "the longest available tie"}.`,
         {
@@ -5898,7 +5913,7 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
 
   windpost.outerTieSelectionEngine = Object.freeze({
     EDC_TIE_LENGTHS_MM,
-    TIE_LIST,
+    TIE_LIST, tieList,
     WALL_DEFAULTS,
     calculateWallAndTie
   });
@@ -6031,6 +6046,7 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
   const empty = () => ({
     version: VERSION,
     ties: {}, design: {},
+    tieFields: {}, tiesAdded: [], tiesRemoved: [],
     anchors: {}, anchorsAdded: [], anchorsRemoved: [],
     boltSkus: {}, boltSkusAdded: [], boltSkusRemoved: [],
     connectionBolts: {}
@@ -6058,11 +6074,83 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
 
   // ---- ties -----------------------------------------------------------------
 
+  const TIE_GEOMETRY = ["nominal_mm", "actual_mm", "width_mm", "thickness_mm"];
+
   function tieRows() {
-    return catalogueTies().map(row => {
-      const edited = Object.prototype.hasOwnProperty.call(store.ties, row.name);
-      return { ...row, capacity_kN: edited ? store.ties[row.name] : row.catalogue_kN, edited };
+    const rows = catalogueTies()
+      .filter(row => !store.tiesRemoved.includes(row.name))
+      .map(row => ({ ...row, added: false }));
+    store.tiesAdded.forEach(t => rows.push({
+      name: t.name, label: t.name, kind: "outer", posts: "U, L, DU",
+      nominal_mm: t.nominal_mm, actual_mm: t.actual_mm,
+      width_mm: t.width_mm, thickness_mm: t.thickness_mm,
+      catalogue_kN: t.capacity_kN, added: true
+    }));
+    return rows.map(row => {
+      const fields = store.tieFields[row.name] || {};
+      const capEdited = Object.prototype.hasOwnProperty.call(store.ties, row.name);
+      const out = { ...row, catalogue: { ...row } };
+      TIE_GEOMETRY.forEach(key => {
+        if (Number.isFinite(Number(fields[key]))) out[key] = Number(fields[key]);
+      });
+      out.capacity_kN = capEdited ? store.ties[row.name] : row.catalogue_kN;
+      out.edited = capEdited || Object.keys(fields).length > 0 || row.added;
+      return out;
+    }).sort((a, b) => (a.kind === b.kind)
+      ? (Number(a.actual_mm) || 0) - (Number(b.actual_mm) || 0)
+      : (a.kind === "outer" ? -1 : 1));
+  }
+
+  // The outer tie sizes the selection engine actually uses.
+  function outerTieSizes() {
+    return tieRows().filter(t => t.kind === "outer")
+      .map(t => ({ name: t.name, nominal_mm: t.nominal_mm, actual_mm: t.actual_mm }));
+  }
+
+  function setTieField(name, key, value) {
+    if (!TIE_GEOMETRY.includes(key)) return false;
+    const row = tieRows().find(t => t.name === name);
+    if (!row) return false;
+    const v = finite(value);
+    if (v === null || v < 0) return false;
+    const added = store.tiesAdded.find(t => t.name === name);
+    if (added) { added[key] = v; notify(); return true; }
+    const o = store.tieFields[name] || (store.tieFields[name] = {});
+    if (v === Number(row.catalogue[key])) delete o[key]; else o[key] = v;
+    if (!Object.keys(o).length) delete store.tieFields[name];
+    notify();
+    return true;
+  }
+
+  function addTie(row) {
+    const name = String(row && row.name || "").trim();
+    if (!name) return false;
+    if (tieRows().some(t => t.name === name)) return false;
+    const actual = finite(row && row.actual_mm);
+    if (actual === null || actual <= 0) return false;
+    const removedIndex = store.tiesRemoved.indexOf(name);
+    if (removedIndex >= 0) store.tiesRemoved.splice(removedIndex, 1);
+    store.tiesAdded.push({
+      name,
+      nominal_mm: finite(row.nominal_mm) ?? actual,
+      actual_mm: actual,
+      width_mm: finite(row.width_mm) ?? 21,
+      thickness_mm: finite(row.thickness_mm) ?? 1.2,
+      capacity_kN: finite(row.capacity_kN) ?? OUTER_DEFAULT_KN
     });
+    notify();
+    return true;
+  }
+
+  function removeTie(name) {
+    const addedIndex = store.tiesAdded.findIndex(t => t.name === name);
+    if (addedIndex >= 0) store.tiesAdded.splice(addedIndex, 1);
+    else if (catalogueTies().some(t => t.name === name && t.kind === "outer")) {
+      if (!store.tiesRemoved.includes(name)) store.tiesRemoved.push(name);
+      delete store.ties[name]; delete store.tieFields[name];
+    } else return false;
+    notify();
+    return true;
   }
 
   function tieCapacity(name) {
@@ -6312,7 +6400,23 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
   function edits() {
     const lines = [];
     const fmt = (v, d = 3) => Number(v).toFixed(d);
-    tieRows().filter(t => t.edited).forEach(t => lines.push(`${t.label} capacity ${fmt(t.catalogue_kN)} -> ${fmt(t.capacity_kN)} kN`));
+    tieRows().forEach(t => {
+      if (t.added) {
+        lines.push(`Tie ${t.name} added: ${fmt(t.actual_mm, 1)} mm actual, ${fmt(t.capacity_kN)} kN`);
+        return;
+      }
+      if (!t.edited) return;
+      if (Number(t.capacity_kN) !== Number(t.catalogue_kN)) {
+        lines.push(`${t.label} capacity ${fmt(t.catalogue_kN)} -> ${fmt(t.capacity_kN)} kN`);
+      }
+      TIE_GEOMETRY.forEach(key => {
+        const was = Number(t.catalogue[key]), now = Number(t[key]);
+        if (Number.isFinite(was) && Number.isFinite(now) && was !== now) {
+          lines.push(`${t.label} ${key.replace("_mm", "")} ${fmt(was, 2)} -> ${fmt(now, 2)} mm`);
+        }
+      });
+    });
+    store.tiesRemoved.forEach(name => lines.push(`Tie ${name} removed`));
     designSpec().filter(d => d.edited).forEach(d => lines.push(`${d.label} ${d.type === "boolean" ? (d.catalogue ? "on" : "off") : fmt(d.catalogue, d.decimals)} -> ${d.type === "boolean" ? (d.current ? "on" : "off") : fmt(d.current, d.decimals)}${d.unit ? " " + d.unit : ""}`));
     anchors().forEach(a => {
       if (a.added) lines.push(`Anchor ${a.name} (${a.sku}) added: shear ${fmt(a.shear, 1)}, tension ${fmt(a.tension, 1)} kN`);
@@ -6350,7 +6454,7 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
   function reset(area) {
     const fresh = empty();
     if (!area) store = fresh;
-    else if (area === "ties") store.ties = {};
+    else if (area === "ties") { store.ties = {}; store.tieFields = {}; store.tiesAdded = []; store.tiesRemoved = []; }
     else if (area === "design") store.design = {};
     else if (area === "anchors") { store.anchors = {}; store.anchorsAdded = []; store.anchorsRemoved = []; }
     else if (area === "boltSkus") { store.boltSkus = {}; store.boltSkusAdded = []; store.boltSkusRemoved = []; }
@@ -6374,6 +6478,30 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
       Object.keys(src.ties || {}).forEach(name => {
         const n = finite(src.ties[name]);
         if (ties.some(t => t.name === name) && n !== null && n >= 0) fresh.ties[name] = n;
+      });
+      (Array.isArray(src.tiesRemoved) ? src.tiesRemoved : []).forEach(name => {
+        if (ties.some(t => t.name === name)) fresh.tiesRemoved.push(String(name));
+      });
+      (Array.isArray(src.tiesAdded) ? src.tiesAdded : []).forEach(row => {
+        const name = String(row && row.name || "").trim();
+        const actual = finite(row && row.actual_mm);
+        if (!name || actual === null || actual <= 0) return;
+        if (fresh.tiesAdded.some(t => t.name === name)) return;
+        fresh.tiesAdded.push({
+          name, actual_mm: actual,
+          nominal_mm: finite(row.nominal_mm) ?? actual,
+          width_mm: finite(row.width_mm) ?? 21,
+          thickness_mm: finite(row.thickness_mm) ?? 1.2,
+          capacity_kN: finite(row.capacity_kN) ?? OUTER_DEFAULT_KN
+        });
+      });
+      Object.keys(src.tieFields || {}).forEach(name => {
+        const o = src.tieFields[name] || {}; const out = {};
+        TIE_GEOMETRY.forEach(key => {
+          const n = finite(o[key]);
+          if (n !== null && n >= 0) out[key] = n;
+        });
+        if (Object.keys(out).length) fresh.tieFields[name] = out;
       });
       Object.keys(src.design || {}).forEach(key => {
         const spec = DESIGN_SPEC.find(d => d.key === key);
@@ -6442,6 +6570,7 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
     VERSION, STORAGE_KEY, BOLT_FAMILIES, ANCHOR_FAMILIES,
     tieRows, tieCapacity, setTieCapacity, innerTieName, levelCapacity, familyCapacity,
     designSpec, designValues, setDesign,
+    outerTieSizes, setTieField, addTie, removeTie,
     anchors, setAnchor, addAnchor, removeAnchor,
     boltSkus, boltSku, setBoltSku, addBoltSku, removeBoltSku, boltCodes,
     connectionBoltRows, connectionBolt, setConnectionBolt,
@@ -11644,22 +11773,37 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
 
     function tiesPanel() {
       const rows = data.tieRows();
+      const geo = (t, key, step) => `<td class="num"><input type="number" step="${step}" min="0" value="${escape(t[key])}" data-area="ties" data-field="${key}" data-key="${escape(t.name)}" aria-label="${escape(t.label)} ${key}"></td>`;
       const line = t => `<tr class="${t.edited ? "is-edited" : ""}">
-        <td class="dd-name">${escape(t.label)}</td>
+        <td class="dd-name">${escape(t.label)}${t.added ? ' <b class="badge is-edited">added</b>' : ""}</td>
         <td>${escape(t.posts)}</td>
-        <td class="num">${t.nominal_mm == null ? "—" : escape(t.nominal_mm)}</td>
-        <td class="num">${escape(t.actual_mm)}</td>
-        <td class="num">${escape(t.width_mm)}</td>
-        <td class="num">${escape(t.thickness_mm)}</td>
-        <td class="num"><input type="number" step="0.001" min="0" value="${num(t.capacity_kN, 3)}" data-area="ties" data-key="${escape(t.name)}" aria-label="${escape(t.label)} capacity kN"></td>
+        <td class="num">${t.nominal_mm == null ? "&mdash;" : `<input type="number" step="1" min="0" value="${escape(t.nominal_mm)}" data-area="ties" data-field="nominal_mm" data-key="${escape(t.name)}" aria-label="${escape(t.label)} nominal">`}</td>
+        ${geo(t, "actual_mm", "0.01")}
+        ${geo(t, "width_mm", "0.1")}
+        ${geo(t, "thickness_mm", "0.01")}
+        <td class="num"><input type="number" step="0.001" min="0" value="${num(t.capacity_kN, 3)}" data-area="ties" data-field="capacity_kN" data-key="${escape(t.name)}" aria-label="${escape(t.label)} capacity kN"></td>
         <td class="num dd-catalogue">${num(t.catalogue_kN, 3)}</td>
+        <td>${t.kind === "outer"
+          ? `<button type="button" class="dd-remove" data-action="remove-tie" data-key="${escape(t.name)}" aria-label="Remove ${escape(t.label)}">Remove</button>`
+          : ""}</td>
       </tr>`;
       return `<div class="dd-table-wrap"><table class="dd-table">
-        <thead><tr><th>Tie</th><th>Used by</th><th>Nominal (mm)</th><th>Actual length (mm)</th><th>Width (mm)</th><th>Thk (mm)</th><th>Capacity (kN)</th><th>Catalogue (kN)</th></tr></thead>
+        <thead><tr><th>Tie</th><th>Used by</th><th>Nominal (mm)</th><th>Actual length (mm)</th><th>Width (mm)</th><th>Thk (mm)</th><th>Capacity (kN)</th><th>Catalogue (kN)</th><th></th></tr></thead>
         <tbody>${rows.filter(t => t.kind === "outer").map(line).join("")}
-        <tr class="dd-group"><td colspan="8">Inner-leaf ties</td></tr>
+        <tr class="dd-add" data-form="tie">
+          <td class="dd-name"><input type="text" data-add="name" placeholder="EDC25-400" aria-label="New tie name"></td>
+          <td>U, L, DU</td>
+          <td class="num"><input type="number" step="1" min="0" data-add="nominal_mm" placeholder="400" aria-label="New tie nominal"></td>
+          <td class="num"><input type="number" step="0.01" min="0" data-add="actual_mm" placeholder="408" aria-label="New tie actual length"></td>
+          <td class="num"><input type="number" step="0.1" min="0" data-add="width_mm" placeholder="21" aria-label="New tie width"></td>
+          <td class="num"><input type="number" step="0.01" min="0" data-add="thickness_mm" placeholder="1.5" aria-label="New tie thickness"></td>
+          <td class="num"><input type="number" step="0.001" min="0" data-add="capacity_kN" placeholder="2.25" aria-label="New tie capacity"></td>
+          <td></td>
+          <td><button type="button" class="secondary-button" data-action="add-tie">Add tie</button></td>
+        </tr>
+        <tr class="dd-group"><td colspan="9">Inner-leaf ties</td></tr>
         ${rows.filter(t => t.kind === "inner").map(line).join("")}</tbody></table></div>
-        <p class="dd-note">A tie level is only as strong as its weaker tie: level capacity = min(inner tie, outer tie selected for the wall). A DU carries two ties per level; its capacity is counted per level, as the approved workbook does. Catalogue: U / DU 1.713 kN (U tie governs), L / I 2.250 kN.</p>`;
+        <p class="dd-note">Outer tie sizes can be added, removed or re-measured; the selector picks the shortest tie whose actual length reaches the outer leaf, so <strong>actual length</strong> drives selection. A tie level is only as strong as its weaker tie: level capacity = min(inner tie, outer tie selected for the wall). A DU carries two ties per level. Catalogue: U / DU 1.713 kN (U tie governs), L / I 2.250 kN.</p>`;
     }
 
     function designPanel() {
@@ -11765,7 +11909,9 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
     function applyChange(target) {
       const area = target.dataset.area, key = target.dataset.key, field = target.dataset.field;
       let ok = true;
-      if (area === "ties") ok = data.setTieCapacity(key, target.value);
+      if (area === "ties") ok = (field && field !== "capacity_kN")
+        ? data.setTieField(key, field, target.value)
+        : data.setTieCapacity(key, target.value);
       else if (area === "design") ok = data.setDesign(key, target.type === "checkbox" ? target.checked : target.value);
       else if (area === "anchors") ok = data.setAnchor(key, { [field]: target.value });
       else if (area === "boltSkus") ok = field === "description"
@@ -11783,6 +11929,14 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
       if (action === "tab") { active = key; render(); return; }
       if (action === "reset-table") { data.reset(TABS.find(t => t.key === active).area); render(); onChange(); return; }
       if (action === "reset-all") { data.reset(); render(); onChange(); return; }
+      if (action === "remove-tie") { data.removeTie(key); render(); onChange(); return; }
+      if (action === "add-tie") {
+        const ok = data.addTie({ name: readAdd("tie", "name"), nominal_mm: readAdd("tie", "nominal_mm"),
+          actual_mm: readAdd("tie", "actual_mm"), width_mm: readAdd("tie", "width_mm"),
+          thickness_mm: readAdd("tie", "thickness_mm"), capacity_kN: readAdd("tie", "capacity_kN") });
+        if (!ok) notice = "Give the new tie a unique name and an actual length in mm.";
+        render(); onChange(); return;
+      }
       if (action === "remove-anchor") { data.removeAnchor(key); render(); onChange(); return; }
       if (action === "remove-bolt") { data.removeBoltSku(key); render(); onChange(); return; }
       if (action === "add-anchor") {
@@ -11859,7 +12013,10 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
       this.updateSpecialRows();
       document.getElementById("close-details").addEventListener("click", () => this.hideDetails());
       document.getElementById("print-report").addEventListener("click", () => this.downloadPdf());
-      this.detailingTab.addEventListener("click", () => this.openDetailing());
+      // The detailing tab is switched off for this release, so it may be absent.
+      if (this.detailingTab) {
+        this.detailingTab.addEventListener("click", () => this.openDetailing());
+      }
       this.projectFileInput = document.getElementById("project-json-file");
       this.projectStatus = document.getElementById("project-file-status");
       document.getElementById("save-project-json").addEventListener(
