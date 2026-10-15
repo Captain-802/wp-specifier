@@ -52,37 +52,55 @@
     innerTieDescription: "Standard inner-leaf tie"
   });
 
+  // The editable design data may override any of the wall-geometry values, so
+  // they are read per call rather than frozen at load.
+  function wall() {
+    const edits = (windpost.designData && windpost.designData.designValues()) || {};
+    const out = { ...WALL_DEFAULTS };
+    Object.keys(WALL_DEFAULTS).forEach((key) => {
+      if (Number.isFinite(Number(edits[key]))) out[key] = Number(edits[key]);
+    });
+    return out;
+  }
+
+  function tieConnectionLength_mm(W) {
+    const w = W || wall();
+    return w.tieNotchLength_mm + w.tieTailBeyondNotch_mm;
+  }
+
+  // Kept for back-compat; reflects the catalogue values.
   const TIE_CONNECTION_LENGTH_MM =
     WALL_DEFAULTS.tieNotchLength_mm + WALL_DEFAULTS.tieTailBeyondNotch_mm;
 
-  function usableProjection_mm(actualLength_mm) {
-    return actualLength_mm - TIE_CONNECTION_LENGTH_MM;
+  function usableProjection_mm(actualLength_mm, W) {
+    return actualLength_mm - tieConnectionLength_mm(W);
   }
 
   // The inner-leaf tie type depends on the windpost: a U post is tied back with
   // a U tie; an L post (built into the inner leaf) uses a shear tie.
   function innerTieFor(type) {
+    const W = wall();
     if (type === "U") {
       return {
         name: "U tie",
-        note: `${WALL_DEFAULTS.uTieActualLength_mm} mm long; ${WALL_DEFAULTS.uTieInnerEmbedment_mm} mm embedment`,
-        actualLength_mm: WALL_DEFAULTS.uTieActualLength_mm,
-        embedment_mm: WALL_DEFAULTS.uTieInnerEmbedment_mm,
-        postClearance_mm: WALL_DEFAULTS.uInnerClearance_mm
+        note: `${W.uTieActualLength_mm} mm long; ${W.uTieInnerEmbedment_mm} mm embedment`,
+        actualLength_mm: W.uTieActualLength_mm,
+        embedment_mm: W.uTieInnerEmbedment_mm,
+        postClearance_mm: W.uInnerClearance_mm
       };
     }
     if (type === "DU") {
       return {
         name: "U tie",
-        note: `2 per level; ${WALL_DEFAULTS.uTieActualLength_mm} mm long; ${WALL_DEFAULTS.uTieInnerEmbedment_mm} mm embedment`,
-        actualLength_mm: WALL_DEFAULTS.uTieActualLength_mm,
-        embedment_mm: WALL_DEFAULTS.uTieInnerEmbedment_mm,
-        postClearance_mm: WALL_DEFAULTS.uInnerClearance_mm
+        note: `2 per level; ${W.uTieActualLength_mm} mm long; ${W.uTieInnerEmbedment_mm} mm embedment`,
+        actualLength_mm: W.uTieActualLength_mm,
+        embedment_mm: W.uTieInnerEmbedment_mm,
+        postClearance_mm: W.uInnerClearance_mm
       };
     }
     if (type === "L") return { name: "Shear tie", note: "for the inner leaf" };
     if (type === "I") return { name: "Shear tie", note: "post built into the inner leaf" };
-    return { name: WALL_DEFAULTS.innerTieDescription, note: "" };
+    return { name: W.innerTieDescription, note: "" };
   }
 
   function invalidResult(reason, partial = {}) {
@@ -96,6 +114,7 @@
   }
 
   function calculateWallAndTie(section, wallInput) {
+    const W = wall();
     const innerLeaf = Number(wallInput.innerLeafThickness_mm);
     const cavity = Number(wallInput.cavityWidth_mm);
     const outerLeaf = Number(wallInput.outerLeafThickness_mm);
@@ -128,7 +147,7 @@
         outerTie: "None",
         selectedTieLength_mm: null,
         actualTieLength_mm: null,
-        tieConnectionLength_mm: TIE_CONNECTION_LENGTH_MM,
+        tieConnectionLength_mm: tieConnectionLength_mm(W),
         requiredActualLength_mm: null,
         outerEmbedment_mm: null,
         outerGap_mm: null,
@@ -142,18 +161,18 @@
 
     if (section.type === "U" || section.type === "DU") {
       postProjectionIntoCavity_mm = postDepth;
-      outerGap_mm = cavity - WALL_DEFAULTS.uInnerClearance_mm - postProjectionIntoCavity_mm;
-      placementDescription = `${WALL_DEFAULTS.uInnerClearance_mm} mm clear of the inner leaf`;
+      outerGap_mm = cavity - W.uInnerClearance_mm - postProjectionIntoCavity_mm;
+      placementDescription = `${W.uInnerClearance_mm} mm clear of the inner leaf`;
     } else if (section.type === "L") {
-      if (innerLeaf < WALL_DEFAULTS.lInnerLeafEmbedment_mm) {
+      if (innerLeaf < W.lInnerLeafEmbedment_mm) {
         return invalidResult(
-          `The inner leaf is less than the ${WALL_DEFAULTS.lInnerLeafEmbedment_mm} mm L-post embedment assumption.`,
+          `The inner leaf is less than the ${W.lInnerLeafEmbedment_mm} mm L-post embedment assumption.`,
           { postProjectionIntoCavity_mm: 0, outerGap_mm: cavity }
         );
       }
-      postProjectionIntoCavity_mm = postDepth - WALL_DEFAULTS.lInnerLeafEmbedment_mm;
+      postProjectionIntoCavity_mm = postDepth - W.lInnerLeafEmbedment_mm;
       outerGap_mm = cavity - postProjectionIntoCavity_mm;
-      placementDescription = `${WALL_DEFAULTS.lInnerLeafEmbedment_mm} mm embedded into the inner leaf`;
+      placementDescription = `${W.lInnerLeafEmbedment_mm} mm embedded into the inner leaf`;
     } else {
       return invalidResult("Unsupported windpost type for wall placement.");
     }
@@ -165,19 +184,19 @@
       });
     }
 
-    if (outerGap_mm < WALL_DEFAULTS.minimumOuterGap_mm) {
+    if (outerGap_mm < W.minimumOuterGap_mm) {
       return invalidResult(
-        `Only ${outerGap_mm.toFixed(1)} mm remains between the post and outer leaf; at least ${WALL_DEFAULTS.minimumOuterGap_mm} mm is required.`,
+        `Only ${outerGap_mm.toFixed(1)} mm remains between the post and outer leaf; at least ${W.minimumOuterGap_mm} mm is required.`,
         { postProjectionIntoCavity_mm, outerGap_mm, placementDescription }
       );
     }
 
     const requiredProjection_mm =
-      outerGap_mm + WALL_DEFAULTS.minimumOuterEmbedment_mm;
+      outerGap_mm + W.minimumOuterEmbedment_mm;
     // The actual tie length a suitable tie must reach.
-    const requiredActualLength_mm = requiredProjection_mm + TIE_CONNECTION_LENGTH_MM;
+    const requiredActualLength_mm = requiredProjection_mm + tieConnectionLength_mm(W);
     const selectedTie = TIE_LIST.find(
-      (tie) => usableProjection_mm(tie.actual_mm) + 1e-9 >= requiredProjection_mm
+      (tie) => usableProjection_mm(tie.actual_mm, W) + 1e-9 >= requiredProjection_mm
     );
 
     if (!selectedTie) {
@@ -194,7 +213,7 @@
     }
 
     const outerEmbedment_mm =
-      usableProjection_mm(selectedTie.actual_mm) - outerGap_mm;
+      usableProjection_mm(selectedTie.actual_mm, W) - outerGap_mm;
 
     if (outerEmbedment_mm > outerLeaf) {
       return invalidResult(
@@ -225,7 +244,7 @@
       outerTie: selectedTie.name,
       selectedTieLength_mm: selectedTie.nominal_mm,
       actualTieLength_mm: selectedTie.actual_mm,
-      tieConnectionLength_mm: TIE_CONNECTION_LENGTH_MM,
+      tieConnectionLength_mm: tieConnectionLength_mm(W),
       requiredActualLength_mm,
       outerEmbedment_mm,
       outerGap_mm,

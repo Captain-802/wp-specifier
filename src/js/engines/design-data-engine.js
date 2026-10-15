@@ -79,6 +79,8 @@
       : { ...t }));
   }
 
+  const PT = (windpost.parameters && windpost.parameters.tie) || {};
+
   const DESIGN_SPEC = Object.freeze([
     { key: "fy", label: "Allowable stress", hint: "fy in bending = 210 / 1.1 / 1.5", unit: "N/mm²", decimals: 2, min: 1, max: 2000, value: P.fy ?? 127.27 },
     { key: "e", label: "Initial E", hint: "Young's modulus", unit: "kN/mm²", decimals: 0, min: 1, max: 1000, value: P.e ?? 200 },
@@ -86,7 +88,16 @@
     { key: "secantN", label: "Secant exponent", hint: "Ramberg-Osgood n", unit: "", decimals: 2, min: 1, max: 100, value: P.secantN ?? 7 },
     { key: "firstTieSpacing", label: "First tie spacing", hint: "base to first tie", unit: "mm", decimals: 0, min: 1, max: 5000, value: P.firstTieSpacing ?? 225 },
     { key: "standardTieSpacing", label: "Standard tie spacing", hint: "tie to tie", unit: "mm", decimals: 0, min: 1, max: 5000, value: P.standardTieSpacing ?? 225 },
-    { key: "apply10mmLimit", label: "10 mm deflection cap", hint: "cap the deflection limit at 10 mm", type: "boolean", value: false }
+    { key: "apply10mmLimit", label: "10 mm deflection cap", hint: "cap the deflection limit at 10 mm", type: "boolean", value: false },
+    // Wall geometry: clearances, embedments and the tie slot connection.
+    { key: "uInnerClearance_mm", label: "U post clear of inner leaf", hint: "gap between a U/DU post and the inner leaf", unit: "mm", decimals: 1, min: 0, max: 200, value: PT.uInnerClearance_mm ?? 6 },
+    { key: "lInnerLeafEmbedment_mm", label: "L post embedment into inner leaf", hint: "how far an L/I post sits inside the inner leaf", unit: "mm", decimals: 1, min: 0, max: 300, value: PT.lInnerLeafEmbedment_mm ?? 90 },
+    { key: "minimumOuterGap_mm", label: "Minimum clear gap to outer leaf", hint: "least space allowed between post and outer leaf", unit: "mm", decimals: 1, min: 0, max: 200, value: PT.minGap_mm ?? 4 },
+    { key: "minimumOuterEmbedment_mm", label: "Minimum outer tie embedment", hint: "least tie embedment into the outer leaf", unit: "mm", decimals: 1, min: 0, max: 300, value: PT.minEmbedment_mm ?? 55 },
+    { key: "tieNotchLength_mm", label: "Tie notch length", hint: "consumed by the windpost slot", unit: "mm", decimals: 2, min: 0, max: 100, value: PT.notch_mm ?? 7.6 },
+    { key: "tieTailBeyondNotch_mm", label: "Tie tail beyond notch", hint: "consumed beyond the notch", unit: "mm", decimals: 2, min: 0, max: 100, value: PT.tailBeyondNotch_mm ?? 11.17 },
+    { key: "uTieActualLength_mm", label: "U tie actual length", hint: "inner-leaf U tie", unit: "mm", decimals: 1, min: 1, max: 500, value: PT.uTieActualLength_mm ?? 84 },
+    { key: "uTieInnerEmbedment_mm", label: "U tie inner-leaf embedment", hint: "inner-leaf U tie", unit: "mm", decimals: 2, min: 0, max: 500, value: PT.uTieInnerEmbedment_mm ?? 65.23 }
   ]);
 
   function catalogueAnchors() {
