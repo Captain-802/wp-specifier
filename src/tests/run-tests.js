@@ -181,11 +181,25 @@ const transferEnginePage = fs.readFileSync(
   path.join(root, "js/engines/workflow/design-transfer-engine.js"),
   "utf8"
 );
+// Detailing, base plates, bolts and connection details are switched off for
+// this release. Re-enable these assertions when they are added back.
 assert(
-  indexHtml.includes('id="detailing-tab"') &&
-  selectorPage.includes("detailingHref(design)") &&
-  selectorPage.includes("global.location.href = href"),
-  "the selector exposes a same-tab detailing workflow"
+  !indexHtml.includes('id="detailing-tab"'),
+  "the detailing tab is switched off"
+);
+assert(
+  /aria-labelledby="step-six-title"/.test(indexHtml) &&
+  /<section class="form-step" hidden aria-labelledby="step-six-title">/.test(indexHtml) &&
+  /<section class="form-step" hidden aria-labelledby="step-seven-title">/.test(indexHtml),
+  "the fixings and quantities steps are hidden"
+);
+assert(
+  selectorPage.includes("const bp = null;"),
+  "the selector does not run a base-plate design"
+);
+assert(
+  !selectorPage.includes("this.connectionsBlockHtml(connections)"),
+  "the connections and bolts block is not rendered"
 );
 assert(
   transferEnginePage.includes("sectionName: section.name") &&

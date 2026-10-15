@@ -22,10 +22,8 @@ const path = require("path");
 const root = __dirname;
 
 const PAGES = [
-  { source: "index.html", output: "Windpost-Selector-Full.html" },
-  { source: "l-section-prototype.html", output: "Windpost-Detailing-Full.html" },
-  { source: "cavity-wall-assembly.html", output: "Windpost-CavityWall-Full.html" },
-  { source: "print-calibration.html", output: "Windpost-PrintCalibration-Full.html" }
+  { source: "index.html", output: "Windpost-Selector-Full.html" }
+  // Detailing, cavity-wall and print-calibration builds are switched off for this release.
 ];
 
 const read = relativePath => fs.readFileSync(path.join(root, relativePath), "utf8");

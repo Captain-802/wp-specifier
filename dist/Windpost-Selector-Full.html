@@ -439,13 +439,6 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
       <div class="header-tools">
         <nav class="app-tabs" aria-label="Windpost workflow">
           <span class="app-tab is-active" aria-current="page">Selector</span>
-          <button
-            id="detailing-tab"
-            class="app-tab"
-            type="button"
-            disabled
-            title="Run a successful windpost selection first"
-          >Detailing</button>
         </nav>
       </div>
     </div>
@@ -612,7 +605,7 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
           </div>
         </section>
 
-        <section class="form-step" aria-labelledby="step-six-title">
+        <section class="form-step" hidden aria-labelledby="step-six-title">
           <div class="step-heading">
             <span>6</span>
             <div><h3 id="step-six-title">Head and base fixings</h3><p>Choose what the post fixes to. The connection code, bolt family and bolt SKU follow from the connection library.</p></div>
@@ -639,7 +632,7 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
           </div>
         </section>
 
-        <section class="form-step" aria-labelledby="step-seven-title">
+        <section class="form-step" hidden aria-labelledby="step-seven-title">
           <div class="step-heading">
             <span>7</span>
             <div><h3 id="step-seven-title">Quantities and special connections</h3><p>A special connection replaces the library weight and bolt count with the values entered here.</p></div>
@@ -12301,11 +12294,11 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
       const selected = design.selected;
       const { section, calculation, wall } = selected;
       const isAutomatic = design.mode === "automatic";
-      // Connections first: the drawn base plate depends on the base fixing.
+      // Connections, bolts and base plates are switched off for this release.
       const connections = this.selectConnections(design);
       this.lastConnections = connections;
-      const bp = this.designBasePlate(design, connections);
-      this.lastBaseplate = bp;
+      const bp = null;
+      this.lastBaseplate = null;
       this.setDetailingAvailable(true);
       const perLevel = (windpost.config.TIES_PER_LEVEL || {})[section.type] || 1;
       const isIPost = section.type === "I";
@@ -12362,38 +12355,14 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
           </section>
           ${this.designDataNoteHtml()}
           ${alternatives}
-          ${this.connectionsBlockHtml(connections)}
-          ${this.duConnectionDrawingsHtml(section, connections)}
-          ${bp ? this.basePlateBlockHtml(bp) : this.basePlateHintHtml(design, connections)}
-          ${bp && bp.ok ? this.basePlateDrawingHtml(bp) : ""}
           <div class="result-actions">
-            ${section.type === "L" ? `<a class="secondary-button" href="${this.cavityWallPage()}" target="_blank" rel="noopener" id="open-cavity-wall">Open cavity-wall assembly</a>` : ""}
             <button class="secondary-button" type="button" id="view-calculation">View calculations</button>
             <button class="primary-button small" type="button" id="download-pdf">Download PDF</button>
           </div>
         </div>`;
-      const cavityButton = document.getElementById("open-cavity-wall");
-      if (cavityButton) {
-        cavityButton.addEventListener("click", () => {
-          cavityButton.href = this.openCavityWallAssembly(design, bp);
-        });
-      }
       document.getElementById("view-calculation").addEventListener("click", () => this.showDetails());
       document.getElementById("download-pdf").addEventListener("click", () => this.downloadPdf());
-      const svgBtn = document.getElementById("download-bp-svg");
-      if (svgBtn) svgBtn.addEventListener("click", () => this.downloadSvg());
-      this.bindDuConnectionDownloads(section, connections);
-      const baseplatePreview = document.getElementById("baseplate-drawing-preview");
-      if (baseplatePreview && windpost.drawingLayoutEngine) {
-        const root = baseplatePreview.querySelector("svg");
-        if (root) windpost.drawingLayoutEngine.resolve(root);
-      }
-      if (baseplatePreview && windpost.engineeringCanvasRenderer) {
-        windpost.engineeringCanvasRenderer.enhance(baseplatePreview, {
-          steel: false
-        });
-      }
-      document.getElementById("detailed-report").innerHTML = buildReport(design, connections) + (bp ? this.basePlateReportHtml(bp) : "") + this.duConnectionReportHtml(section, connections);
+      document.getElementById("detailed-report").innerHTML = buildReport(design, connections);
       document.getElementById("detailed-section").classList.add("hidden");
       this.scrollResultIntoView();
     },

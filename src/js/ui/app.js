@@ -507,11 +507,11 @@
       const selected = design.selected;
       const { section, calculation, wall } = selected;
       const isAutomatic = design.mode === "automatic";
-      // Connections first: the drawn base plate depends on the base fixing.
+      // Connections, bolts and base plates are switched off for this release.
       const connections = this.selectConnections(design);
       this.lastConnections = connections;
-      const bp = this.designBasePlate(design, connections);
-      this.lastBaseplate = bp;
+      const bp = null;
+      this.lastBaseplate = null;
       this.setDetailingAvailable(true);
       const perLevel = (windpost.config.TIES_PER_LEVEL || {})[section.type] || 1;
       const isIPost = section.type === "I";
@@ -568,38 +568,14 @@
           </section>
           ${this.designDataNoteHtml()}
           ${alternatives}
-          ${this.connectionsBlockHtml(connections)}
-          ${this.duConnectionDrawingsHtml(section, connections)}
-          ${bp ? this.basePlateBlockHtml(bp) : this.basePlateHintHtml(design, connections)}
-          ${bp && bp.ok ? this.basePlateDrawingHtml(bp) : ""}
           <div class="result-actions">
-            ${section.type === "L" ? `<a class="secondary-button" href="${this.cavityWallPage()}" target="_blank" rel="noopener" id="open-cavity-wall">Open cavity-wall assembly</a>` : ""}
             <button class="secondary-button" type="button" id="view-calculation">View calculations</button>
             <button class="primary-button small" type="button" id="download-pdf">Download PDF</button>
           </div>
         </div>`;
-      const cavityButton = document.getElementById("open-cavity-wall");
-      if (cavityButton) {
-        cavityButton.addEventListener("click", () => {
-          cavityButton.href = this.openCavityWallAssembly(design, bp);
-        });
-      }
       document.getElementById("view-calculation").addEventListener("click", () => this.showDetails());
       document.getElementById("download-pdf").addEventListener("click", () => this.downloadPdf());
-      const svgBtn = document.getElementById("download-bp-svg");
-      if (svgBtn) svgBtn.addEventListener("click", () => this.downloadSvg());
-      this.bindDuConnectionDownloads(section, connections);
-      const baseplatePreview = document.getElementById("baseplate-drawing-preview");
-      if (baseplatePreview && windpost.drawingLayoutEngine) {
-        const root = baseplatePreview.querySelector("svg");
-        if (root) windpost.drawingLayoutEngine.resolve(root);
-      }
-      if (baseplatePreview && windpost.engineeringCanvasRenderer) {
-        windpost.engineeringCanvasRenderer.enhance(baseplatePreview, {
-          steel: false
-        });
-      }
-      document.getElementById("detailed-report").innerHTML = buildReport(design, connections) + (bp ? this.basePlateReportHtml(bp) : "") + this.duConnectionReportHtml(section, connections);
+      document.getElementById("detailed-report").innerHTML = buildReport(design, connections);
       document.getElementById("detailed-section").classList.add("hidden");
       this.scrollResultIntoView();
     },
