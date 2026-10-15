@@ -93,9 +93,13 @@
       const data = windpost.designData;
       if (!badge || !data) return;
       const edits = data.edits();
+      // Nothing is shown while the values are the catalogue ones; the badge
+      // only appears once something has been edited.
       badge.textContent = edits.count
         ? `${edits.count} value${edits.count === 1 ? "" : "s"} edited`
-        : "Catalogue values";
+        : "";
+      badge.hidden = !edits.count;
+      badge.classList.toggle("is-edited", Boolean(edits.count));
       badge.classList.toggle("is-edited", edits.count > 0);
     },
 
