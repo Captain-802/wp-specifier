@@ -469,6 +469,13 @@
       document.getElementById("custom-b-field").classList.toggle("hidden", isFlat);
       document.getElementById("custom-sharp-field").classList.toggle("hidden", isFlat);
       document.getElementById("custom-r-field").classList.toggle("hidden", isFlat || sharp);
+      const nameField = document.getElementById("custom-name");
+      if (nameField) {
+        const g0 = this.readCustomGeometry();
+        nameField.placeholder = isFlat
+          ? `Custom I ${g0.a_mm || "a"}x${g0.t_mm || "t"}`
+          : `Custom ${type} ${g0.a_mm || "a"}x${g0.b_mm || "b"}x${g0.t_mm || "t"}`;
+      }
       const host = document.getElementById("custom-properties");
       if (!host || !engine) return;
       const g = this.readCustomGeometry();
