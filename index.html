@@ -423,6 +423,15 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
 .supply-table th:not(:first-child), .supply-table td.num { text-align: right; }
 .supply-table th:last-child, .supply-table td:last-child { font-weight: 800; color: var(--navy); }
 
+
+/* Design data shown inline as a form step: stacked tables, no tabs. */
+.design-data-step .design-data-editor { margin-top: 12px; }
+.dd-section { margin: 0 0 18px; }
+.dd-section:last-child { margin-bottom: 0; }
+.dd-section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 8px; }
+.dd-section-head h4 { margin: 0; font-size: 1rem; font-weight: 700; color: #102743; }
+.design-data-step .step-heading .badge { margin-left: auto; }
+
 </style>
 </head>
 <body>
@@ -660,11 +669,14 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
           </div>
         </section>
 
-        <details class="defaults-panel design-data" id="design-data">
-          <summary><span>Design data</span><small>Tie capacities, design constants, anchors, bolts and connection bolts, laid out as in the workbook</small><b id="design-data-badge" class="badge">Catalogue values</b></summary>
-          <p class="design-data-hint">Edit any figure below. Edited values are highlighted, kept in this browser, saved inside the project JSON and listed on the calculation record. The catalogue itself is never changed: <em>Reset</em> returns to it.</p>
+        <section class="form-step design-data-step" aria-labelledby="step-data-title">
+          <div class="step-heading">
+            <span>6</span>
+            <div><h3 id="step-data-title">Design constants and ties</h3><p>Edited values are highlighted, kept in this browser, saved inside the project JSON and listed on the calculation record. The catalogue is never changed: <em>Reset</em> returns to it.</p></div>
+            <b id="design-data-badge" class="badge">Catalogue values</b>
+          </div>
           <div id="design-data-editor" class="design-data-editor"></div>
-        </details>
+        </section>
 
         <div class="form-actions">
           <button id="calculate-button" class="primary-button" type="submit">
@@ -11885,19 +11897,28 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
 
     function render() {
       const edits = data.edits();
-      const tabs = TABS.map(t => {
+      // Anchors, bolt SKUs and connection bolts belong to the connection work,
+      // which is switched off for this release, so only the two tables that
+      // drive selection are shown — stacked, not behind tabs.
+      const SHOWN = ["design", "ties"].map(k => TABS.find(t => t.key === k)).filter(Boolean);
+      const panels = { ties: tiesPanel, design: designPanel, anchors: anchorsPanel,
+                       boltSkus: boltSkusPanel, connectionBolts: connectionBoltsPanel };
+      const sections = SHOWN.map(t => {
         const count = edits.byArea[t.area] || 0;
-        return `<button type="button" role="tab" class="dd-tab ${t.key === active ? "is-active" : ""}" data-action="tab" data-key="${t.key}" aria-selected="${t.key === active}">${escape(t.label)}${count ? ` <b class="badge is-edited">${count}</b>` : ""}</button>`;
+        return `<section class="dd-section">
+          <div class="dd-section-head">
+            <h4>${escape(t.label)}${count ? ` <b class="badge is-edited">${count}</b>` : ""}</h4>
+            <button type="button" class="secondary-button" data-action="reset-area" data-key="${t.key}">Reset ${escape(t.label.toLowerCase())}</button>
+          </div>
+          ${panels[t.key]()}
+        </section>`;
       }).join("");
-      const panel = { ties: tiesPanel, design: designPanel, anchors: anchorsPanel, boltSkus: boltSkusPanel, connectionBolts: connectionBoltsPanel }[active]();
-      host.innerHTML = `<div class="dd-tabs" role="tablist">${tabs}</div>
-        <div class="dd-toolbar">
+      host.innerHTML = `<div class="dd-toolbar">
           <span class="dd-status">${edits.count ? `${edits.count} value${edits.count === 1 ? "" : "s"} edited` : "Catalogue values"}</span>
-          <button type="button" class="secondary-button" data-action="reset-table">Reset this table</button>
           <button type="button" class="secondary-button" data-action="reset-all">Reset all to catalogue</button>
         </div>
         ${notice ? `<p class="dd-notice" role="alert">${escape(notice)}</p>` : ""}
-        <div class="dd-panel" data-panel="${active}">${panel}</div>`;
+        <div class="dd-panel">${sections}</div>`;
       notice = "";
     }
 
@@ -11926,8 +11947,7 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
 
     function applyAction(button) {
       const action = button.dataset.action, key = button.dataset.key;
-      if (action === "tab") { active = key; render(); return; }
-      if (action === "reset-table") { data.reset(TABS.find(t => t.key === active).area); render(); onChange(); return; }
+      if (action === "reset-area") { const t = TABS.find(x => x.key === key); if (t) { data.reset(t.area); render(); onChange(); } return; }
       if (action === "reset-all") { data.reset(); render(); onChange(); return; }
       if (action === "remove-tie") { data.removeTie(key); render(); onChange(); return; }
       if (action === "add-tie") {

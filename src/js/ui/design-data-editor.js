@@ -141,19 +141,28 @@
 
     function render() {
       const edits = data.edits();
-      const tabs = TABS.map(t => {
+      // Anchors, bolt SKUs and connection bolts belong to the connection work,
+      // which is switched off for this release, so only the two tables that
+      // drive selection are shown — stacked, not behind tabs.
+      const SHOWN = ["design", "ties"].map(k => TABS.find(t => t.key === k)).filter(Boolean);
+      const panels = { ties: tiesPanel, design: designPanel, anchors: anchorsPanel,
+                       boltSkus: boltSkusPanel, connectionBolts: connectionBoltsPanel };
+      const sections = SHOWN.map(t => {
         const count = edits.byArea[t.area] || 0;
-        return `<button type="button" role="tab" class="dd-tab ${t.key === active ? "is-active" : ""}" data-action="tab" data-key="${t.key}" aria-selected="${t.key === active}">${escape(t.label)}${count ? ` <b class="badge is-edited">${count}</b>` : ""}</button>`;
+        return `<section class="dd-section">
+          <div class="dd-section-head">
+            <h4>${escape(t.label)}${count ? ` <b class="badge is-edited">${count}</b>` : ""}</h4>
+            <button type="button" class="secondary-button" data-action="reset-area" data-key="${t.key}">Reset ${escape(t.label.toLowerCase())}</button>
+          </div>
+          ${panels[t.key]()}
+        </section>`;
       }).join("");
-      const panel = { ties: tiesPanel, design: designPanel, anchors: anchorsPanel, boltSkus: boltSkusPanel, connectionBolts: connectionBoltsPanel }[active]();
-      host.innerHTML = `<div class="dd-tabs" role="tablist">${tabs}</div>
-        <div class="dd-toolbar">
+      host.innerHTML = `<div class="dd-toolbar">
           <span class="dd-status">${edits.count ? `${edits.count} value${edits.count === 1 ? "" : "s"} edited` : "Catalogue values"}</span>
-          <button type="button" class="secondary-button" data-action="reset-table">Reset this table</button>
           <button type="button" class="secondary-button" data-action="reset-all">Reset all to catalogue</button>
         </div>
         ${notice ? `<p class="dd-notice" role="alert">${escape(notice)}</p>` : ""}
-        <div class="dd-panel" data-panel="${active}">${panel}</div>`;
+        <div class="dd-panel">${sections}</div>`;
       notice = "";
     }
 
@@ -182,8 +191,7 @@
 
     function applyAction(button) {
       const action = button.dataset.action, key = button.dataset.key;
-      if (action === "tab") { active = key; render(); return; }
-      if (action === "reset-table") { data.reset(TABS.find(t => t.key === active).area); render(); onChange(); return; }
+      if (action === "reset-area") { const t = TABS.find(x => x.key === key); if (t) { data.reset(t.area); render(); onChange(); } return; }
       if (action === "reset-all") { data.reset(); render(); onChange(); return; }
       if (action === "remove-tie") { data.removeTie(key); render(); onChange(); return; }
       if (action === "add-tie") {

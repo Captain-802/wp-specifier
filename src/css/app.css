@@ -413,3 +413,12 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
 .supply-table { margin-top: 10px; }
 .supply-table th:not(:first-child), .supply-table td.num { text-align: right; }
 .supply-table th:last-child, .supply-table td:last-child { font-weight: 800; color: var(--navy); }
+
+
+/* Design data shown inline as a form step: stacked tables, no tabs. */
+.design-data-step .design-data-editor { margin-top: 12px; }
+.dd-section { margin: 0 0 18px; }
+.dd-section:last-child { margin-bottom: 0; }
+.dd-section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 8px; }
+.dd-section-head h4 { margin: 0; font-size: 1rem; font-weight: 700; color: #102743; }
+.design-data-step .step-heading .badge { margin-left: auto; }
