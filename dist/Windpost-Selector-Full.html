@@ -432,6 +432,16 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
 .dd-section-head h4 { margin: 0; font-size: 1rem; font-weight: 700; color: #102743; }
 .design-data-step .step-heading .badge { margin-left: auto; }
 
+
+/* Design data: a closed step that opens on click. */
+details.design-data-step > summary.design-data-summary { cursor: pointer; list-style: none; }
+details.design-data-step > summary.design-data-summary::-webkit-details-marker { display: none; }
+details.design-data-step > summary.design-data-summary::after {
+  content: "+"; margin-left: auto; font-size: 1.3rem; font-weight: 700; color: #0f766e; line-height: 1;
+}
+details.design-data-step[open] > summary.design-data-summary::after { content: "2"; }
+details.design-data-step > summary.design-data-summary:hover h3 { color: #0f766e; }
+
 </style>
 </head>
 <body>
@@ -461,7 +471,7 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
       </div>
       <div class="intro-assurance" aria-label="Calculation features">
         <span>Exact-height analysis</span>
-        <span>U, L, DU &amp; I catalogues</span><span>Connections &amp; bolts</span>
+        <span>U, L, DU &amp; I catalogues</span><span>Editable design constants</span>
         <span>EDC outer ties</span>
       </div>
     </section>
@@ -669,14 +679,14 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
           </div>
         </section>
 
-        <section class="form-step design-data-step" aria-labelledby="step-data-title">
-          <div class="step-heading">
+        <details class="form-step design-data-step" id="design-data">
+          <summary class="step-heading design-data-summary">
             <span>6</span>
-            <div><h3 id="step-data-title">Design constants and ties</h3><p>Edited values are highlighted, kept in this browser, saved inside the project JSON and listed on the calculation record. The catalogue is never changed: <em>Reset</em> returns to it.</p></div>
+            <div><h3 id="step-data-title">Design constants and ties</h3><p>Optional. Open this only to change a constant, a tie capacity or the tie list. Edits are highlighted, kept in this browser and saved inside the project JSON; <em>Reset</em> returns to the catalogue.</p></div>
             <b id="design-data-badge" class="badge">Catalogue values</b>
-          </div>
+          </summary>
           <div id="design-data-editor" class="design-data-editor"></div>
-        </section>
+        </details>
 
         <div class="form-actions">
           <button id="calculate-button" class="primary-button" type="submit">
@@ -706,12 +716,11 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
           <div class="placeholder-mark" aria-hidden="true"><span></span></div>
           <p class="eyebrow">Design result</p>
           <h2>Your windpost specification will appear here.</h2>
-          <p>Complete the five sections and run the selection to see the post, final capacity and supplied ties.</p>
+          <p>Complete the sections above and run the selection to see the post, final capacity and supplied ties.</p>
           <ul>
             <li>First suitable standard section</li>
             <li>Final governing ULS capacity</li>
             <li>Inner and outer tie schedule</li>
-            <li>Connection codes, bolt SKUs and weights</li>
           </ul>
         </div>
         <div id="result-content" class="hidden"></div>

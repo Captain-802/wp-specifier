@@ -422,3 +422,13 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
 .dd-section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 8px; }
 .dd-section-head h4 { margin: 0; font-size: 1rem; font-weight: 700; color: #102743; }
 .design-data-step .step-heading .badge { margin-left: auto; }
+
+
+/* Design data: a closed step that opens on click. */
+details.design-data-step > summary.design-data-summary { cursor: pointer; list-style: none; }
+details.design-data-step > summary.design-data-summary::-webkit-details-marker { display: none; }
+details.design-data-step > summary.design-data-summary::after {
+  content: "+"; margin-left: auto; font-size: 1.3rem; font-weight: 700; color: #0f766e; line-height: 1;
+}
+details.design-data-step[open] > summary.design-data-summary::after { content: "2"; }
+details.design-data-step > summary.design-data-summary:hover h3 { color: #0f766e; }
