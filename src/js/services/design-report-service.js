@@ -47,52 +47,32 @@
 
   // Supply for all similar posts: every per-post quantity times the number
   // of posts, as ordered.
+  // Supply for all similar posts. Connection and bolt lines are switched off
+  // with the rest of the connection work; the post weight and the ties stay.
   function supplyTable(c) {
     const s = c.supply;
     if (!s) return "";
     const posts = `${format(s.posts, 0)} post${s.posts === 1 ? "" : "s"}`;
-    const headNa = !c.head.applicable;
     return `<table class="supply-table">
             <tr><th></th><th>Per post</th><th>${posts}</th></tr>
             <tr><td>Windpost self weight</td><td>${format(c.post.weight_kg, 3)} kg</td><td>${format(s.postWeight_kg, 3)} kg</td></tr>
-            <tr><td>Head connection</td><td>${format(c.head.weight_kg, 3)} kg</td><td>${format(s.headWeight_kg, 3)} kg</td></tr>
-            <tr><td>Base connection</td><td>${format(c.base.weight_kg, 3)} kg</td><td>${format(s.baseWeight_kg, 3)} kg</td></tr>
-            <tr><td>Head connection bolts${headNa ? "" : ` (${escapeHtml(c.head.boltSku)})`}</td><td>${headNa ? "&mdash;" : format(c.head.boltCount, 0)}</td><td>${headNa ? "&mdash;" : format(s.headBolts, 0)}</td></tr>
-            <tr><td>Base connection bolts (${escapeHtml(c.base.boltSku)})</td><td>${format(c.base.boltCount, 0)}</td><td>${format(s.baseBolts, 0)}</td></tr>
             <tr><td>Inner-leaf ties</td><td>${format(c.ties.innerCount, 0)}</td><td>${format(s.innerTies, 0)}</td></tr>
             ${c.ties.outerCount ? `<tr><td>Outer-leaf ties (EDC)</td><td>${format(c.ties.outerCount, 0)}</td><td>${format(s.outerTies, 0)}</td></tr>` : ""}
             ${c.ties.debondingSleeves ? `<tr><td>Debonding sleeves</td><td>${format(c.ties.debondingSleeves, 0)}</td><td>${format(s.debondingSleeves, 0)}</td></tr>` : ""}
-            <tr><td><strong>Total weight</strong></td><td><strong>${format(c.totalWeightPerPost_kg, 3)} kg</strong></td><td><strong>${format(s.totalWeight_kg, 3)} kg</strong></td></tr>
           </table>`;
   }
 
+  // Section 5. Connections, bolts and base plates are switched off for this
+  // release, so this reports the windpost weight and the supplied ties only.
   function connectionsSection(c) {
     if (!c) return "";
-    const headNa = !c.head.applicable;
-    const cell = (v) => escapeHtml(v);
-    const plate = c.base.plate;
-    const plateLines = plate && Number.isFinite(plate.capacity_kNm)
-      ? `<div class="calc-line"><span>Base moment M = ${cell(plate.loadModel)}</span><strong>${format(c.base.moment_kNm, 3)} kNm &le; ${format(plate.capacity_kNm, 3)} kNm &rarr; plate type ${cell(plate.code)}</strong></div>
-         <div class="calc-line"><span>Plate ${format(plate.plateLength_mm, 0)} &times; ${plate.plateWid_mm} &times; ${plate.plateThk_mm} + stiffener ${plate.stiffThk_mm} mm</span><strong>${format(plate.plateKg, 2)} + ${format(plate.stiffKg, 2)} = ${format(plate.totalKg, 2)} kg</strong></div>`
-      : (plate ? `<div class="calc-line"><span>Base moment</span><strong>${format(c.base.moment_kNm, 3)} kNm &mdash; special design plate</strong></div>` : "");
     return `
         <section class="report-section">
-          <h3>5. Connections, bolts and weights</h3>
-          <table>
-            <tr><td>Head fixing</td><td>${headNa ? "Not applicable (cantilever)" : cell(c.head.description.trim())}</td><td>Head connection</td><td>${headNa ? "&mdash;" : cell(c.head.code)}</td></tr>
-            <tr><td>Head post bolts</td><td>${headNa ? "&mdash;" : cell(c.head.postBolt)}</td><td>Head connection bolts</td><td>${headNa ? "&mdash;" : `${format(c.head.boltCount, 0)} no. ${cell(c.head.boltSku)}${c.head.special ? " (special)" : ""}`}</td></tr>
-            <tr><td>Base fixing</td><td>${cell(c.base.description.trim())}</td><td>Base connection</td><td>${cell(c.base.code || "&mdash;")}</td></tr>
-            <tr><td>Base post bolts</td><td>${cell(c.base.postBolt)}</td><td>Base connection bolts</td><td>${format(c.base.boltCount, 0)} no. ${cell(c.base.boltSku)}${c.base.special ? " (special)" : ""}</td></tr>
-            <tr><td>Ties per post</td><td>${format(c.ties.innerCount, 0)} inner${c.ties.outerCount ? ` / ${format(c.ties.outerCount, 0)} outer` : ""}</td><td>Debonding sleeves per post</td><td>${format(c.ties.debondingSleeves, 0)}</td></tr>
-          </table>
+          <h3>5. Windpost weight and supplied ties</h3>
           ${supplyTable(c)}
           <div class="calculation-grid compact">
             <div class="calc-line"><span>Post weight = blank &times; t &times; L &times; &rho;</span><strong>${format(c.post.blankWidth_mm, 2)} &times; L &times; ${format(c.post.kgPerMetre, 3)} kg/m &rarr; ${format(c.post.weight_kg, 3)} kg</strong></div>
-            ${plateLines}
-            <div class="calc-line"><span>Head connection weight</span><strong>${format(c.head.weight_kg, 3)} kg</strong></div>
-            <div class="calc-line"><span>Base connection weight</span><strong>${format(c.base.weight_kg, 3)} kg</strong></div>
-            <div class="calc-line"><span>Total weight per post</span><strong>${format(c.totalWeightPerPost_kg, 3)} kg</strong></div>
-            <div class="calc-line"><span>${format(c.postsCount, 0)} similar posts, ${format(c.deliveries, 0)} deliveries</span><strong>${format(c.totalWeightAllPosts_kg, 3)} kg</strong></div>
+            <div class="calc-line"><span>${format(c.postsCount, 0)} similar post${c.postsCount === 1 ? "" : "s"}, ${format(c.deliveries, 0)} deliver${c.deliveries === 1 ? "y" : "ies"}</span><strong>${format(c.post.weight_kg * c.postsCount, 3)} kg</strong></div>
           </div>
         </section>`;
   }
@@ -105,7 +85,7 @@
     if (!edits || !edits.count) return "";
     return `<section class="report-section report-edits">
           <h3>Design data edited for this calculation</h3>
-          <p>${edits.count} value${edits.count === 1 ? "" : "s"} differ from the catalogue (tie capacities, design constants, anchors, bolts or the bolt a connection uses):</p>
+          <p>${edits.count} value${edits.count === 1 ? "" : "s"} differ from the catalogue (tie capacities or design constants):</p>
           <ul>${edits.lines.map(line => `<li>${escapeHtml(line)}</li>`).join("")}</ul>
         </section>`;
   }
