@@ -82,6 +82,7 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
 .choice-grid { display: grid; gap: 12px; }
 .choice-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .choice-grid.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.choice-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .choice-card { cursor: pointer; position: relative; }
 .choice-card > input { position: absolute; opacity: 0; pointer-events: none; }
 .choice-content { min-height: 92px; border: 1px solid #cbd4df; border-radius: 7px; padding: 16px 46px 16px 16px; display: flex; align-items: center; gap: 15px; position: relative; background: #fff; transition: border-color .16s, box-shadow .16s, background .16s; }
@@ -313,7 +314,7 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
   .intro-assurance { margin-top: 22px; }
   .panel-heading, .form-step, .form-actions { padding-left: 18px; padding-right: 18px; }
   .required-note { display: none; }
-  .choice-grid.two, .choice-grid.four, .field-grid.two-col, .single-after-choices, .segmented-control { grid-template-columns: 1fr; }
+  .choice-grid.two, .choice-grid.three, .choice-grid.four, .field-grid.two-col, .single-after-choices, .segmented-control { grid-template-columns: 1fr; }
   .special-row { grid-template-columns: 1fr 1fr; }
   .wall-fields { grid-template-columns: 1fr; }
   .wall-arrow { display: none; }
@@ -605,10 +606,28 @@ details.design-data-step > summary.design-data-summary:hover h3 { color: #0f766e
             <span>4</span>
             <div><h3 id="step-four-title">Choose how to design</h3><p>Automatically select a post, calculate a chosen catalogue section, or enter a custom section.</p></div>
           </div>
-          <div class="segmented-control" role="radiogroup" aria-label="Design mode">
-            <label><input type="radio" name="designMode" value="automatic" checked><span>Enter required load</span></label>
-            <label><input type="radio" name="designMode" value="manual"><span>Choose a section</span></label>
-            <label><input type="radio" name="designMode" value="custom"><span>Custom section</span></label>
+          <div class="choice-grid three compact-choice" role="radiogroup" aria-label="Design mode">
+            <label class="choice-card">
+              <input type="radio" name="designMode" value="automatic" checked>
+              <span class="choice-content text-choice">
+                <span><strong>Enter required load</strong><small>Pick the first section that carries it</small></span>
+                <b class="choice-tick">&#10003;</b>
+              </span>
+            </label>
+            <label class="choice-card">
+              <input type="radio" name="designMode" value="manual">
+              <span class="choice-content text-choice">
+                <span><strong>Choose a section</strong><small>Calculate a catalogue section</small></span>
+                <b class="choice-tick">&#10003;</b>
+              </span>
+            </label>
+            <label class="choice-card">
+              <input type="radio" name="designMode" value="custom">
+              <span class="choice-content text-choice">
+                <span><strong>Custom section</strong><small>Enter your own geometry</small></span>
+                <b class="choice-tick">&#10003;</b>
+              </span>
+            </label>
           </div>
           <div id="automatic-input" class="conditional-block">
             <label class="field featured-field">

@@ -73,6 +73,7 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
 .choice-grid { display: grid; gap: 12px; }
 .choice-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .choice-grid.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.choice-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .choice-card { cursor: pointer; position: relative; }
 .choice-card > input { position: absolute; opacity: 0; pointer-events: none; }
 .choice-content { min-height: 92px; border: 1px solid #cbd4df; border-radius: 7px; padding: 16px 46px 16px 16px; display: flex; align-items: center; gap: 15px; position: relative; background: #fff; transition: border-color .16s, box-shadow .16s, background .16s; }
@@ -304,7 +305,7 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
   .intro-assurance { margin-top: 22px; }
   .panel-heading, .form-step, .form-actions { padding-left: 18px; padding-right: 18px; }
   .required-note { display: none; }
-  .choice-grid.two, .choice-grid.four, .field-grid.two-col, .single-after-choices, .segmented-control { grid-template-columns: 1fr; }
+  .choice-grid.two, .choice-grid.three, .choice-grid.four, .field-grid.two-col, .single-after-choices, .segmented-control { grid-template-columns: 1fr; }
   .special-row { grid-template-columns: 1fr 1fr; }
   .wall-fields { grid-template-columns: 1fr; }
   .wall-arrow { display: none; }
