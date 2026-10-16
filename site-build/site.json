@@ -1,0 +1,6 @@
+{
+  "stringArray": true,
+  "include": [
+    "index.html"
+  ]
+}

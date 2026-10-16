@@ -13,3 +13,5 @@ desktop.ini
 ~$*.xlsx
 
 node_modules/
+_site/
+.vercel
