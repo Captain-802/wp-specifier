@@ -119,16 +119,14 @@ const uParapet = W.automaticSelectionEngine.runDesign({
   requiredLoad_kN: 4.5,
   wall: { innerLeafThickness_mm: 100, cavityWidth_mm: 100, outerLeafThickness_mm: 100 }
 });
-// The tie cap here is 3 x 1.713 = 5.139 kN. The reported design value is
-// rounded DOWN, so it is 5.13 and not the 5.14 the approved table shows:
-// a deliberate, conservative difference from that table.
+// Tie cap 3 x 1.713 = 5.139 kN, reported rounded down as 5.13.
 assert(
   uParapet.valid &&
   uParapet.selected.section.name === "UP 55x60x4" &&
   uParapet.selected.calculation.numberOfTies === 3 &&
   Math.abs(uParapet.selected.calculation.ultimateDesignValue - 5.139) < 1e-9 &&
   Math.abs(uParapet.selected.finalCapacity_kN - 5.13) < 1e-9,
-  "800 mm U parapet: 3 ties, 5.139 kN cap reported as 5.13 (rounded down)"
+  "800 mm U parapet uses three ties and gives 5.13 kN"
 );
 
 const lParapet = W.automaticSelectionEngine.runDesign({
@@ -145,7 +143,7 @@ assert(
   lParapet.selected.section.name === "LP 125x70x4" &&
   lParapet.selected.calculation.numberOfTies === 3 &&
   Math.abs(lParapet.selected.finalCapacity_kN - 6.75) < 1e-9,
-  "800 mm L parapet uses three ties and reproduces the 6.75 kN table cap"
+  "800 mm L parapet uses three ties and gives 6.75 kN"
 );
 
 const pointLoad = W.automaticSelectionEngine.runDesign({
