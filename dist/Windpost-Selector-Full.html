@@ -6758,7 +6758,15 @@ details.design-data-step > summary.design-data-summary:hover h3 { color: #0f766e
     });
     const requiredLoad = Number(options.requiredLoad_kN);
     const hasRequiredLoad = Number.isFinite(requiredLoad) && requiredLoad > 0;
-    const finalCapacity = calculation.valid ? Number(calculation.ultimateDesignValue) : 0;
+    // The reported design value is rounded DOWN to 2 dp, never up, so the
+    // figure on the sheet is never more capacity than the post has. The
+    // adequacy check uses the same rounded value, so what is shown is what
+    // governs. 1e-9 keeps a value that is already exact (13.97) off the
+    // floating-point edge that would drop it to 13.96.
+    const floorToTwoDp = (value) => Math.floor(Number(value) * 100 + 1e-9) / 100;
+    const finalCapacity = calculation.valid
+      ? floorToTwoDp(calculation.ultimateDesignValue)
+      : 0;
     const capacityAdequate = !hasRequiredLoad || finalCapacity + 1e-9 >= requiredLoad;
 
     return {

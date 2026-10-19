@@ -119,12 +119,16 @@ const uParapet = W.automaticSelectionEngine.runDesign({
   requiredLoad_kN: 4.5,
   wall: { innerLeafThickness_mm: 100, cavityWidth_mm: 100, outerLeafThickness_mm: 100 }
 });
+// The tie cap here is 3 x 1.713 = 5.139 kN. The reported design value is
+// rounded DOWN, so it is 5.13 and not the 5.14 the approved table shows:
+// a deliberate, conservative difference from that table.
 assert(
   uParapet.valid &&
   uParapet.selected.section.name === "UP 55x60x4" &&
   uParapet.selected.calculation.numberOfTies === 3 &&
-  Math.abs(uParapet.selected.finalCapacity_kN - 5.139) < 1e-9,
-  "800 mm U parapet uses three ties and reproduces the 5.14 kN table cap"
+  Math.abs(uParapet.selected.calculation.ultimateDesignValue - 5.139) < 1e-9 &&
+  Math.abs(uParapet.selected.finalCapacity_kN - 5.13) < 1e-9,
+  "800 mm U parapet: 3 ties, 5.139 kN cap reported as 5.13 (rounded down)"
 );
 
 const lParapet = W.automaticSelectionEngine.runDesign({
@@ -222,6 +226,27 @@ assert(true, "custom sections reproduce every catalogue section's properties");
   });
 })();
 assert(true, "a custom section designs identically to the same catalogue section");
+
+// The design value is never rounded up: a sheet must not claim capacity the
+// post does not have. Exact 2 dp values must survive untouched.
+(function designValueRoundsDown() {
+  const wall = { innerLeafThickness_mm: 100, cavityWidth_mm: 150, outerLeafThickness_mm: 100 };
+  [["U", "UP 95x60x6", 2670, "simplySupported"],
+   ["L", "LP 150x70x6", 3000, "simplySupported"],
+   ["DU", "DU 60x60x6", 3000, "simplySupported"],
+   ["L", "LP 125x70x4", 800, "cantilever"]].forEach(([type, name, length_mm, supportCondition]) => {
+    const d = W.automaticSelectionEngine.runDesign({
+      type, supportCondition, loadType: "udl", length_mm,
+      mode: "manual", selectedSectionName: name, wall, connections: {}
+    });
+    const raw = d.selected.calculation.ultimateDesignValue;
+    const shown = d.selected.finalCapacity_kN;
+    assert(shown <= raw + 1e-12, `${name}: reported value never exceeds the calculated one`);
+    assert(raw - shown < 0.01 + 1e-12, `${name}: reported value is within one 2 dp step`);
+    assert(Math.abs(shown * 100 - Math.round(shown * 100)) < 1e-6, `${name}: reported value is exactly 2 dp`);
+  });
+})();
+assert(true, "the final design value is rounded down to 2 dp, never up");
 
 const indexHtml = fs.readFileSync(path.join(root, "index.html"), "utf8");
 assert(!/(?:src|href)=["']https?:\/\//i.test(indexHtml), "the application has no external web dependencies");
