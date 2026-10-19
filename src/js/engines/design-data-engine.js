@@ -259,7 +259,9 @@
     const inner = tieCapacity(innerTieName(type));
     if (type === "I" || !outerTie || outerTie === "None") return inner;
     const outer = tieCapacity(outerTie);
-    return outer === null ? inner : Math.min(inner, outer);
+    if (outer === null) return inner;
+    const rule = (windpost.config.TIE_LEVEL_RULE || {})[type] || "weakest";
+    return rule === "sum" ? inner + outer : Math.min(inner, outer);
   }
 
   // Without a wall (no outer tie known yet): the catalogue level strength.

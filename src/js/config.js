@@ -20,9 +20,15 @@
       DU: (P.tieStrength && (P.tieStrength.DU ?? P.tieStrength.U)) ?? 1.713,
       I: (P.tieStrength && (P.tieStrength.I ?? P.tieStrength.L)) ?? 2.25
     }),
-    // Ties per scheduled level shown on the supply schedule (capacity is
-    // counted per level, as in the approved workbook).
+    // Ties of EACH kind at one scheduled level. A DU is tied through both
+    // channels: 2 U ties inner and 2 EDC ties outer, so four ties in all at
+    // that level. This drives the supply counts and the level capacity, which
+    // is this many times the weaker of the inner and outer tie.
     TIES_PER_LEVEL: Object.freeze({ U: 1, L: 1, DU: 2, I: 1 }),
+    // How a level's ties combine.
+    //   "weakest" - inner and outer are in series, so the weaker governs
+    //   "sum"     - the inner and outer ties are added
+    TIE_LEVEL_RULE: Object.freeze({ U: "weakest", L: "weakest", DU: "sum", I: "weakest" }),
     // Post weight rule from the approved workbook: blank width x thickness x
     // length x density (kg/m3 = 80.2984 / 0.00981).
     POST_DENSITY_KG_PER_M3: P.postDensity_kg_m3 ?? 80.2984 / 0.00981,

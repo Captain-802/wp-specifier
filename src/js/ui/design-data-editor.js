@@ -59,7 +59,7 @@
         </tr>
         <tr class="dd-group"><td colspan="9">Inner-leaf ties</td></tr>
         ${rows.filter(t => t.kind === "inner").map(line).join("")}</tbody></table></div>
-        <p class="dd-note">Outer tie sizes can be added, removed or re-measured; the selector picks the shortest tie whose actual length reaches the outer leaf, so <strong>actual length</strong> drives selection. A tie level is only as strong as its weaker tie: level capacity = min(inner tie, outer tie selected for the wall). A DU carries two ties per level. Catalogue: U / DU 1.713 kN (U tie governs), L / I 2.250 kN.</p>`;
+        <p class="dd-note">Outer tie sizes can be added, removed or re-measured; the selector picks the shortest tie whose actual length reaches the outer leaf, so <strong>actual length</strong> drives selection. A tie level is only as strong as its weaker tie: level capacity = min(inner tie, outer tie selected for the wall). A DU carries two inner and two outer ties per level, so its level capacity is twice the weaker tie. Catalogue: U / DU 1.713 kN (U tie governs), L / I 2.250 kN.</p>`;
     }
 
     function designPanel() {

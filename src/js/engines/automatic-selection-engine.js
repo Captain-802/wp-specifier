@@ -34,10 +34,16 @@
   // Tie strength per level: the weaker of the inner tie and the outer tie
   // the wall selected, each with its own editable capacity; the catalogue
   // family figure when the design-data engine is not loaded.
+  // Capacity of one scheduled tie LEVEL. A level is only as strong as its
+  // weaker tie, times however many ties the family carries at that level —
+  // a DU is tied through both channels, so its level is worth several ties.
   function tieStrengthFor(type, wall) {
     const data = windpost.designData;
-    if (data) return data.levelCapacity(type, wall && wall.innerTie, wall && wall.outerTie);
-    return windpost.config.DEFAULT_TIE_STRENGTH_KN[type];
+    const perTie = data
+      ? data.levelCapacity(type, wall && wall.innerTie, wall && wall.outerTie)
+      : windpost.config.DEFAULT_TIE_STRENGTH_KN[type];
+    const perLevel = (windpost.config.TIES_PER_LEVEL || {})[type] || 1;
+    return perTie * perLevel;
   }
 
   function sharedCalculationInputs(type, wall) {

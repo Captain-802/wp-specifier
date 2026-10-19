@@ -106,7 +106,7 @@
     if (type === "DU") {
       return {
         name: "U tie",
-        note: `2 per level; ${W.uTieActualLength_mm} mm long; ${W.uTieInnerEmbedment_mm} mm embedment`,
+        note: `${(windpost.config.TIES_PER_LEVEL || {}).DU || 4} per level; ${W.uTieActualLength_mm} mm long; ${W.uTieInnerEmbedment_mm} mm embedment`,
         actualLength_mm: W.uTieActualLength_mm,
         embedment_mm: W.uTieInnerEmbedment_mm,
         postClearance_mm: W.uInnerClearance_mm

@@ -873,9 +873,15 @@ details.design-data-step > summary.design-data-summary:hover h3 { color: #0f766e
       DU: (P.tieStrength && (P.tieStrength.DU ?? P.tieStrength.U)) ?? 1.713,
       I: (P.tieStrength && (P.tieStrength.I ?? P.tieStrength.L)) ?? 2.25
     }),
-    // Ties per scheduled level shown on the supply schedule (capacity is
-    // counted per level, as in the approved workbook).
+    // Ties of EACH kind at one scheduled level. A DU is tied through both
+    // channels: 2 U ties inner and 2 EDC ties outer, so four ties in all at
+    // that level. This drives the supply counts and the level capacity, which
+    // is this many times the weaker of the inner and outer tie.
     TIES_PER_LEVEL: Object.freeze({ U: 1, L: 1, DU: 2, I: 1 }),
+    // How a level's ties combine.
+    //   "weakest" - inner and outer are in series, so the weaker governs
+    //   "sum"     - the inner and outer ties are added
+    TIE_LEVEL_RULE: Object.freeze({ U: "weakest", L: "weakest", DU: "sum", I: "weakest" }),
     // Post weight rule from the approved workbook: blank width x thickness x
     // length x density (kg/m3 = 80.2984 / 0.00981).
     POST_DENSITY_KG_PER_M3: P.postDensity_kg_m3 ?? 80.2984 / 0.00981,
@@ -5819,7 +5825,7 @@ details.design-data-step > summary.design-data-summary:hover h3 { color: #0f766e
     if (type === "DU") {
       return {
         name: "U tie",
-        note: `2 per level; ${W.uTieActualLength_mm} mm long; ${W.uTieInnerEmbedment_mm} mm embedment`,
+        note: `${(windpost.config.TIES_PER_LEVEL || {}).DU || 4} per level; ${W.uTieActualLength_mm} mm long; ${W.uTieInnerEmbedment_mm} mm embedment`,
         actualLength_mm: W.uTieActualLength_mm,
         embedment_mm: W.uTieInnerEmbedment_mm,
         postClearance_mm: W.uInnerClearance_mm
@@ -6255,7 +6261,9 @@ details.design-data-step > summary.design-data-summary:hover h3 { color: #0f766e
     const inner = tieCapacity(innerTieName(type));
     if (type === "I" || !outerTie || outerTie === "None") return inner;
     const outer = tieCapacity(outerTie);
-    return outer === null ? inner : Math.min(inner, outer);
+    if (outer === null) return inner;
+    const rule = (windpost.config.TIE_LEVEL_RULE || {})[type] || "weakest";
+    return rule === "sum" ? inner + outer : Math.min(inner, outer);
   }
 
   // Without a wall (no outer tie known yet): the catalogue level strength.
@@ -6693,10 +6701,16 @@ details.design-data-step > summary.design-data-summary:hover h3 { color: #0f766e
   // Tie strength per level: the weaker of the inner tie and the outer tie
   // the wall selected, each with its own editable capacity; the catalogue
   // family figure when the design-data engine is not loaded.
+  // Capacity of one scheduled tie LEVEL. A level is only as strong as its
+  // weaker tie, times however many ties the family carries at that level —
+  // a DU is tied through both channels, so its level is worth several ties.
   function tieStrengthFor(type, wall) {
     const data = windpost.designData;
-    if (data) return data.levelCapacity(type, wall && wall.innerTie, wall && wall.outerTie);
-    return windpost.config.DEFAULT_TIE_STRENGTH_KN[type];
+    const perTie = data
+      ? data.levelCapacity(type, wall && wall.innerTie, wall && wall.outerTie)
+      : windpost.config.DEFAULT_TIE_STRENGTH_KN[type];
+    const perLevel = (windpost.config.TIES_PER_LEVEL || {})[type] || 1;
+    return perTie * perLevel;
   }
 
   function sharedCalculationInputs(type, wall) {
@@ -11915,7 +11929,7 @@ details.design-data-step > summary.design-data-summary:hover h3 { color: #0f766e
         </tr>
         <tr class="dd-group"><td colspan="9">Inner-leaf ties</td></tr>
         ${rows.filter(t => t.kind === "inner").map(line).join("")}</tbody></table></div>
-        <p class="dd-note">Outer tie sizes can be added, removed or re-measured; the selector picks the shortest tie whose actual length reaches the outer leaf, so <strong>actual length</strong> drives selection. A tie level is only as strong as its weaker tie: level capacity = min(inner tie, outer tie selected for the wall). A DU carries two ties per level. Catalogue: U / DU 1.713 kN (U tie governs), L / I 2.250 kN.</p>`;
+        <p class="dd-note">Outer tie sizes can be added, removed or re-measured; the selector picks the shortest tie whose actual length reaches the outer leaf, so <strong>actual length</strong> drives selection. A tie level is only as strong as its weaker tie: level capacity = min(inner tie, outer tie selected for the wall). A DU carries two inner and two outer ties per level, so its level capacity is twice the weaker tie. Catalogue: U / DU 1.713 kN (U tie governs), L / I 2.250 kN.</p>`;
     }
 
     function designPanel() {
