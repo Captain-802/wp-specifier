@@ -241,10 +241,14 @@
   }
 
   function setTieCapacity(name, value) {
-    const row = catalogueTies().find(t => t.name === name);
-    if (!row) return false;
     const n = finite(value);
     if (n === null || n < 0 || n > 1000) return false;
+    // A tie added here has no catalogue row to compare against, so its
+    // capacity is held on the added row itself, the way its geometry is.
+    const added = store.tiesAdded.find(t => t.name === name);
+    if (added) { added.capacity_kN = n; notify(); return true; }
+    const row = catalogueTies().find(t => t.name === name);
+    if (!row) return false;
     if (Math.abs(n - row.catalogue_kN) < 1e-12) delete store.ties[name];
     else store.ties[name] = n;
     notify();

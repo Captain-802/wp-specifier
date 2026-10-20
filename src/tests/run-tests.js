@@ -325,6 +325,41 @@ assert(true, "the U tie is scanned for the outer leaf when the cavity is tight")
 })();
 assert(true, "an emptied or invalid design figure keeps the previous value, never zero");
 
+// A tie added by hand must behave like any other: its capacity, like its
+// geometry, is editable. catalogueTies() does not know about added rows.
+(function anAddedTieIsFullyEditable() {
+  const D = context.window.Windpost.designData;
+  assert(D.addTie({ name: "TEST-ADD", nominal_mm: 400, actual_mm: 408 }) === true, "a tie can be added");
+  assert(D.setTieCapacity("TEST-ADD", 3.1) === true, "an added tie accepts a capacity");
+  assert(D.tieRows().find((t) => t.name === "TEST-ADD").capacity_kN === 3.1, "the capacity is kept");
+  assert(D.setTieField("TEST-ADD", "actual_mm", 420) === true, "an added tie can be re-measured");
+  assert(D.outerTieSizes().find((t) => t.name === "TEST-ADD").actual_mm === 420, "selection sees the new length");
+  assert(D.setTieCapacity("TEST-ADD", "") === false, "a blank capacity is refused");
+  assert(D.tieRows().find((t) => t.name === "TEST-ADD").capacity_kN === 3.1, "a refused capacity keeps the previous value");
+  assert(D.removeTie("TEST-ADD") === true, "an added tie can be removed");
+  D.reset();
+})();
+assert(true, "a tie added by hand is as editable as a catalogue tie");
+
+// Nothing the form can produce may throw or be silently accepted.
+(function hostileInputIsRefusedNotSwallowed() {
+  const run = context.window.Windpost.automaticSelectionEngine.runDesign;
+  const wall = { innerLeafThickness_mm: 100, cavityWidth_mm: 150, outerLeafThickness_mm: 100 };
+  const base = { type: "U", supportCondition: "simplySupported", loadType: "udl",
+    length_mm: 3000, mode: "automatic", requiredLoad_kN: 3, wall, connections: {} };
+  [["height 0", { length_mm: 0 }], ["height -1", { length_mm: -1 }], ["height NaN", { length_mm: NaN }],
+   ["height text", { length_mm: "abc" }], ["load 0", { requiredLoad_kN: 0 }], ["load -5", { requiredLoad_kN: -5 }],
+   ["unknown type", { type: "Z" }], ["unknown support", { supportCondition: "floating" }],
+   ["point load simply supported", { loadType: "tipPointLoad" }]].forEach(([label, over]) => {
+    let r = null, threw = false;
+    try { r = run(Object.assign({}, base, over)); } catch (e) { threw = true; }
+    assert(!threw, `${label} does not throw`);
+    assert(r && r.valid === false, `${label} is refused`);
+    assert(typeof r.message === "string" && r.message.length > 0, `${label} says why`);
+  });
+})();
+assert(true, "invalid form input is refused with a message and never throws");
+
 const indexHtml = fs.readFileSync(path.join(root, "index.html"), "utf8");
 assert(!/(?:src|href)=["']https?:\/\//i.test(indexHtml), "the application has no external web dependencies");
 const selectorPage = fs.readFileSync(path.join(root, "js/ui/app.js"), "utf8");
