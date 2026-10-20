@@ -25,6 +25,9 @@ context.window.window = context.window;
   "js/engines/result-selection-engine.js",
   "js/engines/windpost-calculation-engine.js",
   "js/engines/outer-tie-selection-engine.js",
+  "js/data/tie-profiles.js",
+  "js/data/connections-database.js",
+  "js/engines/design-data-engine.js",
   "js/engines/automatic-selection-engine.js",
   "js/services/design-report-service.js"
 ].forEach((file) => vm.runInContext(fs.readFileSync(path.join(root, file), "utf8"), context, { filename: file }));
@@ -284,6 +287,43 @@ assert(true, "the final design value is rounded down to 2 dp, never up");
   });
 })();
 assert(true, "the U tie is scanned for the outer leaf when the cavity is tight");
+
+// Number("") is 0, so an emptied box must not be read as a zero constant.
+// Editing is forgiving: a bad entry keeps the previous value.
+(function editingAConstantNeverCorrupts() {
+  const D = context.window.Windpost.designData;
+  const value = () => D.designSpec().find((d) => d.key === "uInnerClearance_mm").current;
+  const before = value();
+
+  ["", "   ", "abc", null, undefined, NaN, -5, 1e9].forEach((bad) => {
+    const accepted = D.setDesign("uInnerClearance_mm", bad);
+    assert(accepted === false, `a constant rejects ${JSON.stringify(bad)}`);
+    assert(value() === before, `a rejected entry leaves the constant at ${before}`);
+  });
+
+  assert(D.setDesign("uInnerClearance_mm", 8) === true, "a valid constant is accepted");
+  assert(value() === 8, "an accepted constant takes the new value");
+
+  // Tie capacities and tie geometry go through the same parser.
+  const tie = () => D.tieRows().find((t) => t.name === "EDC25-100");
+  const capBefore = tie().capacity_kN;
+  ["", "  ", "abc"].forEach((bad) => {
+    assert(D.setTieCapacity("EDC25-100", bad) === false, `a tie capacity rejects ${JSON.stringify(bad)}`);
+    assert(tie().capacity_kN === capBefore, "a rejected tie capacity keeps the previous value");
+  });
+  const lenBefore = tie().actual_mm;
+  assert(D.setTieField("EDC25-100", "actual_mm", "") === false, "a tie length rejects a blank");
+  assert(tie().actual_mm === lenBefore, "a rejected tie length keeps the previous value");
+
+  // A new tie with no length must not be created with a zero length.
+  assert(D.addTie({ name: "EDC25-BLANK", actual_mm: "" }) === false,
+    "a tie cannot be added without an actual length");
+  assert(!D.tieRows().some((t) => t.name === "EDC25-BLANK"), "the blank tie was not added");
+
+  D.reset();
+  assert(value() === before, "reset returns the constant to the catalogue");
+})();
+assert(true, "an emptied or invalid design figure keeps the previous value, never zero");
 
 const indexHtml = fs.readFileSync(path.join(root, "index.html"), "utf8");
 assert(!/(?:src|href)=["']https?:\/\//i.test(indexHtml), "the application has no external web dependencies");

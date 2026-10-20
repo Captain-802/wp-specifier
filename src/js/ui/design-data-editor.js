@@ -171,6 +171,26 @@
       return el ? el.value : "";
     }
 
+    // Say what was wrong with THIS figure, and say nothing at all when a box is
+    // simply emptied: the re-render puts the previous number back, which is
+    // answer enough.
+    function rejectionNotice(area, key, field, raw) {
+      if (String(raw ?? "").trim() === "") return "";
+      if (area === "design") {
+        const spec = data.designSpec().find(d => d.key === key);
+        if (spec) {
+          const unit = spec.unit ? " " + spec.unit : "";
+          return `${spec.label} must be a number between ${spec.min} and ${spec.max}${unit}. Kept ${num(spec.current, spec.decimals)}${unit}.`;
+        }
+      }
+      if (area === "ties") {
+        const row = data.tieRows().find(t => t.name === key);
+        const what = field && field !== "capacity_kN" ? field.replace("_mm", "") : "capacity";
+        if (row) return `${row.label}: that ${what} is not a valid number. The previous value is kept.`;
+      }
+      return "That value is not a valid number; the previous value is kept.";
+    }
+
     function applyChange(target) {
       const area = target.dataset.area, key = target.dataset.key, field = target.dataset.field;
       let ok = true;
@@ -184,7 +204,7 @@
         : data.setBoltSku(key, { counts: { [target.dataset.code]: target.value } });
       else if (area === "connectionBolts") ok = data.setConnectionBolt(key, field, target.value);
       else return;
-      if (!ok) notice = "That value was not accepted (out of range or unknown row); the previous value is kept.";
+      if (!ok) notice = rejectionNotice(area, key, field, target.value);
       render();
       onChange();
     }

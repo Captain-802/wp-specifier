@@ -137,7 +137,11 @@
     return JSON.parse(JSON.stringify(value));
   }
 
+  // Number("") and Number("   ") are both 0, so an emptied box would quietly
+  // become a zero constant. A blank is "no value", not zero.
   function finite(value) {
+    if (value === null || value === undefined) return null;
+    if (typeof value === "string" && value.trim() === "") return null;
     const n = Number(value);
     return Number.isFinite(n) ? n : null;
   }
