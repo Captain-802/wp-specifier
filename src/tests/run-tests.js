@@ -246,6 +246,45 @@ assert(true, "a custom section designs identically to the same catalogue section
 })();
 assert(true, "the final design value is rounded down to 2 dp, never up");
 
+// The outer leaf can also take a U tie. It is shorter than the shortest EDC,
+// so in a tight cavity it reaches without burying itself past the back of a
+// thin outer leaf. EDC is still preferred wherever one fits.
+(function uTieServesTheOuterLeaf() {
+  const E = context.window.Windpost.outerTieSelectionEngine;
+  const P = context.window.Windpost.sectionProfileEngine;
+  const sec = (n) => P.getSections("U", "cantilever").find((s) => s.name === n);
+  const run = (n, cavity, outer) => E.calculateWallAndTie(sec(n), {
+    innerLeafThickness_mm: 100, cavityWidth_mm: cavity, outerLeafThickness_mm: outer
+  });
+
+  // Thin outer leaf: EDC25-100 would drive 85.23 mm into a 75 mm leaf.
+  const tight = run("UP 120x80x8", 130, 75);
+  assert(tight.suitable && tight.outerTie === "U tie",
+    "a tight cavity with a thin outer leaf uses a U tie on the outer leaf");
+  assert(tight.outerEmbedment_mm <= 75 + 1e-9,
+    "the U tie stays within the outer leaf");
+
+  // Same post, normal outer leaf: the stronger EDC is preferred.
+  const roomy = run("UP 120x80x8", 130, 100);
+  assert(roomy.suitable && roomy.outerTie === "EDC25-100",
+    "an EDC tie is preferred whenever one fits");
+
+  // Ordinary walls are untouched.
+  const normal = run("UP 90x60x6", 150, 100);
+  assert(normal.suitable && normal.outerTie === "EDC25-125",
+    "ordinary cavities still select the EDC tie they always did");
+
+  // Whatever is chosen must never over-penetrate.
+  [[130, 75], [125, 75], [120, 65], [150, 100], [200, 100]].forEach(([c, o]) => {
+    const r = run("UP 110x60x6", c, o);
+    if (r.suitable) {
+      assert(r.outerEmbedment_mm <= o + 1e-9,
+        `outer embedment stays within the ${o} mm leaf at ${c} mm cavity`);
+    }
+  });
+})();
+assert(true, "the U tie is scanned for the outer leaf when the cavity is tight");
+
 const indexHtml = fs.readFileSync(path.join(root, "index.html"), "utf8");
 assert(!/(?:src|href)=["']https?:\/\//i.test(indexHtml), "the application has no external web dependencies");
 const selectorPage = fs.readFileSync(path.join(root, "js/ui/app.js"), "utf8");

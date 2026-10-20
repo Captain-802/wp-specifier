@@ -51,6 +51,17 @@
       .sort((a, b) => a.actual_mm - b.actual_mm);
   }
 
+  // Candidates for the OUTER leaf. The EDC sizes are the standard product; the
+  // U tie is also carried because it is shorter than the shortest EDC, so in a
+  // tight cavity it can reach without driving too far into the outer leaf.
+  // EDC is preferred wherever one fits, because it is the stronger tie.
+  function outerCandidates(W) {
+    const edc = tieList().map((t) => ({ ...t, preference: 0 }));
+    const uLen = Number(W.uTieActualLength_mm);
+    if (!Number.isFinite(uLen) || uLen <= 0) return edc;
+    return edc.concat([{ name: "U tie", nominal_mm: null, actual_mm: uLen, preference: 1 }]);
+  }
+
   const WALL_DEFAULTS = Object.freeze({
     uInnerClearance_mm: P.uInnerClearance_mm ?? 6,
     uTieActualLength_mm: P.uTieActualLength_mm ?? 84,
@@ -209,13 +220,22 @@
       outerGap_mm + W.minimumOuterEmbedment_mm;
     // The actual tie length a suitable tie must reach.
     const requiredActualLength_mm = requiredProjection_mm + tieConnectionLength_mm(W);
-    const TIES = tieList();
-    const selectedTie = TIES.find(
+    const TIES = outerCandidates(W);
+    const reaching = TIES.filter(
       (tie) => usableProjection_mm(tie.actual_mm, W) + 1e-9 >= requiredProjection_mm
     );
+    // A tie must also not bury itself past the back of the outer leaf.
+    const fitting = reaching.filter(
+      (tie) => usableProjection_mm(tie.actual_mm, W) - outerGap_mm <= outerLeaf + 1e-9
+    );
+    const pick = (rows) => rows.slice().sort(
+      (a, b) => (a.preference - b.preference) || (a.actual_mm - b.actual_mm)
+    )[0];
+    const selectedTie = pick(fitting) || pick(reaching);
 
     if (!selectedTie) {
-      const longestTie = TIES[TIES.length - 1];
+      const edcOnly = TIES.filter((t) => t.preference === 0);
+      const longestTie = edcOnly[edcOnly.length - 1];
       return invalidResult(
         `The required outer tie exceeds ${longestTie ? longestTie.name : "the longest available tie"}.`,
         {
