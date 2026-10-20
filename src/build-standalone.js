@@ -4,17 +4,14 @@
 // single self-contained .html file — no server, no sibling files, nothing to
 // upload alongside it.
 //
-//   index.html                 -> Windpost-Selector-Full.html
-//   l-section-prototype.html   -> Windpost-Detailing-Full.html
-//   cavity-wall-assembly.html  -> Windpost-CavityWall-Full.html
-//   print-calibration.html     -> Windpost-PrintCalibration-Full.html
+//   index.html  ->  Windpost-Selector-Full.html
 //
-// The built pages link to each other by their built names, so ship all four
-// together (the Selector's cavity-wall button and the Detailing page's print
-// calibration link need the last two).
+// That one file is the whole calculator: windpost and tie selection. The
+// detailing, cavity-wall and print-calibration pages are parked (see
+// parked/README.md) and nothing builds them.
 //
-// Edit the small source engines, run the tests, then rebuild. Do not hand-edit
-// either generated file.
+// Edit the small source engines, run the tests, then rebuild. Do not
+// hand-edit the generated file.
 
 const fs = require("fs");
 const path = require("path");
@@ -23,7 +20,6 @@ const root = __dirname;
 
 const PAGES = [
   { source: "index.html", output: "Windpost-Selector-Full.html" }
-  // Detailing, cavity-wall and print-calibration builds are switched off for this release.
 ];
 
 const read = relativePath => fs.readFileSync(path.join(root, relativePath), "utf8");

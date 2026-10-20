@@ -2,6 +2,13 @@ WINDPOST + BASEPLATE DESIGNER
 MODULAR ENGINE BUILD — 11 SEPTEMBER 2026 V.03
 ============================================================
 
+NOTE — 20 OCTOBER 2026
+----------------------
+This release ships windpost and tie selection only. The base plate, drawing,
+DXF-export and cavity-wall engines listed below are parked: they still exist
+and are still tested, but they live under parked/js/... and the application
+does not load them. See parked/README.md.
+
 PURPOSE
 -------
 This folder is a separate modular copy of the proven Windpost Selector and

@@ -1,4 +1,5 @@
 "use strict";
+require("./_parked-paths.js");
 
 // The cantilever base-plate designer must reproduce the standard plate types
 // (U-A..U-G / L-A..L-G from the connection library) wherever those types pass

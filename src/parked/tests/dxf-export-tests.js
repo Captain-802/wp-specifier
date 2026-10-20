@@ -1,4 +1,5 @@
 "use strict";
+require("./_parked-paths.js");
 
 // The A4 production sheet exports to AutoCAD 2000 DXF on the office
 // detailer's layer standard: every layer carries its ACI colour and an

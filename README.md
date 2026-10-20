@@ -12,7 +12,7 @@ Live:
 ## Use it on another computer: one file, nothing to install
 
 **[`index.html`](index.html)** is the whole application in a single file —
-559 KB, no server, no build step, no internet. Open it and it works.
+345 KB, no server, no build step, no internet. Open it and it works.
 
 **To copy it:**
 
@@ -52,8 +52,9 @@ Pick a windpost and its ties:
   next suitable sections, the tie schedule, post weights and a printable
   calculation record.
 
-Detailing, base-plate design, bolts and connection details are switched off in
-this release until those details are settled.
+Detailing, base-plate design, bolts and connection details are not in this
+release, and none of that code is in the file: it is parked in the working
+repository until those details are settled.
 
 ## Editable design data
 
@@ -83,12 +84,17 @@ browser, saved inside the project JSON and printed on the calculation record;
 ## Working on it
 
     cd src
-    node tests/run-tests.js      # 416 checks
+    node tests/run-tests.js      # 484 checks
     node build-standalone.js     # rebuild index.html
 
 `src/js/engines/` holds one engine per file, each an IIFE registering on
 `window.Windpost`. Edit `src/`, run the tests, rebuild, then copy
 `src/Windpost-Selector-Full.html` to `index.html`.
+
+The switched-off work — base plates, production drawings, DXF export and the
+3D cavity-wall assembly — sits under `src/parked/`. Nothing loads it and
+nothing builds it into `index.html`; `src/parked/README.md` says how to switch
+a feature back on.
 
 Publish to both hosts with one command:
 

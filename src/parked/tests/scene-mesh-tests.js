@@ -1,4 +1,5 @@
 "use strict";
+require("./_parked-paths.js");
 
 // The WebGL picture is built from triangle meshes produced by the scene-mesh
 // engine: every scene item (post, base plate, stiffener, anchors) plus the

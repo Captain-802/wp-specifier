@@ -1,4 +1,5 @@
 "use strict";
+require("./_parked-paths.js");
 
 global.Windpost = {};
 

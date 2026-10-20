@@ -1,4 +1,5 @@
 "use strict";
+require("./_parked-paths.js");
 
 const assert = require("assert");
 const path = require("path");

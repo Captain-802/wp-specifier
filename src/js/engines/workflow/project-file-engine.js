@@ -18,7 +18,7 @@
     return {
       schema: SCHEMA,
       version: VERSION,
-      application: "Windpost + Baseplate Designer",
+      application: "Windpost Select",
       createdAt: new Date().toISOString(),
       kind,
       metadata: clone(metadata || {}),

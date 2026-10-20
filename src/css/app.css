@@ -366,7 +366,7 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
   .report-conclusion em { font-size: 8pt; }
 }
 
-/* ---- Design data editor (Ties / Constants / Anchors / Bolts / Connection bolts) ---- */
+/* ---- Design data editor (constants and ties) ---- */
 .defaults-panel.design-data summary { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #e8edf1; color: #3f4f5c; font-size: 11px; font-weight: 700; letter-spacing: .02em; }
 .badge.is-edited { background: #fff1c2; color: #7a5200; }

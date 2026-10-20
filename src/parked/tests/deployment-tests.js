@@ -1,4 +1,5 @@
 "use strict";
+require("./_parked-paths.js");
 
 // Deployment and hand-off behaviour (12 Sep 2026 audit): the built pages
 // link to each other by their built names, the Detailing page draws only the
@@ -191,12 +192,18 @@ check("the DU slab-face elevation dashes the plate edge the post actually covers
 
 check("the build ships every page the others link to, and the update script runs every suite", () => {
   const build = fs.readFileSync(path.join(root, "build-standalone.js"), "utf8");
-  ["index.html", "l-section-prototype.html", "cavity-wall-assembly.html", "print-calibration.html"].forEach(page =>
-    assert(build.includes(`source: "${page}"`), `${page} is built`));
+  assert(build.includes('source: "index.html"'), "the Selector is built");
+  // The other three pages are parked: their sources are kept, but nothing
+  // builds them until the feature is switched back on.
+  ["l-section-prototype.html", "cavity-wall-assembly.html", "print-calibration.html"].forEach(page => {
+    assert(!build.includes(`source: "${page}"`), `${page} is parked, so it is not built`);
+    assert(fs.existsSync(path.join(root, page)), `${page} is kept in parked/`);
+  });
   const cmd = fs.readFileSync(path.join(root, "UPDATE-FROM-EXCEL.cmd"), "utf8");
   assert(cmd.includes('for %%t in ("tests\\*.js")'), "all suites gate the rebuild");
   const page = fs.readFileSync(path.join(root, "js/ui/app.js"), "utf8");
-  assert(page.includes("Windpost-CavityWall-Full.html") && page.includes("windpost.detailing.fromSelector"));
+  // The cavity-wall hand-off is parked with the page it opened.
+  assert(!page.includes("Windpost-CavityWall-Full.html"));
   const detailing = fs.readFileSync(path.join(root, "l-section-prototype.html"), "utf8");
   assert(detailing.includes('id="print-calibration-link"') && detailing.includes('target="_blank"') && detailing.includes('id="page-notice"'));
   assert(!fs.readFileSync(path.join(root, "js/ui/l-section-prototype-page.js"), "utf8").includes("global.alert("), "no alerts on the Detailing page");

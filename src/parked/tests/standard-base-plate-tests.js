@@ -1,4 +1,5 @@
 "use strict";
+require("./_parked-paths.js");
 
 // The simply-supported base plate is one of four hard-coded types from the
 // owner's detail sheets (U-B3A / U-B3B / L-B2A / L-B2B): same plate length

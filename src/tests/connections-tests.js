@@ -44,6 +44,7 @@ function assert(condition, message) {
   passed += 1;
   console.log(`PASS ${passed}: ${message}`);
 }
+const format3 = v => v.toLocaleString("en-GB", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
 const near = (a, b, tol = 1e-6) => Math.abs(Number(a) - Number(b)) <= tol;
 
 // ---- catalogues ----------------------------------------------------------
@@ -63,7 +64,9 @@ const iCase = W.automaticSelectionEngine.runDesign({
   type: "I", supportCondition: "simplySupported", loadType: "udl", mode: "manual", length_mm: 2500, selectedSectionName: "I_90 X 8",
   wall: { innerLeafThickness_mm: 100, cavityWidth_mm: 100, outerLeafThickness_mm: 100 }
 });
-assert(iCase.valid && Math.floor(iCase.selected.finalCapacity_kN * 100) / 100 === 4.89, "I_90 X 8 at 2500 mm gives 4.89 kN (workbook I table, rounded down to 2 dp)");
+// The engine already floors the design value to 2 dp; flooring 4.89 again
+// without an epsilon lands on 4.88, so compare the figure as published.
+assert(iCase.valid && iCase.selected.finalCapacity_kN === 4.89, "I_90 X 8 at 2500 mm gives 4.89 kN (rounded down to 2 dp)");
 assert(iCase.selected.wall.outerTie === "None" && iCase.selected.wall.innerTie === "Shear tie", "I post has shear ties only and no outer tie");
 
 // ---- workbook test case: LP 130x70x5, 1000 mm, manual -----------------------
@@ -131,9 +134,14 @@ assert(special.head.special && near(special.head.weight_kg, 2.5) && special.head
 assert(near(special.base.weight_kg, 2.299) && special.base.boltSku === "KM12/100  M12X100 Set Screw", "base keeps the library bracket U-B1B (2.299 kg, KM12/100)");
 // NOTE: the bolt-quantity matrix inherited from the workbook has no KM12/100 count under U-B1A / U-B1B (0); L-B1 has 2. Data gap for the owner to fill.
 
-// ---- report carries the connections section --------------------------------
+// ---- report carries the weights, not the fixings ---------------------------
+// Section 5 lists the windpost weight and the supplied ties only; the
+// connection and bolt schedule is switched off for this release even though
+// the engine still works out the weights behind it.
 const report = W.designReportService.buildReport(lCase, lConn);
-assert(report.includes("5. Connections, bolts and weights") && report.includes("L-T2") && report.includes("11.112"), "the detailed report includes connections, bolts and weights");
+assert(report.includes("5. Windpost weight and supplied ties"), "section 5 reports the weights");
+assert(!/bolt/i.test(report) && !/base ?plate/i.test(report), "no bolts or base plates in the report");
+assert(!report.includes("L-T2"), "no fixing codes in the report");
 
 console.log(`\n${passed} checks passed.`);
 
@@ -160,6 +168,9 @@ console.log(`\n${passed} checks passed.`);
     W.automaticSelectionEngine.runDesign({ type: "U", supportCondition: "simplySupported", loadType: "udl", mode: "manual", length_mm: 2670, selectedSectionName: "UP 90x60x4", wall: { innerLeafThickness_mm: 100, cavityWidth_mm: 150, outerLeafThickness_mm: 100 } }),
     seven
   );
-  assert(report.includes("7 posts") && report.includes(`>${seven.supply.baseBolts}<`), "the record prints the all-posts quantities");
+  // The bolt quantities are switched off with the rest of the fixings, so the
+  // record carries the post count and the weight for all seven posts.
+  assert(report.includes("7 similar posts"), "the record names the number of posts");
+  assert(report.includes(format3(one.post.weight_kg * 7)), "the record prints the weight of all the posts");
   console.log("PASS supply: bolts, ties and weights scale with the number of similar posts");
 }

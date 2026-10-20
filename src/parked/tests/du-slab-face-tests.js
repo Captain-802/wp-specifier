@@ -1,4 +1,5 @@
 "use strict";
+require("./_parked-paths.js");
 
 // DU-T2 / DU-B2: the DU post to concrete slab face connections from the
 // owner's detail sheets — plate geometry, the drawings, M12 anchors and the
@@ -107,14 +108,21 @@ check("the library rows DU-T2 / DU-B2 take M12 anchors as the slots require", ()
   assert.strictEqual(light.base.boltCount, 2);
 });
 
-check("the Selector shows the DU connection drawings and loads what they need", () => {
+check("the DU connection drawings are parked, not wired into the Selector", () => {
   const app = fs.readFileSync(path.join(root, "js/ui/app.js"), "utf8");
-  assert(app.includes("duConnectionDrawingsHtml") && app.includes("duSlabFaceDrawing"));
+  // Switching them back on means restoring duConnectionDrawingsHtml and its
+  // helpers in app.js and loading du-slab-face-drawing-service.js again.
+  assert(!app.includes("duConnectionDrawingsHtml") && !app.includes("duSlabFaceDrawing"));
+  assert(fs.existsSync(path.join(root, "js/services/du-slab-face-drawing-service.js")));
   const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
+  // Restoring the drawings means loading these four again, the plates before
+  // the drawing service and baseplate-svg-engine.js before it as well.
   ["du-slab-face-plates.js", "du-slab-face-drawing-service.js", "dxf-r2000-writer.js", "sheet-export-service.js"]
-    .forEach(file => assert(html.includes(file), `${file} in index.html`));
-  assert(html.indexOf("du-slab-face-plates.js") < html.indexOf("du-slab-face-drawing-service.js"));
-  assert(html.indexOf("baseplate-svg-engine.js") < html.indexOf("du-slab-face-drawing-service.js"));
+    .forEach(file => {
+      assert(!html.includes(file), `${file} is parked, so the Selector must not load it`);
+      assert(fs.existsSync(path.join(root, "js/data", file)) ||
+             fs.existsSync(path.join(root, "js/services", file)), `${file} is kept in parked/`);
+    });
 });
 
 console.log(`\n${passed} DU slab-face checks passed.`);

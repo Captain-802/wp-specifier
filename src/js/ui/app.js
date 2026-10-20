@@ -8,7 +8,6 @@
 
   const app = {
     lastDesign: null,
-    lastBaseplate: null,
 
     init() {
       this.form = document.getElementById("design-form");
@@ -358,64 +357,6 @@
       });
     },
 
-    connectionsBlockHtml(c) {
-      if (!c) return "";
-      const n = (v, d = 3) => this.number(v, d);
-      const e = (v) => this.escape(v);
-      const row = (label, head, base) => `<tr><td>${label}</td><td>${head}</td><td>${base}</td></tr>`;
-      const headNa = !c.head.applicable;
-      const plate = c.base.plate;
-      const plateRows = plate && Number.isFinite(plate.capacity_kNm)
-        ? `<div><dt>Base moment (${e(plate.loadModel)})</dt><dd>${n(c.base.moment_kNm, 3)} kNm &le; ${n(plate.capacity_kNm, 3)} kNm</dd></div>
-           <div><dt>Plate type ${e(plate.code)}</dt><dd>${n(plate.plateLength_mm, 0)} &times; ${plate.plateWid_mm} &times; ${plate.plateThk_mm} mm, stiffener ${plate.stiffThk_mm} mm</dd></div>
-           <div><dt>Plate + stiffener weight</dt><dd>${n(plate.plateKg, 2)} + ${n(plate.stiffKg, 2)} = ${n(plate.totalKg, 2)} kg</dd></div>`
-        : (plate ? `<div><dt>Base plate</dt><dd>Special design (moment ${n(c.base.moment_kNm, 3)} kNm beyond the standard types)</dd></div>` : "");
-      const warnings = c.warnings.length ? `<p style="color:#b3261e;margin:6px 0 0;font-size:12px">${c.warnings.map(e).join(" ")}</p>` : "";
-      const notes = (c.notes || []).length ? `<p style="color:#8a5a00;margin:6px 0 0;font-size:12px">${c.notes.map(e).join(" ")}</p>` : "";
-      const s = c.supply || { posts: c.postsCount || 1, headBolts: 0, baseBolts: 0, innerTies: 0, outerTies: 0, debondingSleeves: 0, postWeight_kg: 0, headWeight_kg: 0, baseWeight_kg: 0, totalWeight_kg: c.totalWeightAllPosts_kg };
-      const postsLabel = `${n(s.posts, 0)} post${s.posts === 1 ? "" : "s"}`;
-      return `<section class="result-block">
-          <h3>Connections and bolts</h3>
-          <table class="conn-table">
-            <thead><tr><th></th><th>Head</th><th>Base</th></tr></thead>
-            <tbody>
-              ${row("Fixing", headNa ? "Not applicable (cantilever)" : e(c.head.description.trim()), e(c.base.description.trim()))}
-              ${row("Connection code", headNa ? "&mdash;" : e(c.head.code), e(c.base.code || "&mdash;"))}
-              ${row("Post bolts", headNa ? "&mdash;" : e(c.head.postBolt), e(c.base.postBolt))}
-              ${row("Connection bolts", headNa ? "&mdash;" : `${e(c.head.boltSku)}${c.head.special ? " (special)" : ""}`, `${e(c.base.boltSku)}${c.base.special ? " (special)" : ""}`)}
-              ${row("Bolt family", headNa ? "&mdash;" : e(c.head.boltFamily), e(c.base.boltFamily))}
-              ${row("No. of bolts per post", headNa ? "&mdash;" : n(c.head.boltCount, 0), n(c.base.boltCount, 0))}
-              ${row(`No. of bolts for ${n(s.posts, 0)} post${s.posts === 1 ? "" : "s"}`, headNa ? "&mdash;" : `<strong>${n(s.headBolts, 0)}</strong>`, `<strong>${n(s.baseBolts, 0)}</strong>`)}
-              ${row("Connection weight per post", headNa ? "&mdash;" : n(c.head.weight_kg, 3) + " kg", n(c.base.weight_kg, 3) + " kg")}
-            </tbody>
-          </table>
-          ${plateRows ? `<dl class="result-list">${plateRows}</dl>` : ""}
-          ${warnings}${notes}
-        </section>
-        <section class="result-block">
-          <h3>Weights and supply</h3>
-          <dl class="result-list">
-            <div><dt>Fold (blank) width</dt><dd>${n(c.post.blankWidth_mm, 2)} mm</dd></div>
-            <div><dt>Windpost self weight (${n(c.post.kgPerMetre, 3)} kg/m)</dt><dd>${n(c.post.weight_kg, 3)} kg</dd></div>
-          </dl>
-          <table class="conn-table supply-table">
-            <thead><tr><th></th><th>Per post</th><th>${postsLabel}</th></tr></thead>
-            <tbody>
-              <tr><td>Windpost self weight</td><td class="num">${n(c.post.weight_kg, 3)} kg</td><td class="num">${n(s.postWeight_kg, 3)} kg</td></tr>
-              <tr><td>Head connection${c.head.special ? " (special)" : ""}</td><td class="num">${n(c.head.weight_kg, 3)} kg</td><td class="num">${n(s.headWeight_kg, 3)} kg</td></tr>
-              <tr><td>Base connection${c.base.special ? " (special)" : ""}</td><td class="num">${n(c.base.weight_kg, 3)} kg</td><td class="num">${n(s.baseWeight_kg, 3)} kg</td></tr>
-              <tr><td>Head connection bolts</td><td class="num">${headNa ? "&mdash;" : n(c.head.boltCount, 0)}</td><td class="num">${headNa ? "&mdash;" : n(s.headBolts, 0)}</td></tr>
-              <tr><td>Base connection bolts</td><td class="num">${n(c.base.boltCount, 0)}</td><td class="num">${n(s.baseBolts, 0)}</td></tr>
-              <tr><td>Inner-leaf ties (${e(c.type === "L" || c.type === "I" ? "shear ties" : "U ties")})</td><td class="num">${n(c.ties.innerCount, 0)}</td><td class="num">${n(s.innerTies, 0)}</td></tr>
-              ${c.ties.outerCount ? `<tr><td>Outer-leaf ties (EDC)</td><td class="num">${n(c.ties.outerCount, 0)}</td><td class="num">${n(s.outerTies, 0)}</td></tr>` : ""}
-              ${c.ties.debondingSleeves ? `<tr><td>Debonding sleeves</td><td class="num">${n(c.ties.debondingSleeves, 0)}</td><td class="num">${n(s.debondingSleeves, 0)}</td></tr>` : ""}
-            </tbody>
-          </table>
-          <div class="weight-total"><span>Total weight per post</span><span>${n(c.totalWeightPerPost_kg, 3)} kg</span></div>
-          <div class="weight-total" style="border-top:0;padding-top:2px"><span>Total weight, ${postsLabel} &middot; ${n(c.deliveries, 0)} deliver${c.deliveries === 1 ? "y" : "ies"}</span><span>${n(s.totalWeight_kg, 3)} kg</span></div>
-        </section>`;
-    },
-
     populateSections(type, support) {
       const select = document.getElementById("section-select");
       const previous = select.value;
@@ -494,14 +435,11 @@
       </dl>`;
     },
 
-    selectorFileName() {
-      return windpost.designTransferEngine.selectorFileName(global.location);
-    },
-
     detailingHref(design) {
+      // No base plate travels with the design while that feature is parked.
       const snapshot = windpost.designTransferEngine.snapshot(
         design,
-        this.lastBaseplate,
+        null,
         global.location,
         this.lastConnections
       );
@@ -519,7 +457,7 @@
       const drawable = section && (section.type === "U" || section.type === "L" || section.type === "DU");
       const engine = windpost.designTransferEngine;
       const transferable = Boolean(drawable && engine && engine.validate(
-        engine.snapshot(design, this.lastBaseplate, global.location, this.lastConnections)
+        engine.snapshot(design, null, global.location, this.lastConnections)
       ));
       this.detailingTab.disabled = !transferable;
       this.detailingTab.title = transferable
@@ -559,7 +497,6 @@
     invalidateResult() {
       if (!this.lastDesign && document.getElementById("result-content").classList.contains("hidden")) return;
       this.lastDesign = null;
-      this.lastBaseplate = null;
       this.lastConnections = null;
       this.setDetailingAvailable(false);
       document.getElementById("result-content").classList.add("hidden");
@@ -571,11 +508,10 @@
       const selected = design.selected;
       const { section, calculation, wall } = selected;
       const isAutomatic = design.mode === "automatic";
-      // Connections, bolts and base plates are switched off for this release.
+      // The engine still works out the weights the report needs; the fixing
+      // and bolt schedule itself is switched off for this release.
       const connections = this.selectConnections(design);
       this.lastConnections = connections;
-      const bp = null;
-      this.lastBaseplate = null;
       this.setDetailingAvailable(true);
       const perLevel = (windpost.config.TIES_PER_LEVEL || {})[section.type] || 1;
       const isIPost = section.type === "I";
@@ -708,345 +644,6 @@
       if (global.matchMedia("(max-width: 1080px)").matches) {
         document.getElementById("result-panel").scrollIntoView({ behavior: "smooth", block: "start" });
       }
-    },
-
-    designBasePlate(design, connections) {
-      return windpost.selectorBaseplateRoutingEngine.design(design, connections);
-    },
-
-    basePlateHintHtml(design, connections) {
-      const inputs = design.inputs || {};
-      const section = design.selected && design.selected.section;
-      if (inputs.supportCondition === "cantilever" && section &&
-          (section.type === "L" || section.type === "U")) return "";
-      const base = connections && connections.base;
-      if (base && base.code && inputs.supportCondition === "simplySupported" && section &&
-          (section.type === "L" || section.type === "U") && !base.standardPlate) {
-        const plateFixing = section.type === "U" ? "U POST TO CONCRETE TOP (U-B3)" : "L POST TO CONCRETE TOP (L-B2)";
-        return `<section class="result-block"><h3>Base plate</h3>
-          <p style="color:#5b636c;margin:0">The selected base fixing <strong>${this.escape(base.description || base.code)} (${this.escape(base.libraryCode || base.code)})</strong> has no drawn base-plate detail; its weight and bolts are listed under Connections. The standard concrete-top plate (${this.escape(section.type === "U" ? "U-B3A / U-B3B" : "L-B2A / L-B2B")}) is drawn when <strong>${this.escape(plateFixing)}</strong> is selected as the base fixing.</p></section>`;
-      }
-      if (section && (section.type === "DU" || section.type === "I")) {
-        return `<section class="result-block"><h3>Base plate</h3>
-          <p style="color:#5b636c;margin:0">The simply-supported ${this.escape(section.type)} post uses the standard base plate of the connection library (weight shown under Connections). No drawn plate is generated for this family.</p></section>`;
-      }
-      return `<section class="result-block"><h3>Base plate design</h3>
-          <p style="color:#5b636c;margin:0">Fixed standard base‑plate details are generated for <strong>simply-supported U‑ and L‑posts</strong>. Automatic designed baseplates are generated for <strong>cantilever U‑ and L‑posts</strong>.</p></section>`;
-    },
-
-    basePlateGovName(util) {
-      const names = {
-        boltGroup: "Bolt-group moment", plateLocal: "Plate local bending",
-        tstub: "Bolt tension (T-stub)", stiffener: "Base + stiffener bending",
-        shearBolt: "Bolt shear", shearPlate: "Plate shear", rigid: "Plate rigidity"
-      };
-      let key = "boltGroup", max = -Infinity;
-      for (const k in util) if (util[k] > max) { max = util[k]; key = k; }
-      return names[key] || key;
-    },
-
-    basePlateBlockHtml(bp) {
-      if (bp && bp.standard) {
-        if (!bp.ok) {
-          return `<section class="result-block"><h3>Simply-supported ${this.escape(bp.postType || "")}-post base plate</h3><p>${this.escape(bp.reason || "The standard detail is not available.")}</p></section>`;
-        }
-        const d = bp.design, r = bp.results;
-        const isL = bp.connectionType === "simply-supported-l";
-        const left = isL ? d.leftPortion : 12 + Number(bp.section.a_mm);
-        const overall = left + d.plateLen;
-        const leftFormula = isL
-          ? `6 + (${this.number(bp.section.a_mm, 0)} − 90) = ${left} mm`
-          : `6 + ${this.number(bp.section.a_mm, 0)} + 6 = ${left} mm`;
-        const colour = r.pass ? "#137a3e" : "#b3261e";
-        return `<section class="result-block">
-            <h3>Simply-supported ${this.escape(bp.postType)}-post base plate <span style="float:right;font-size:.8em;color:${colour}">${r.pass ? "PASS" : "FAIL"}</span></h3>
-            <dl class="result-list">
-              ${d.typeCode ? `<div><dt>Standard type</dt><dd>${this.escape(d.typeCode)} — ${this.escape(d.typeTitle || "")}</dd></div>` : ""}
-              <div><dt>Base plate</dt><dd>${overall} × ${d.B} × ${d.tp} mm</dd></div>
-              ${d.edgeConstant ? `<div><dt>Concrete edge to bolts (B)</dt><dd>${d.edgeConstant} − ${this.number(bp.section.a_mm, 0)} = ${d.anchorFromConcreteEdge} mm</dd></div>` : ""}
-              <div><dt>Left portion</dt><dd>${leftFormula}</dd></div>
-              <div><dt>Right portion</dt><dd>${d.anchorFromConcreteEdge} mm to anchor line + ${d.rightEndDistance} mm to plate end = ${d.plateLen} mm</dd></div>
-              <div><dt>Anchors — RGM 12</dt><dd>2 no. · Ø${d.holeDia} holes · ${d.w} mm c/c · ${d.sideEdge} mm side edges</dd></div>
-              <div><dt>Edge-spacing check</dt><dd>minimum provided ${r.minimumProvided} mm ≥ ${r.minimumRequired} mm required — ${r.pass ? "PASS" : "FAIL"}</dd></div>
-            </dl>
-          </section>`;
-      }
-      if (!bp || !bp.ok) {
-        return `<section class="result-block"><h3>Base plate design</h3><p>${this.escape((bp && bp.reason) || "Not available for this selection.")}</p></section>`;
-      }
-      const d = bp.design, r = bp.results, pass = r.pass;
-      const colour = pass ? "#137a3e" : "#b3261e";
-      return `<section class="result-block">
-          <h3>Base plate design <span style="float:right;font-size:.8em;color:${colour}">${pass ? "PASS" : "FAIL"} · ${this.number(r.govUtil * 100, 1)}%</span></h3>
-          <dl class="result-list">
-            <div><dt>Base moment (${this.escape(bp.loadModel)})</dt><dd>${this.number(bp.moment, 2)} kNm</dd></div>
-            <div><dt>Basis</dt><dd>${this.escape(this.basePlateBasisText(bp))}</dd></div>
-            <div><dt>Base plate</dt><dd>${d.plateLen} × ${d.B} × ${d.tp} mm</dd></div>
-            <div><dt>Anchors — RGM 12</dt><dd>${d.nRow} rows × ${d.nCol} cols (${d.nRow * d.nCol} no.) · edge ${d.edge} · pitch ${d.pitch}</dd></div>
-            <div><dt>Stiffener (triangular)</dt><dd>${d.tw} mm thick × ${d.hUp} mm high${bp.stiffenerRaisedFrom_mm ? ` (standard ${bp.stiffenerRaisedFrom_mm} mm raised)` : ""}</dd></div>
-            <div><dt>Governing check</dt><dd>${this.escape(this.basePlateGovName(r.util))} — ${this.number(r.govUtil * 100, 1)}%</dd></div>
-            ${this.basePlateStandardRowHtml(bp)}
-          </dl>
-        </section>`;
-    },
-
-    basePlateBasisText(bp) {
-      if (!bp) return "";
-      if (bp.basis === "standard") return `Standard plate type ${bp.standardType} verified by the full check set`;
-      if (bp.basis === "standard (stiffener raised)") return `Standard plate type ${bp.standardType}; stiffener raised to pass the base + stiffener bending check`;
-      if (bp.basis && bp.basis.startsWith("auto (standard")) return `Auto-sized: standard type ${bp.standardType} fails a check (see below)`;
-      if (bp.basis === "auto (beyond standard types)") return "Auto-sized: moment beyond the standard plate types (special design)";
-      return "Auto-sized";
-    },
-
-    basePlateStandardRowHtml(bp) {
-      const s = bp && bp.standardComparison;
-      if (!s || !s.design) return "";
-      const sd = s.design, sr = s.results;
-      const same = bp.basis === "standard";
-      const status = sr.pass ? "PASS" : `FAIL — ${this.escape(this.basePlateGovName(sr.util))} ${this.number(sr.govUtil * 100, 0)}%`;
-      return `<div><dt>Standard type ${this.escape(s.code)} (≤ ${this.number(s.capacity_kNm, 3)} kNm)</dt><dd>${sd.plateLen} × ${sd.B} × ${sd.tp} mm · ${sd.nRow * sd.nCol} bolts · stiffener ${sd.tw} × ${sd.hUp} — ${same ? "adopted" : status}</dd></div>`;
-    },
-
-    duConnectionReportHtml(section, connections) {
-      const codes = this.duConnectionCodes(section, connections);
-      if (!codes.length) return "";
-      return codes.map(code => {
-        let svg = "";
-        try { svg = this.connectionDrawingSvg(code, section); } catch (err) { return ""; }
-        const what = "DU post to concrete slab face";
-        return `<section class="report-section"><h3>Connection ${this.escape(code)} — ${what}</h3><div style="background:#fff">${svg}</div></section>`;
-      }).join("");
-    },
-
-    basePlateReportHtml(bp) {
-      if (bp && bp.standard) {
-        if (!bp.ok) return "";
-        const d = bp.design, r = bp.results;
-        const isL = bp.connectionType === "simply-supported-l";
-        const left = isL ? d.leftPortion : 12 + Number(bp.section.a_mm);
-        const overall = left + d.plateLen;
-        const leftFormula = isL
-          ? `6 + (${this.number(bp.section.a_mm, 0)} − 90) = ${left} mm`
-          : `6 + ${this.number(bp.section.a_mm, 0)} + 6 = ${left} mm`;
-        return `<section class="report-block" style="margin-top:1.5rem">
-            <h3>Base plate standard detail — simply-supported ${this.escape(bp.postType)}-post</h3>
-            <p style="font-size:.85em;color:#5b636c">This is a fixed standard arrangement and does not use structural baseplate analysis. Plate ${overall} × ${d.B} × ${d.tp} mm: left portion ${leftFormula}; right portion ${d.plateLen} mm. Two RGM 12 anchors use Ø${d.holeDia} holes at ${d.anchorFromConcreteEdge} mm from the concrete edge, ${d.rightEndDistance} mm from the plate end and ${d.w} mm c/c across the width.</p>
-            <table style="width:100%;border-collapse:collapse;font-size:.9em">
-              <thead><tr style="border-bottom:2px solid #333"><th style="text-align:left">Check</th><th style="text-align:left">Provided</th><th style="text-align:left">Required</th><th style="text-align:right">Status</th></tr></thead>
-              <tbody><tr><td>Minimum anchor edge distance</td><td>${r.minimumProvided} mm</td><td>≥ ${r.minimumRequired} mm</td><td style="text-align:right;color:${r.pass ? "#137a3e" : "#b3261e"}">${r.pass ? "PASS" : "FAIL"}</td></tr></tbody>
-            </table>
-          </section>`;
-      }
-      if (!bp || !bp.ok) return "";
-      const d = bp.design, r = bp.results, u = r.util, kNm = 1e6, kN = 1e3;
-      const row = (name, detail, util) =>
-        `<tr><td>${name}</td><td>${detail}</td><td style="text-align:right">${this.number(util * 100, 1)}%</td><td style="text-align:right;color:${util <= 1 ? "#137a3e" : "#b3261e"}">${util <= 1 ? "PASS" : "FAIL"}</td></tr>`;
-      return `<section class="report-block" style="margin-top:1.5rem">
-          <h3>Base plate design — cantilever ${this.escape(bp.postType || "")}-post (RGM 12)</h3>
-          <p style="font-size:.85em;color:#5b636c">Hybrid method: CED own logic + EC3-1-8 equivalent T-stub (SCI P291). Base moment M = ${this.escape(bp.loadModel)} = ${this.number(bp.W, 2)} kN × ${this.number(bp.H, 3)} m = <strong>${this.number(bp.moment, 3)} kNm</strong>. Plate ${d.plateLen}×${d.B}×${d.tp}, stiffener ${d.tw}×${d.hUp} (triangular), ${d.nRow * d.nCol} × RGM 12 (edge ${d.edge}, pitch ${d.pitch}). ${this.escape(this.basePlateBasisText(bp))}.${bp.standardComparison && bp.standardComparison.design ? ` Standard type ${this.escape(bp.standardComparison.code)}: ${bp.standardComparison.design.plateLen}×${bp.standardComparison.design.B}×${bp.standardComparison.design.tp}, ${bp.standardComparison.design.nRow * 2} bolts, stiffener ${bp.standardComparison.design.tw}×${bp.standardComparison.design.hUp} — ${bp.standardComparison.results.pass ? "passes" : "fails " + this.escape(this.basePlateGovName(bp.standardComparison.results.util)) + " at " + this.number(bp.standardComparison.results.govUtil * 100, 0) + "%"}.` : ""}</p>
-          <table style="width:100%;border-collapse:collapse;font-size:.9em">
-            <thead><tr style="border-bottom:2px solid #333"><th style="text-align:left">Check</th><th style="text-align:left">Detail</th><th style="text-align:right">Util.</th><th style="text-align:right">Status</th></tr></thead>
-            <tbody>
-              ${row("Bolt-group moment", `M_r = ${d.nCol}·${this.number(bp.input.FtRd_N / kN, 1)}·Σarms = ${this.number(r.Mr / kNm, 3)} kNm`, u.boltGroup)}
-              ${row("Plate local bending", `M_Ed = F_t,Ed·m = ${this.number(r.Mlocal / kNm, 3)} kNm vs M_pl ${this.number(r.Mpl / kNm, 3)}`, u.plateLocal)}
-              ${row("Plate rigidity", `t_req = ${this.number(r.treqRigid, 2)} mm ≤ ${d.tp} mm`, u.rigid)}
-              ${row("Bolt tension (Modes 1/2/3)", `min(${this.number(r.mode1 / kN, 1)}, ${this.number(r.mode2 / kN, 1)}, ${this.number(r.mode3 / kN, 1)}) = ${this.number(r.tstubGov / kN, 2)} kN vs F_t,Ed ${this.number(r.FtEd / kN, 2)}`, u.tstub)}
-              ${row("Base + stiffener bending", `M_R = Z·f_y/γ_M0 = ${this.number(r.stiffMr / kNm, 3)} kNm (Z=${this.number(r.stiffZ, 0)})`, u.stiffener)}
-              ${row("Bolt shear", `V_Ed ${this.number(bp.input.V_Ed / kN, 1)} kN vs ${this.number(r.shBolt / kN, 1)} kN`, u.shearBolt)}
-              ${row("Plate shear", `V_pl,Rd = ${this.number(r.Vpl / kN, 1)} kN`, u.shearPlate)}
-            </tbody>
-          </table>
-        </section>`;
-    },
-
-    // Connections with their own detail sheets are drawn whenever they are
-    // the selected head or base fixing: DU-T2 / DU-B2 (slab face).
-    connectionDrawingServices() {
-      return {
-        "DU-T2": windpost.duSlabFaceDrawing,
-        "DU-B2": windpost.duSlabFaceDrawing
-      };
-    },
-
-    duConnectionCodes(section, connections) {
-      if (!section || !connections) return [];
-      const services = this.connectionDrawingServices();
-      return [connections.head, connections.base]
-        .filter(c => c && c.applicable && services[c.code])
-        .map(c => c.code);
-    },
-
-    connectionDrawingSvg(code, section) {
-      return this.connectionDrawingServices()[code].draw(code, section).svg;
-    },
-
-    duConnectionDrawingsHtml(section, connections) {
-      const codes = this.duConnectionCodes(section, connections);
-      if (!codes.length) return "";
-      return codes.map(code => {
-        let svg = "";
-        try { svg = this.connectionDrawingSvg(code, section); }
-        catch (err) { return `<section class="result-block"><h3>${this.escape(code)} drawing</h3><p>Drawing unavailable: ${this.escape(err.message)}</p></section>`; }
-        const which = /-T/.test(code) ? "Head" : "Base";
-        const what = "DU post to concrete slab face";
-        return `<section class="result-block">
-          <h3>${which} connection ${this.escape(code)} — ${what}</h3>
-          <div id="du-drawing-${this.escape(code)}" class="du-connection-drawing" style="overflow-x:auto;border:1px solid #e2e6ea;border-radius:8px;background:#fff;padding:6px">${svg}</div>
-          <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
-            <button class="secondary-button" type="button" data-du-download="svg" data-du-code="${this.escape(code)}">Download ${this.escape(code)} (SVG)</button>
-            <button class="secondary-button" type="button" data-du-download="dxf" data-du-code="${this.escape(code)}">Download ${this.escape(code)} (DXF)</button>
-          </div>
-        </section>`;
-      }).join("");
-    },
-
-    bindDuConnectionDownloads(section, connections) {
-      const codes = this.duConnectionCodes(section, connections);
-      if (!codes.length) return;
-      document.querySelectorAll("[data-du-download]").forEach(button => {
-        button.addEventListener("click", () => {
-          const code = button.getAttribute("data-du-code");
-          const kind = button.getAttribute("data-du-download");
-          const name = `${code}-${String(section.name || "DU").replace(/\s+/g, "-")}`;
-          if (kind === "svg") {
-            const svg = this.connectionDrawingSvg(code, section);
-            this.saveBlob(new Blob([svg], { type: "image/svg+xml" }), `${name}.svg`);
-            return;
-          }
-          const holder = document.getElementById(`du-drawing-${code}`);
-          const root = holder && holder.querySelector("svg");
-          if (!root || !windpost.sheetExport) return;
-          try {
-            const sheet = windpost.sheetExport.flatten(root);
-            const text = windpost.sheetExport.toDxf(sheet);
-            const bytes = new Uint8Array(text.length);
-            for (let i = 0; i < text.length; i += 1) bytes[i] = text.charCodeAt(i) & 0xff;
-            this.saveBlob(new Blob([bytes], { type: "image/vnd.dxf" }), `${name}.dxf`);
-          } catch (err) {
-            this.reportStatus(`The DXF could not be written: ${err.message}`);
-          }
-        });
-      });
-    },
-
-    saveBlob(blob, filename) {
-      const url = URL.createObjectURL(blob), a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-    },
-
-    basePlateDrawingService(bp) {
-      return windpost.baseplateDrawingRoutingEngine.serviceFor(bp);
-    },
-
-    basePlateDrawingHtml(bp) {
-      const drawingService = this.basePlateDrawingService(bp);
-      if (!bp || !bp.ok || !drawingService) return "";
-      let svg = "";
-      try { svg = drawingService.draw(bp.design, bp.section).svg; }
-      catch (err) { return `<section class="result-block"><h3>Base plate drawing</h3><p>Drawing unavailable: ${this.escape(err.message)}</p></section>`; }
-      const title = bp.standard
-        ? "Simply-supported " + bp.postType + "-post standard base plate drawing"
-        : ((bp.section && bp.section.type) || "") + "-post base plate drawing";
-      return `<section class="result-block">
-          <h3>${this.escape(title)}</h3>
-          <div id="baseplate-drawing-preview" style="overflow-x:auto;border:1px solid #e2e6ea;border-radius:8px;background:#fff;padding:6px">${svg}</div>
-          <div style="margin-top:8px"><button class="secondary-button" type="button" id="download-bp-svg">Download drawing (SVG)</button></div>
-        </section>`;
-    },
-
-    downloadSvg() {
-      const bp = this.lastBaseplate;
-      const drawingService = this.basePlateDrawingService(bp);
-      if (!bp || !bp.ok || !drawingService) return;
-      const svg = drawingService.draw(bp.design, bp.section).svg;
-      const blob = new Blob([svg], { type: "image/svg+xml" });
-      const url = URL.createObjectURL(blob), a = document.createElement("a");
-      a.href = url;
-      a.download = "baseplate-" + String((bp.section && bp.section.name) || "design").replace(/\s+/g, "-") + ".svg";
-      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-    },
-
-    reportStatus(message) {
-      const status = document.getElementById("project-file-status");
-      if (status) status.textContent = message;
-      else console.error(message);
-    },
-
-    // The assembly page ships under its built name beside the built Selector.
-    cavityWallPage() {
-      return this.selectorFileName() === "Windpost-Selector-Full.html"
-        ? "./Windpost-CavityWall-Full.html"
-        : "./cavity-wall-assembly.html";
-    },
-
-    openCavityWallAssembly(design, bp) {
-      const selected = design && design.selected;
-      const section = selected && selected.section;
-      if (!section || section.type !== "L") return;
-      const wall = selected.wall || {};
-      const baseplate = bp && bp.ok ? {
-        ok: true,
-        standard: Boolean(bp.standard),
-        connectionType: bp.connectionType || "",
-        postType: "L",
-        design: { ...(bp.design || {}) },
-        results: bp.results ? { ...bp.results } : null
-      } : null;
-      const payload = {
-        version: 1,
-        type: "L",
-        sectionName: section.name,
-        section: {
-          type: section.type,
-          name: section.name,
-          a_mm: section.a_mm,
-          b_mm: section.b_mm,
-          t_mm: section.t_mm,
-          innerRadius_mm: section.innerRadius_mm,
-          outerRadius_mm: section.outerRadius_mm
-        },
-        length_mm: Number(design.inputs.length_mm),
-        supportCondition: design.inputs.supportCondition,
-        loadType: design.inputs.loadType,
-        finalCapacity_kN: Number(selected.finalCapacity_kN),
-        wall: {
-          innerLeafThickness_mm: Number(wall.innerLeafThickness_mm),
-          cavityWidth_mm: Number(wall.cavityWidth_mm),
-          outerLeafThickness_mm: Number(wall.outerLeafThickness_mm)
-        },
-        tieSchedule: {
-          count: Number(selected.calculation.numberOfTies),
-          firstCentre_mm: 225,
-          spacing_mm: 225
-        },
-        baseplate
-      };
-      try {
-        global.localStorage.setItem(
-          "windpost.cavityAssembly.v1",
-          JSON.stringify(payload)
-        );
-      } catch (error) {
-        // Query parameters below still transfer the essential geometry.
-      }
-      // Everything the page needs travels in the URL: the new tab may not
-      // share this frame's localStorage (storage is partitioned inside an
-      // embedded page), so the designed plate must not depend on it.
-      const query = new URLSearchParams({
-        section: section.name,
-        height: String(payload.length_mm),
-        support: payload.supportCondition,
-        load: String(payload.loadType || ""),
-        capacity: String(payload.finalCapacity_kN || ""),
-        inner: String(payload.wall.innerLeafThickness_mm),
-        cavity: String(payload.wall.cavityWidth_mm),
-        outer: String(payload.wall.outerLeafThickness_mm)
-      });
-      if (baseplate) query.set("bp", JSON.stringify(baseplate));
-      return `${this.cavityWallPage()}?${query.toString()}`;
     },
 
     supportLabel(value) {

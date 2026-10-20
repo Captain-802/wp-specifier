@@ -380,8 +380,12 @@ assert(
   "the fixings and quantities steps are hidden"
 );
 assert(
-  selectorPage.includes("const bp = null;"),
-  "the selector does not run a base-plate design"
+  !/baseplate/i.test(selectorPage) && !/basePlate/.test(selectorPage),
+  "the selector carries no base-plate code"
+);
+assert(
+  !/baseplate-|selector\/|drawing-service|dxf-|sheet-export/i.test(indexHtml),
+  "no parked base-plate, drawing or export engine is loaded"
 );
 assert(
   !selectorPage.includes("this.connectionsBlockHtml(connections)"),

@@ -1,4 +1,5 @@
 "use strict";
+require("./_parked-paths.js");
 
 // Realistic ("photo") drawing mode: the cavity-wall approval arrangement
 // carries lit, textured materials built from SVG filters, so it survives the

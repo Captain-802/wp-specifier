@@ -1,203 +1,136 @@
 # Windpost Select — Automatic Selector
 
-This is a separate standalone application built from copies of the established windpost calculation and section-data engines. It does not modify or replace `Windpost-Calculator-Local` or `WINDPOST DESIGN 17 JULY V.01`.
+Chooses a windpost section and its wall ties for a given cavity build, height,
+support condition and load. One self-contained HTML file, no server, no
+internet connection.
 
-## Open the application
+Base plate design, production drawings, DXF export and the 3D cavity-wall
+assembly are finished but **not released** — they are parked under
+[`parked/`](parked/README.md) and form no part of the shipped file.
 
-Double-click:
+## Open it
 
-```text
-OPEN-WINDPOST-SELECTOR.cmd
+Double-click `OPEN-WINDPOST-SELECTOR.cmd`, or open
+`Windpost-Selector-Full.html` in Chrome or Edge. That one file holds every
+style, section table and calculation script.
+
+To work on the engines instead, open `index.html`, which loads them as
+separate files. Rebuild the single file with:
+
+```bash
+node build-standalone.js
 ```
 
-or open `Windpost-Selector-Full.html` directly in Chrome or Edge.
+## Workflow
 
-The full HTML file contains all styles, section data and calculation scripts. It does not require an internet connection.
-
-## User workflow
-
-1. Choose a U, L, DU (double-U) or I (flat plate, inner leaf) windpost. DU and I posts are simply supported only.
-2. Choose simply supported or cantilever behaviour.
-3. Choose total ULS UDL, or a top point load for a cantilever.
+1. Choose a U, L, DU (double-U) or I (flat plate, inner leaf) windpost. DU and
+   I posts are simply supported only.
+2. Choose simply supported or cantilever.
+3. Choose a total ULS UDL, or a top point load for a cantilever.
 4. Enter any exact windpost height.
-5. Either enter the required load for automatic selection or choose a catalogue section to calculate its capacity.
-6. Enter inner-leaf thickness, cavity width and outer-leaf thickness.
-6a. Choose the head and base fixings and bolt families (step 6), the number of posts, deliveries, debonding sleeves and any special connection (step 7).
-7. Run the selection and view the recommended post, final governing capacity, tie schedule, connection codes, bolt SKUs and counts, and weights.
-8. For a cantilever U or L post, view the RGM 12 baseplate: the standard plate
-   type for the base moment is verified by the full check set and adopted
-   (stiffener raised where the check needs it); beyond the standard range the
-   plate is auto-sized to the same practice. Design checks and a downloadable
-   SVG plan/section drawing are shown.
-9. For a simply-supported U or L post, view the separate fixed-standard RGM 12
-   baseplate and downloadable SVG plan/side-view drawing. These standard
-   details perform only the confirmed minimum edge-distance check.
-10. For an L-post result in the modular `index.html` application, open the
-    separate cavity-wall assembly page. It carries the selected section, wall,
-    support condition, height, tie schedule and baseplate into a coordinated
-    interactive 3D model plus plan, elevation, side and isometric SVG views.
+5. Choose how the section is picked:
+   - **Automatic** — enter the required load and let it select;
+   - **Manual** — choose a catalogue section and see its capacity;
+   - **Custom section** — enter `a`, `b`, `t` and `r` and it works out the area,
+     `Ixx`, `Zxx` and `ȳ` itself, by the same geometry used to build the
+     catalogue, so a custom U/L/DU/I matches the catalogue figures exactly.
+     An I post is a flat plate, so it takes `a` and `t` only.
+6. Enter the inner-leaf thickness, cavity width and outer-leaf thickness.
+7. Run the selection. The result gives the section, the final governing ULS
+   capacity, the governing criterion, the tie schedule with the inner and
+   outer tie for every level, and the post weight.
 
-## L-post cavity-wall assembly
+Any design figure can be changed before running: open **Design constants** at
+the foot of the form. Constants and the whole tie list are editable — add,
+remove or re-measure a tie, or change a tie capacity. Edits are listed in the
+printed calculation so a record never passes an edited value off as a
+catalogue one. **Reset** puts the catalogue values back.
 
-Double-click `OPEN-CAVITY-WALL-ASSEMBLY.cmd` to open the page directly, or use
-**Open cavity-wall assembly** from an L-post result in the modular application.
+## How the capacity is decided
 
-- The L long leg is embedded `90 mm` into the inner leaf.
-- One `10 × 50 mm` R5 slot is modelled on each leg at every tie level.
-- The first paired inner shear tie and outer EDC tie is `225 mm` above the
-  baseplate; further pairs repeat at `225 mm c/c`.
-- The two-way shear tie is `168 × 10 × 1.5 mm`, projects `84 mm` each side and
-  has four `6 × 10 mm` R3 holes.
-- Inner masonry uses `440 × 100 × 215 mm` blocks and outer masonry uses
-  `215 × 102.5 × 65 mm` bricks, both with `10 mm` mortar joints.
-- The embedded post leg occupies a real central blockwork joint; the masonry
-  solids do not overlap the steel.
-- The outer tie is selected by the same EDC engine as the main selector, and
-  its drawn end reaches the calculated outer-leaf embedment.
-- The interactive viewer supports orbit, zoom and layer switches. The four
-  technical views can be downloaded as SVG.
+Flexural capacity, deflection capacity and tie capacity are each worked out;
+the lowest governs. **The governing value is then rounded down to 2 decimal
+places, and that is the final figure** — it is never rounded up.
 
-The cavity-wall page is a separate multi-file output and is intentionally not
-inlined into `Windpost-Selector-Full.html`. The current standalone selector
-should be rebuilt only at the agreed final release stage; until then use
-`index.html` for the integrated result link or the dedicated launcher above.
+A level's tie capacity depends on the family:
 
-## Connections, bolts and weights (V.03)
+| Post | Ties per level | Level capacity |
+|---|---|---|
+| U | 1 inner + 1 outer | the weaker of the two |
+| L | 1 inner + 1 outer | the weaker of the two |
+| I | inner (shear) tie only | the inner tie |
+| DU | 2 inner + 2 outer | `2 × outer + 2 × inner` |
 
-- The connection library, cantilever plate types, anchor capacities and bolt
-  quantities are generated from `WINDPOST_CALCULATOR_V2.xlsx` into
-  `js/data/connections-database.js` (see `ENGINE-RESPONSIBILITIES.txt`).
-- Simply supported: head/base fixing -> connection code, post bolt, bolt SKU
-  per family (Stainless, RGM, FAZ II, FAZ II PLUS). Load-dependent anchors use
-  final capacity / 2 <= 2 x anchor capacity (tension or shear).
-- Cantilever U/L: no head connection; base plate type U-A..U-G / L-A..L-G by
-  base moment (W.H for a top point load, W.H/2 for a UDL); plate + stiffener
-  weight varies with the selected section depth; beyond G = special design.
-- Post weight = blank width x thickness x length x 8185.9 kg/m3.
-- DU posts show two ties per level; I posts have shear ties only.
-- FAZ II M16 / FAZ II Plus M16 shear = M12 values pending the datasheet.
+## Design defaults
 
-## Preserved design defaults
+| | |
+|---|---|
+| Allowable stress | `127.27 N/mm²` |
+| Initial elastic modulus | `200 kN/mm²` |
+| Secant-model proof strength | `210 N/mm²` |
+| Ramberg–Osgood exponent | `7` |
+| U-post and DU-post tie strength | `1.713 kN/tie` |
+| L-post and I-post tie strength | `2.25 kN/tie` |
+| First tie spacing | `225 mm` |
+| Standard tie spacing | `225 mm c/c` |
+| Parapet free-top tie clearance | `50 mm` |
+| 10 mm deflection cap | not applied |
 
-- Allowable stress: `127.27 N/mm²`
-- Initial elastic modulus: `200 kN/mm²`
-- Secant-model proof strength: `210 N/mm²`
-- Ramberg–Osgood exponent: `7`
-- U-post and DU-post tie strength: `1.713 kN/tie`
-- L-post and I-post tie strength: `2.25 kN/tie`
-- First tie spacing: `225 mm`
-- Standard tie spacing: `225 mm c/c`
-- Parapet free-top tie clearance: `50 mm`
-- 10 mm deflection cap: not applied
-- Connection capacity cap: not applied
+Every one of these is editable in the Design constants panel.
 
 ## Tie rules
 
-- U-post inner-leaf tie: `84 mm` actual length with `65.23 mm` embedment into
+- U/DU inner-leaf tie: the U tie, `84 mm` actual with `65.23 mm` embedment into
   the inner leaf; the post is held `6 mm` clear of the inner leaf.
-- L-post inner-leaf tie: shear tie.
-- Outer-leaf tie: selected from `EDC25-100` to `EDC25-375` in 25 mm increments.
-- Minimum outer-leaf embedment used by the selector: `55 mm`.
+- L/I inner-leaf tie: the shear tie.
+- Outer-leaf tie: an EDC25 tie, `EDC25-100` to `EDC25-375` in 25 mm steps —
+  **or the U tie**, which is preferred over no solution when the cavity is
+  tight enough for the U tie to reach and still fit the outer leaf.
+- Minimum outer-leaf embedment: `55 mm`. Minimum clear gap to the outer leaf:
+  `4 mm`.
 - Tie geometry from the EDC drawings: actual length = nominal + `8 mm`
-  (EDC25-125 is 133 mm overall); the windpost-slot connection consumes the
-  `7.6 mm` notch plus the `11.17 mm` tail beyond it (`18.77 mm` total), so the
-  length available from the post face is `nominal + 8 − 18.77 = nominal − 10.77`.
-- U posts are positioned `6 mm` clear of the inner leaf.
-- The same workbook-controlled `6 mm` clearance is used by both wall-tie
-  placement and both U-post floating-baseplate drawing engines.
-- L posts use the existing `90 mm` inner-leaf embedment placement assumption.
+  (`EDC25-125` is 133 mm overall). The windpost slot consumes the `7.6 mm`
+  notch plus the `11.17 mm` tail beyond it (`18.77 mm`), so the length
+  available from the post face is `nominal + 8 − 18.77 = nominal − 10.77`.
+- L and I posts are embedded `90 mm` into the inner leaf.
 
-## Tie quantity rules
+## Tie quantities
 
-- Simply supported post with a top connection: `floor((L - 225) / 225)`.
-- Cantilever/parapet post with no top connection: `floor((L - 50) / 225)`.
-- Tie quantities are whole numbers and are never less than zero.
+- Simply supported, with a top connection: `floor((L − 225) / 225)`.
+- Cantilever or parapet, no top connection: `floor((L − 50) / 225)`.
+- Always a whole number, never below zero.
 
 ## Source layout
 
 ```text
-css/app.css                         presentation
-js/data/                            copied U/L catalogue data
-js/engines/                         copied design engines plus new selectors
-js/engines/baseplate-*.js           shared U/L baseplate sizing and checks
-js/services/baseplate-*.js          L-post baseplate drawing services
-js/services/u-baseplate-*.js        U-post floating-baseplate drawing services
-js/engines/simply-u-baseplate-*     simply-supported U fixed standard/check
-js/services/simply-u-baseplate-*    simply-supported U plan/side drawing
-js/engines/simply-l-baseplate-*     simply-supported L fixed standard/check
-js/services/simply-l-baseplate-*    simply-supported L plan/side drawing
-js/services/cavity-wall-*           L-post masonry, tie, drawing and 3D engines
-js/services/design-report-service  detailed printable calculation
-js/ui/app.js                        guided interface
-js/ui/cavity-wall-page.js           separate assembly-page controller
-cavity-wall-assembly.html           separate assembly page
-css/cavity-wall.css                 assembly-page styling
-tests/run-tests.js                  local regression checks
-tests/connections-tests.js          DU/I, connections, bolts and weights checks
-tests/baseplate-tests.js            U/L baseplate geometry and routing checks
-tests/cavity-wall-assembly-tests.js assembly geometry and drawing checks
+index.html                           the application (loads the engines below)
+css/app.css                          presentation
+js/data/                             U, L, DU and I catalogues, ties, fixings
+js/engines/                          design engines and the selectors
+js/engines/custom-section-properties-engine.js   custom U/L/DU/I properties
+js/engines/design-data-engine.js     the editable constants and tie list
+js/engines/fold-width-engine.js      blank width, for the post weight
+js/engines/connection-selection-engine.js        weights and tie counts
+js/services/design-report-service.js the printable calculation
+js/ui/app.js                         the guided interface
+js/ui/design-data-editor.js          the Design constants panel
+tests/                               the regression suites
+tools/                               database build from the Excel workbook
+parked/                              switched-off features (see its README)
 ```
 
-## Simply-supported U-post standard baseplate
+## Updating the section data
 
-- This is a separate fixed-standard engine; it does not use cantilever
-  baseplate analysis or sizing.
-- The plate is `150 mm` wide and `6 mm` thick.
-- Two RGM 12 anchors use `14 mm` holes on one longitudinal row.
-- The anchor line is `90 mm` from the concrete edge; the plate ends `125 mm`
-  from the concrete edge, providing a `35 mm` longitudinal end distance.
-- Across the width the anchors are `90 mm c/c`, providing `30 mm` edge
-  distances at both sides.
-- The minimum permitted edge distance is `25 mm`; the fixed arrangement
-  therefore passes with a minimum provided distance of `30 mm`.
-- Left of the concrete edge the generated length is
-  `6 mm clearance + selected U-post depth + 6 mm fabrication projection`.
-- The U-post is centred across the plate, opens downward in plan and uses its
-  actual thickness and bend radius.
-- The drawing includes plan and side views and no stiffener.
+The catalogues are generated from `windpost-database.xlsx`. Edit the workbook,
+then double-click `UPDATE-FROM-EXCEL.cmd`: it rebuilds the data files, runs
+every suite in `tests\`, and rebuilds the single-file edition only if they all
+pass.
 
-## Simply-supported L-post standard baseplate
+## Tests
 
-- This is a separate fixed-standard engine with no structural baseplate
-  analysis, moment design or stiffener.
-- The established L placement is retained: the long leg is embedded `90 mm`
-  into the inner leaf and its centreline is aligned with the plate-width
-  centreline.
-- The left plate portion is
-  `6 mm fabrication projection + (selected L-post depth − 90 mm)`.
-- Sections with a `70 mm` short leg use a `150 mm`-wide plate and provide
-  `30 mm` transverse anchor edge distances.
-- Sections with an `80 mm` short leg use the confirmed `160 mm`-wide plate and
-  provide `35 mm` transverse anchor edge distances.
-- Plate thickness, right portion and anchors match the U standard: `6 mm`
-  plate, anchor line at `90 mm`, plate end at `125 mm`, two RGM 12 anchors in
-  `14 mm` holes at `90 mm c/c`.
-- The minimum permitted edge distance is `25 mm`; every catalogue arrangement
-  passes.
-- The drawing includes plan and side views and no stiffener.
-
-## Baseplate drawing conventions
-
-These drafting rules apply to cantilever L, cantilever U, simply-supported U
-and simply-supported L drawings:
-
-- Dimension objects contain numbers only; words such as `design`, `overall`,
-  `left portion`, `right portion`, `flange`, `c/c` and `overhang` are not
-  appended to dimension values.
-- The baseplate annotation states the complete
-  `length × width × thickness` and identifies the plate.
-- Hole information uses one two-line `14 mm dia hole / to suit RGM 12`
-  callout whose leader terminates at the centre of a hole.
-- Redundant row/column and projected-anchor notes are not drawn.
-- Plan section arrows and `A` labels are omitted; side-view titles do not use
-  an `A–A` suffix.
-- Every side view terminates the windpost with one centred continuation-break
-  symbol; repeated saw-tooth cuts and separate U-flange breaks are not used.
-- Standard edge-check text is shown in the application result, not repeated on
-  the fabrication drawing.
-
-Rebuild the single-file edition with:
-
-```text
-node build-standalone.js
+```bash
+node tests/run-tests.js
 ```
+
+`tests/` holds the suites for what ships; `parked/tests/` holds the suites for
+the parked features and still runs. Every suite passes.

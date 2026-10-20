@@ -1,4 +1,5 @@
 "use strict";
+require("./_parked-paths.js");
 
 const assert = require("assert");
 const fs = require("fs");
@@ -175,15 +176,16 @@ check("right-side dimension arrows and annotation leaders occupy non-crossing la
   }));
 });
 
-check("development page loads the U drawing engines before the UI", () => {
+check("the Selector does not load the base-plate drawing engines while they are parked", () => {
+  // Switching the base plate back on means putting these three scripts back
+  // into index.html ahead of js/ui/app.js, in this order.
   const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
-  const uServiceAt = html.indexOf("./js/services/u-baseplate-drawing-service.js");
-  const simplyUEngineAt = html.indexOf("./js/engines/simply-u-baseplate-standard-engine.js");
-  const simplyUServiceAt = html.indexOf("./js/services/simply-u-baseplate-drawing-service.js");
-  const appAt = html.indexOf("./js/ui/app.js");
-  assert(uServiceAt >= 0 && appAt > uServiceAt);
-  assert(simplyUEngineAt >= 0 && appAt > simplyUEngineAt);
-  assert(simplyUServiceAt >= 0 && appAt > simplyUServiceAt);
+  ["u-baseplate-drawing-service.js", "simply-u-baseplate-standard-engine.js",
+   "simply-u-baseplate-drawing-service.js"].forEach(file =>
+    assert(html.indexOf(file) < 0, `${file} is parked, so the Selector must not load it`));
+  ["js/services/u-baseplate-drawing-service.js", "js/engines/simply-u-baseplate-standard-engine.js",
+   "js/services/simply-u-baseplate-drawing-service.js"].forEach(file =>
+    assert(fs.existsSync(path.join(root, file)), `${file} is kept in parked/`));
 });
 
 check("UI routes cantilever U-posts to the shared design and U drawing service", () => {
@@ -198,7 +200,9 @@ check("UI routes cantilever U-posts to the shared design and U drawing service",
   );
   assert(selectorRouter.includes('section.type === "L" || section.type === "U"'));
   assert(drawingRouter.includes("windpost.uBaseplateDrawing"));
-  assert(app.includes("cantilever U‑ and L‑posts"));
+  // The Selector's own hint about cantilever U and L plates went with the
+  // feature, so app.js no longer names it.
+  assert(!app.includes("cantilever U‑ and L‑posts"));
 });
 
 check("simply-supported U standard uses the confirmed fixed right-hand detail", () => {
@@ -286,10 +290,10 @@ check("UI routes simply-supported U-posts to the separate standard engine", () =
   assert(selectorRouter.includes("windpost.simplyUBaseplateStandard.create(section)"));
   assert(drawingRouter.includes('baseplate.connectionType === "simply-supported-u"'));
   assert(drawingRouter.includes("windpost.simplyUBaseplateDrawing"));
-  // The result block still identifies the fixed standard detail and reports
-  // the edge-spacing check; only its explanatory sentence was dropped.
-  assert(app.includes("Simply-supported ${this.escape(bp.postType)}-post base plate"));
-  assert(app.includes("Edge-spacing check"));
+  // The result block that named the fixed standard detail and reported the
+  // edge-spacing check went with the feature, so app.js carries neither.
+  assert(!app.includes("Simply-supported ${this.escape(bp.postType)}-post base plate"));
+  assert(!app.includes("Edge-spacing check"));
 });
 
 check("simply-supported L standard retains the fixed right-hand anchor detail", () => {
@@ -440,14 +444,13 @@ check("all baseplate side views use one central windpost continuation break", ()
   });
 });
 
-check("development page and UI load and route the simply-supported L engine", () => {
+check("the simply-supported L engine routes correctly and is parked, not loaded", () => {
+  // Restoring it means loading the engine, then its drawing service, then
+  // engineering-canvas-renderer.js, all ahead of js/ui/app.js.
   const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
-  const engineAt = html.indexOf("./js/engines/simply-l-baseplate-standard-engine.js");
-  const drawingAt = html.indexOf("./js/services/simply-l-baseplate-drawing-service.js");
-  const appAt = html.indexOf("./js/ui/app.js");
-  assert(engineAt >= 0 && drawingAt > engineAt && appAt > drawingAt);
-  const canvasAt = html.indexOf("./js/services/engineering-canvas-renderer.js");
-  assert(canvasAt >= 0 && canvasAt < appAt);
+  ["simply-l-baseplate-standard-engine.js", "simply-l-baseplate-drawing-service.js",
+   "engineering-canvas-renderer.js"].forEach(file =>
+    assert(html.indexOf(file) < 0, `${file} is parked, so the Selector must not load it`));
   const app = fs.readFileSync(path.join(root, "js", "ui", "app.js"), "utf8");
   const selectorRouter = fs.readFileSync(
     path.join(root, "js", "engines", "selector", "selector-baseplate-routing-engine.js"),
@@ -460,8 +463,9 @@ check("development page and UI load and route the simply-supported L engine", ()
   assert(selectorRouter.includes("windpost.simplyLBaseplateStandard.create(section)"));
   assert(drawingRouter.includes('baseplate.connectionType === "simply-supported-l"'));
   assert(drawingRouter.includes("windpost.simplyLBaseplateDrawing"));
-  assert(app.includes("simply-supported U‑ and L‑posts"));
-  assert(app.includes("windpost.engineeringCanvasRenderer.enhance"));
+  // The Selector's base-plate hint and its canvas pass went with the feature.
+  assert(!app.includes("simply-supported U‑ and L‑posts"));
+  assert(!app.includes("windpost.engineeringCanvasRenderer.enhance"));
 });
 
 console.log(`\n${passed} baseplate checks passed.`);

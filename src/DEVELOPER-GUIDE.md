@@ -1,5 +1,12 @@
 # Windpost Select — Developer & Maintainer Guide
 
+> **This release ships windpost and tie selection only.** Base plate design,
+> production drawings, DXF export and the 3D cavity-wall assembly are parked
+> under `parked/` and are not loaded by the application. Where a section below
+> describes one of those, the file it names now lives under `parked/js/...`;
+> see [`parked/README.md`](parked/README.md) for the list and for how to switch
+> a feature back on.
+
 This document explains how the whole tool is put together and gives exact,
 step-by-step instructions for changing anything in it. It is written so that
 someone who did not build the software can safely make a change.

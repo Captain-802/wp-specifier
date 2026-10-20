@@ -35,9 +35,9 @@ const root = path.resolve(__dirname, "..");
   "js/engines/automatic-selection-engine.js",
   "js/engines/connection-selection-engine.js",
   "js/services/design-report-service.js",
-  "js/services/cavity-wall-3d-engine.js",
-  "js/services/windpost-scene-mesh-engine.js",
-  "js/services/u-section-orthographic-service.js"
+  "parked/js/services/cavity-wall-3d-engine.js",
+  "parked/js/services/windpost-scene-mesh-engine.js",
+  "parked/js/services/u-section-orthographic-service.js"
 ].forEach(file => require(path.join(root, file)));
 
 const W = globalThis.Windpost;
@@ -74,7 +74,9 @@ check("the Ties table lists every tie product with the workbook's columns and re
   assert.strictEqual(D.tieCapacity("Shear tie"), W.config.DEFAULT_TIE_STRENGTH_KN.L);
   assert.strictEqual(D.levelCapacity("U", "U tie", "EDC25-150"), 1.713, "U level: the U tie governs");
   assert.strictEqual(D.levelCapacity("L", "Shear tie", "EDC25-125"), 2.25);
-  assert.strictEqual(D.levelCapacity("DU", "U tie", "EDC25-200"), 1.713, "DU counted per level, as the workbook");
+  // A DU level carries two inner U ties and two outer EDC ties (owner, this
+  // release), so a pair is the inner plus the outer tie, not the weaker one.
+  assert.strictEqual(D.levelCapacity("DU", "U tie", "EDC25-200"), 3.963, "a DU pair adds the inner and outer tie");
   assert.strictEqual(D.levelCapacity("I", "Shear tie", "None"), 2.25, "I: shear ties only");
   ["U", "L", "DU", "I"].forEach(type => assert.strictEqual(D.familyCapacity(type), W.config.DEFAULT_TIE_STRENGTH_KN[type], type));
   assert(rows.every(t => !t.edited) && D.edits().count === 0);
@@ -83,13 +85,14 @@ check("the Ties table lists every tie product with the workbook's columns and re
 check("with catalogue values the selection is unchanged (UP 95x60x6 at 13.97 kN) and the calculation reports the tie strength it used", () => {
   const design = run("U");
   assert(design.valid && design.selected.section.name === "UP 95x60x6", design.message);
-  assert.strictEqual(design.selected.finalCapacity_kN.toFixed(4), "13.9697", "same figure as before the editor (13.969662...)");
+  // 13.969662... floored to 2 dp, the published figure (owner, this release).
+  assert.strictEqual(design.selected.finalCapacity_kN.toFixed(4), "13.9600", "the design value is rounded down to 2 dp");
   assert.strictEqual(design.selected.calculation.tieStrength, 1.713);
   assert.strictEqual(design.designDefaults.fy, 127.27);
   const l = run("L");
   assert(l.valid && l.selected.calculation.tieStrength === 2.25);
   const du = run("DU", { requiredLoad_kN: 5 });
-  assert(du.valid && du.selected.calculation.tieStrength === 1.713, "DU per level");
+  assert(du.valid && du.selected.calculation.tieStrength === 7.926, "a DU level is two U ties plus two EDC ties");
 });
 
 check("editing a tie capacity changes the level capacity of the posts that use that tie, weakest link governing", () => {
@@ -219,7 +222,7 @@ check("the report lists the edits and the pages carry the editor", () => {
   assert(index.includes('id="design-data-editor"') && index.includes('id="design-data-badge"'));
   const app = fs.readFileSync(path.join(root, "js/ui/app.js"), "utf8");
   assert(app.includes("initDesignData") && app.includes("designData.serialize()") && app.includes("designData.restore("));
-  const detailing = fs.readFileSync(path.join(root, "l-section-prototype.html"), "utf8");
+  const detailing = fs.readFileSync(path.join(root, "parked/l-section-prototype.html"), "utf8");
   assert(detailing.indexOf("design-data-engine.js") > detailing.indexOf("connections-database.js"));
   const editor = fs.readFileSync(path.join(root, "js/ui/design-data-editor.js"), "utf8");
   assert(!/\son\w+="/.test(editor) && !editor.includes("eval("), "CSP-safe editor");

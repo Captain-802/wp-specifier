@@ -1,4 +1,5 @@
 "use strict";
+require("./_parked-paths.js");
 
 // DU on the Detailing page: two-channel section views with the per-channel
 // blank and fold width, the DU-B2 / DU-T2 plates as the base and top

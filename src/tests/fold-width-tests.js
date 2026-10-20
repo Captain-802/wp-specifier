@@ -22,7 +22,7 @@ const root = path.resolve(__dirname, "..");
   "js/data/connections-database.js",
   "js/data/standard-base-plate-types.js",
   "js/engines/connection-selection-engine.js",
-  "js/engines/workflow/production-validation-engine.js"
+  "parked/js/engines/workflow/production-validation-engine.js"
 ].forEach(file => require(path.join(root, file)));
 
 const W = globalThis.Windpost;
@@ -85,17 +85,16 @@ check("the validator records the workbook fold width (owner's basis) and the geo
   assert(ok && ok.pass && /182\.72/.test(ok.detail));
 });
 
-check("both drawings, the sheet and the Selector state the fold width", () => {
+check("the Selector states the fold width and loads the engine in order", () => {
   const read = file => fs.readFileSync(path.join(root, file), "utf8");
-  ["js/services/l-section-orthographic-service.js", "js/services/u-section-orthographic-service.js"].forEach(file =>
-    assert(read(file).includes("FOLD WIDTH") && read(file).includes("foldWidth"), file));
-  assert(read("js/ui/l-section-prototype-page.js").includes("FOLD WIDTH"));
-  assert(read("js/ui/app.js").includes("Fold (blank) width"));
-  ["index.html", "l-section-prototype.html"].forEach(page => {
-    const html = read(page);
-    assert(html.indexOf("fold-width-engine.js") > html.indexOf("config.js"), `${page} loads the engine after config`);
-    assert(html.indexOf("fold-width-engine.js") < html.indexOf("connection-selection-engine.js") || page !== "index.html");
-  });
+  // The blank (fold) width is quoted in the post-weight line of the design
+  // report. The drawing services that also label it belong to the parked
+  // detailing build and are checked by its own suite.
+  assert(read("js/services/design-report-service.js").includes("blankWidth_mm"));
+  const html = read("index.html");
+  assert(html.indexOf("fold-width-engine.js") > html.indexOf("config.js"), "index.html loads the engine after config");
+  assert(html.indexOf("fold-width-engine.js") < html.indexOf("connection-selection-engine.js"),
+    "index.html loads the engine before the consumer that needs it");
   assert.strictEqual(W.config.FOLD_WIDTH_BASIS, "workbook");
 });
 
