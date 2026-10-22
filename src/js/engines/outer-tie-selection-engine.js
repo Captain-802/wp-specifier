@@ -7,6 +7,9 @@
   // windpost-database.xlsx). The literals below are the fallback used if that
   // generated file is ever missing, so the calculator still works standalone.
   const P = (windpost.parameters && windpost.parameters.tie) || {};
+  const names = () => windpost.config || {};
+  const uTieName = () => names().U_TIE_NAME || "EDC25-U tie";
+  const shearTieName = () => names().SHEAR_TIE_NAME || "Shear tie";
 
   // Each outer tie carries its own catalogue name, nominal designation length,
   // and actual manufactured length (from the EDC drawings). Selection works off
@@ -59,7 +62,7 @@
     const edc = tieList().map((t) => ({ ...t, preference: 0 }));
     const uLen = Number(W.uTieActualLength_mm);
     if (!Number.isFinite(uLen) || uLen <= 0) return edc;
-    return edc.concat([{ name: "U tie", nominal_mm: null, actual_mm: uLen, preference: 1 }]);
+    return edc.concat([{ name: uTieName(), nominal_mm: null, actual_mm: uLen, preference: 1 }]);
   }
 
   const WALL_DEFAULTS = Object.freeze({
@@ -67,7 +70,7 @@
     uTieActualLength_mm: P.uTieActualLength_mm ?? 84,
     uTieInnerEmbedment_mm: P.uTieInnerEmbedment_mm ?? 65.23,
     lInnerLeafEmbedment_mm: P.lInnerLeafEmbedment_mm ?? 90,
-    minimumOuterGap_mm: P.minGap_mm ?? 4,
+    minimumOuterGap_mm: P.minGap_mm ?? 15,
     minimumOuterEmbedment_mm: P.minEmbedment_mm ?? 55,
     // The windpost-slot connection consumes the 7.6 mm notch plus the 11.17 mm
     // tail beyond it, so the length available from the post face is the tie's
@@ -107,7 +110,7 @@
     const W = wall();
     if (type === "U") {
       return {
-        name: "U tie",
+        name: uTieName(),
         note: `${W.uTieActualLength_mm} mm long; ${W.uTieInnerEmbedment_mm} mm embedment`,
         actualLength_mm: W.uTieActualLength_mm,
         embedment_mm: W.uTieInnerEmbedment_mm,
@@ -116,15 +119,15 @@
     }
     if (type === "DU") {
       return {
-        name: "U tie",
+        name: uTieName(),
         note: `${(windpost.config.TIES_PER_LEVEL || {}).DU || 4} per level; ${W.uTieActualLength_mm} mm long; ${W.uTieInnerEmbedment_mm} mm embedment`,
         actualLength_mm: W.uTieActualLength_mm,
         embedment_mm: W.uTieInnerEmbedment_mm,
         postClearance_mm: W.uInnerClearance_mm
       };
     }
-    if (type === "L") return { name: "Shear tie", note: "for the inner leaf" };
-    if (type === "I") return { name: "Shear tie", note: "post built into the inner leaf" };
+    if (type === "L") return { name: shearTieName(), note: "for the inner leaf" };
+    if (type === "I") return { name: shearTieName(), note: "post built into the inner leaf" };
     return { name: W.innerTieDescription, note: "" };
   }
 

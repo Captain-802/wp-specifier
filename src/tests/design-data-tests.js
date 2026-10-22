@@ -60,6 +60,41 @@ const conn = (type, section, headFixing, baseFixing, extra) => W.connectionSelec
 });
 const u = name => W.uSectionDatabase.sections.find(s => s.name === name);
 
+check("the U tie is one product: one name, one length, either leaf", () => {
+  D.reset();
+  const row = () => D.tieRows().find(t => t.name === "EDC25-U tie");
+  assert(row(), "the U tie is in the tie table");
+  assert.strictEqual(row().kind, "both", "it serves the inner leaf and, in a tight cavity, the outer");
+  assert(!D.outerTieSizes().some(t => t.name === "EDC25-U tie"),
+    "it is not one of the standard outer sizes: the engine offers it only where no EDC fits");
+
+  // Its length is the design constant, so the two views cannot disagree.
+  const constant = () => D.designSpec().find(d => d.key === "uTieActualLength_mm").current;
+  assert.strictEqual(row().actual_mm, constant());
+  assert(D.setDesign("uTieActualLength_mm", 90));
+  assert.strictEqual(row().actual_mm, 90, "editing the constant moves the tie table");
+  assert(D.setTieField("EDC25-U tie", "actual_mm", 88));
+  assert.strictEqual(constant(), 88, "editing the tie table moves the constant");
+  D.reset();
+  assert.strictEqual(row().actual_mm, 84);
+
+  // Nothing is lost from a project saved before the tie was renamed.
+  D.restore({ ties: { "U tie": 1.4 }, tieFields: { "U tie": { width_mm: 19 } } });
+  assert.strictEqual(D.tieCapacity("EDC25-U tie"), 1.4, "an edit saved under the old name still applies");
+  assert.strictEqual(row().width_mm, 19);
+  D.reset();
+});
+
+check("the minimum clear gap to the outer leaf is 15 mm", () => {
+  assert.strictEqual(D.designSpec().find(d => d.key === "minimumOuterGap_mm").current, 15);
+  const engine = W.outerTieSelectionEngine;
+  const wall = n => ({ innerLeafThickness_mm: 100, cavityWidth_mm: n, outerLeafThickness_mm: 100 });
+  // UP 85x60x4 sits 6 mm clear of the inner leaf, so a 106 mm cavity leaves
+  // exactly 15 mm and a 105 mm cavity leaves 14.
+  assert(engine.calculateWallAndTie(u("UP 85x60x4"), wall(106)).suitable);
+  assert(!engine.calculateWallAndTie(u("UP 85x60x4"), wall(105)).suitable);
+});
+
 check("the Ties table lists every tie product with the workbook's columns and reproduces the family strengths", () => {
   const rows = D.tieRows();
   const outer = rows.filter(t => t.kind === "outer");
@@ -68,15 +103,16 @@ check("the Ties table lists every tie product with the workbook's columns and re
   const e150 = outer.find(t => t.name === "EDC25-150");
   assert(e150.nominal_mm === 150 && e150.actual_mm === 158 && e150.width_mm === 21 && e150.thickness_mm === 1.2);
   assert(outer.find(t => t.name === "EDC25-350").thickness_mm === 1.5);
-  assert(rows.some(t => t.name === "U tie" && t.label === "EDC25-U Tie" && t.actual_mm === 84));
+  assert(rows.some(t => t.name === "EDC25-U tie" && t.label === "EDC25-U tie" && t.actual_mm === 84 && t.kind === "both"),
+    "the U tie is listed once, under its catalogue name, serving either leaf");
   assert(rows.some(t => t.name === "Shear tie" && t.label === "Shear Tie"));
-  assert.strictEqual(D.tieCapacity("U tie"), W.config.DEFAULT_TIE_STRENGTH_KN.U);
+  assert.strictEqual(D.tieCapacity("EDC25-U tie"), W.config.DEFAULT_TIE_STRENGTH_KN.U);
   assert.strictEqual(D.tieCapacity("Shear tie"), W.config.DEFAULT_TIE_STRENGTH_KN.L);
-  assert.strictEqual(D.levelCapacity("U", "U tie", "EDC25-150"), 1.713, "U level: the U tie governs");
+  assert.strictEqual(D.levelCapacity("U", "EDC25-U tie", "EDC25-150"), 1.713, "U level: the U tie governs");
   assert.strictEqual(D.levelCapacity("L", "Shear tie", "EDC25-125"), 2.25);
   // A DU level carries two inner U ties and two outer EDC ties (owner, this
   // release), so a pair is the inner plus the outer tie, not the weaker one.
-  assert.strictEqual(D.levelCapacity("DU", "U tie", "EDC25-200"), 3.963, "a DU pair adds the inner and outer tie");
+  assert.strictEqual(D.levelCapacity("DU", "EDC25-U tie", "EDC25-200"), 3.963, "a DU pair adds the inner and outer tie");
   assert.strictEqual(D.levelCapacity("I", "Shear tie", "None"), 2.25, "I: shear ties only");
   ["U", "L", "DU", "I"].forEach(type => assert.strictEqual(D.familyCapacity(type), W.config.DEFAULT_TIE_STRENGTH_KN[type], type));
   assert(rows.every(t => !t.edited) && D.edits().count === 0);
@@ -108,7 +144,7 @@ check("editing a tie capacity changes the level capacity of the posts that use t
   assert(D.tieRows().find(t => t.name === outerTie).edited);
   // a stronger U tie cannot lift a U post above its EDC tie
   D.reset("ties");
-  assert(D.setTieCapacity("U tie", 3.0));
+  assert(D.setTieCapacity("EDC25-U tie", 3.0));
   assert.strictEqual(run("U").selected.calculation.tieStrength, 2.25, "min(U tie 3.0, EDC 2.25)");
   // I posts only see the shear tie
   D.reset("ties");
@@ -208,11 +244,11 @@ check("edits serialize, restore, reset and persist through a storage object", ()
 });
 
 check("the report lists the edits and the pages carry the editor", () => {
-  D.setTieCapacity("U tie", 1.2);
+  D.setTieCapacity("EDC25-U tie", 1.2);
   const design = run("U", { mode: "manual", selectedSectionName: "UP 95x60x6" });
   const connections = W.connectionSelectionEngine.select({ type: "U", supportCondition: "simplySupported", loadType: "udl", length_mm: 2670, section: design.selected.section, finalCapacity_kN: design.selected.finalCapacity_kN, numberOfTies: design.selected.calculation.numberOfTies, headFixing: "U POST TO TIMBER JOIST BB", baseFixing: "U POST TO TIMBER JOIST TB" });
   const report = W.designReportService.buildReport(design, connections);
-  assert(report.includes("Design data edited for this calculation") && report.includes("EDC25-U Tie capacity 1.713 -&gt; 1.200 kN"), "edit line printed (HTML-escaped arrow)");
+  assert(report.includes("Design data edited for this calculation") && report.includes("EDC25-U tie capacity 1.713 -&gt; 1.200 kN"), "edit line printed (HTML-escaped arrow)");
   assert(report.includes("1.200 kN/tie"), "the tie strength used is printed, not the catalogue one");
   D.reset();
   assert(!W.designReportService.buildReport(design, connections).includes("Design data edited"));

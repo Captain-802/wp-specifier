@@ -45,9 +45,10 @@ Pick a windpost and its ties:
 - **Exact heights** — any project height, no table rounding.
 - **Wall build-up** — inner leaf, cavity and outer leaf verify the post fits
   and select the outer-leaf tie.
-- **Ties** — inner-leaf tie by family (U tie for U/DU, shear tie for L/I) and
-  the shortest outer tie that reaches without burying itself past the back of
-  the outer leaf. In a tight cavity the U tie can serve the outer leaf too.
+- **Ties** — inner-leaf tie by family (`EDC25-U tie` for U/DU, shear tie for
+  L/I) and the shortest outer tie that reaches without burying itself past the
+  back of the outer leaf. The `EDC25-U tie` is one product that can serve
+  either leaf, so the tie table lists it once, under **Either leaf**.
 - **Output** — section, final ULS capacity, governing check, utilisation, the
   next suitable sections, the tie schedule, post weights and a printable
   calculation record.
@@ -62,13 +63,18 @@ Step 6 opens the workbook's editable figures in the page:
 
 - **Design constants** — allowable stress, E, secant fy and exponent, tie
   spacings, the 10 mm deflection cap, and the wall geometry: clear gap to the
-  inner leaf, L-post embedment, minimum gap to the outer leaf, minimum outer
-  embedment, the tie slot lengths and the U tie's length and embedment.
+  inner leaf, L-post embedment, minimum gap to the outer leaf (**15 mm**),
+  minimum outer embedment, the tie slot lengths and the `EDC25-U tie`'s length
+  and embedment. The U tie's length is this one figure: edit it here or in the
+  tie table, it is the same value.
 - **Ties** — a capacity for every tie, and the outer tie sizes themselves can
   be added, removed or re-measured. Actual length drives selection.
 
 A tie level is as strong as its weaker tie, except a DU, which carries two
-inner and two outer ties and adds them. Edits are highlighted, kept in the
+inner and two outer ties and adds them. At the catalogue values the U tie
+cannot reach the outer leaf — it projects 65.23 mm, against the 70 mm a 15 mm
+gap needs — so that use opens only if the minimum gap or the minimum outer
+embedment is lowered here. Edits are highlighted, kept in the
 browser, saved inside the project JSON and printed on the calculation record;
 *Reset* returns to the catalogue.
 

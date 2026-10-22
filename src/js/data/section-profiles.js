@@ -22,9 +22,9 @@
   ]);
 
   const FAMILIES = Object.freeze({
-    U: Object.freeze({ code: "U", label: "U-shaped post", cantilever: true, innerTie: "U tie" }),
+    U: Object.freeze({ code: "U", label: "U-shaped post", cantilever: true, innerTie: "EDC25-U tie" }),
     L: Object.freeze({ code: "L", label: "L-shaped post", cantilever: true, innerTie: "Shear tie" }),
-    DU: Object.freeze({ code: "DU", label: "Double-U post", cantilever: false, innerTie: "U tie" }),
+    DU: Object.freeze({ code: "DU", label: "Double-U post", cantilever: false, innerTie: "EDC25-U tie" }),
     I: Object.freeze({ code: "I", label: "I (flat plate) post", cantilever: false, innerTie: "Shear tie" })
   });
   const supportsCantilever = (type) => Boolean(FAMILIES[type] && FAMILIES[type].cantilever);

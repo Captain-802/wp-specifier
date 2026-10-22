@@ -68,12 +68,21 @@ const uTie = W.outerTieSelectionEngine.calculateWallAndTie(up60, {
 assert(uTie.outerTie === "EDC25-100" && Math.abs(uTie.outerEmbedment_mm - 55.23) < 1e-6, "U outer-tie equation reproduces EDC25-100 with 55.23 mm embedment (drawing geometry)");
 
 const up85 = W.uSectionDatabase.sections.find((section) => section.name === "UP 85x60x4");
+// 106 - 6 clearance - 85 deep leaves exactly the 15 mm minimum gap.
 const shortGapTie = W.outerTieSelectionEngine.calculateWallAndTie(up85, {
   innerLeafThickness_mm: 100,
-  cavityWidth_mm: 100,
+  cavityWidth_mm: 106,
   outerLeafThickness_mm: 100
 });
-assert(shortGapTie.outerTie === "EDC25-100" && Math.abs(shortGapTie.outerEmbedment_mm - 80.23) < 1e-6, "EDC25-100 is used for a short outer gap; no U-Tie branch remains");
+assert(shortGapTie.outerTie === "EDC25-100" && Math.abs(shortGapTie.outerEmbedment_mm - 74.23) < 1e-6, "EDC25-100 is used at the smallest gap the rules allow");
+
+// One millimetre tighter and the post no longer fits.
+const tooTight = W.outerTieSelectionEngine.calculateWallAndTie(up85, {
+  innerLeafThickness_mm: 100,
+  cavityWidth_mm: 105,
+  outerLeafThickness_mm: 100
+});
+assert(!tooTight.suitable && /at least 15 mm is required/.test(tooTight.reason), "a gap under 15 mm is refused");
 
 const lp125 = W.lSectionDatabase.sections.find((section) => section.name === "LP 125x70x4");
 const lTie = W.outerTieSelectionEngine.calculateWallAndTie(lp125, {
@@ -83,7 +92,7 @@ const lTie = W.outerTieSelectionEngine.calculateWallAndTie(lp125, {
 });
 assert(lTie.postProjectionIntoCavity_mm === 35 && lTie.outerTie === "EDC25-125" && Math.abs(lTie.outerEmbedment_mm - 59.23) < 1e-6, "L placement uses 90 mm inner embedment and selects the outer EDC tie");
 
-assert(uTie.innerTie === "U tie", "U post inner-leaf tie is labelled 'U tie'");
+assert(uTie.innerTie === "EDC25-U tie", "the U post's inner-leaf tie carries the catalogue name");
 assert(
   uTie.innerTieActualLength_mm === 84 &&
   Math.abs(uTie.innerTieEmbedment_mm - 65.23) < 1e-9 &&
@@ -255,15 +264,25 @@ assert(true, "the final design value is rounded down to 2 dp, never up");
 (function uTieServesTheOuterLeaf() {
   const E = context.window.Windpost.outerTieSelectionEngine;
   const P = context.window.Windpost.sectionProfileEngine;
+  const D = context.window.Windpost.designData;
   const sec = (n) => P.getSections("U", "cantilever").find((s) => s.name === n);
   const run = (n, cavity, outer) => E.calculateWallAndTie(sec(n), {
     innerLeafThickness_mm: 100, cavityWidth_mm: cavity, outerLeafThickness_mm: outer
   });
 
+  // At the 15 mm minimum gap the U tie can never reach the outer leaf: it
+  // projects 84 - 18.77 = 65.23 mm, against 15 + 55 = 70 mm required. The
+  // branch therefore only opens if the gap or the outer embedment is
+  // lowered in the design data.
+  const atDefault = run("UP 120x80x8", 130, 75);
+  assert(!atDefault.suitable, "a 4 mm gap is refused at the 15 mm default");
+
+  assert(D.setDesign("minimumOuterGap_mm", 4), "the minimum gap is editable");
+
   // Thin outer leaf: EDC25-100 would drive 85.23 mm into a 75 mm leaf.
   const tight = run("UP 120x80x8", 130, 75);
-  assert(tight.suitable && tight.outerTie === "U tie",
-    "a tight cavity with a thin outer leaf uses a U tie on the outer leaf");
+  assert(tight.suitable && tight.outerTie === "EDC25-U tie",
+    "a tight cavity with a thin outer leaf uses the U tie on the outer leaf");
   assert(tight.outerEmbedment_mm <= 75 + 1e-9,
     "the U tie stays within the outer leaf");
 
@@ -285,6 +304,10 @@ assert(true, "the final design value is rounded down to 2 dp, never up");
         `outer embedment stays within the ${o} mm leaf at ${c} mm cavity`);
     }
   });
+
+  D.reset("design");
+  assert(D.designSpec().find((d) => d.key === "minimumOuterGap_mm").current === 15,
+    "the minimum gap returns to its 15 mm catalogue value");
 })();
 assert(true, "the U tie is scanned for the outer leaf when the cavity is tight");
 

@@ -80,14 +80,24 @@ Every one of these is editable in the Design constants panel.
 
 ## Tie rules
 
-- U/DU inner-leaf tie: the U tie, `84 mm` actual with `65.23 mm` embedment into
-  the inner leaf; the post is held `6 mm` clear of the inner leaf.
+- U/DU inner-leaf tie: the `EDC25-U tie`, `84 mm` actual with `65.23 mm`
+  embedment into the inner leaf; the post is held `6 mm` clear of the inner
+  leaf.
 - L/I inner-leaf tie: the shear tie.
 - Outer-leaf tie: an EDC25 tie, `EDC25-100` to `EDC25-375` in 25 mm steps —
-  **or the U tie**, which is preferred over no solution when the cavity is
-  tight enough for the U tie to reach and still fit the outer leaf.
+  **or the `EDC25-U tie`**, which is taken over no solution at all when the
+  cavity is tight enough for it to reach and still fit the outer leaf. It is
+  one product with one name, so the tie table lists it once, under **Either
+  leaf**.
 - Minimum outer-leaf embedment: `55 mm`. Minimum clear gap to the outer leaf:
-  `4 mm`.
+  `15 mm`.
+
+  Those two together close the U tie's outer-leaf branch at the catalogue
+  values: it projects `84 − 18.77 = 65.23 mm` from the post face, while
+  reaching the outer leaf needs `gap + 55`, which is `70 mm` at a 15 mm gap.
+  The U tie reaches the outer leaf only where the gap is `10.23 mm` or less,
+  so the branch opens only if the minimum gap or the minimum embedment is
+  lowered in the Design constants.
 - Tie geometry from the EDC drawings: actual length = nominal + `8 mm`
   (`EDC25-125` is 133 mm overall). The windpost slot consumes the `7.6 mm`
   notch plus the `11.17 mm` tail beyond it (`18.77 mm`), so the length

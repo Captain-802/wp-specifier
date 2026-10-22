@@ -20,6 +20,12 @@
       DU: (P.tieStrength && (P.tieStrength.DU ?? P.tieStrength.U)) ?? 1.713,
       I: (P.tieStrength && (P.tieStrength.I ?? P.tieStrength.L)) ?? 2.25
     }),
+    // The U tie is one product: it ties a U or DU post back to the inner leaf
+    // and, in a tight cavity, serves the outer leaf as well. One name, so the
+    // schedule, the editable tie table and the selection engine all mean the
+    // same tie.
+    U_TIE_NAME: "EDC25-U tie",
+    SHEAR_TIE_NAME: "Shear tie",
     // Ties of EACH kind at one scheduled level. A DU is tied through both
     // channels: 2 U ties inner and 2 EDC ties outer, so four ties in all at
     // that level. This drives the supply counts and the level capacity, which

@@ -45,7 +45,8 @@
       </tr>`;
       return `<div class="dd-table-wrap"><table class="dd-table">
         <thead><tr><th>Tie</th><th>Used by</th><th>Nominal (mm)</th><th>Actual length (mm)</th><th>Width (mm)</th><th>Thk (mm)</th><th>Capacity (kN)</th><th>Catalogue (kN)</th><th></th></tr></thead>
-        <tbody>${rows.filter(t => t.kind === "outer").map(line).join("")}
+        <tbody><tr class="dd-group"><td colspan="9">Outer-leaf ties</td></tr>
+        ${rows.filter(t => t.kind === "outer").map(line).join("")}
         <tr class="dd-add" data-form="tie">
           <td class="dd-name"><input type="text" data-add="name" placeholder="EDC25-400" aria-label="New tie name"></td>
           <td>U, L, DU</td>
@@ -57,9 +58,11 @@
           <td></td>
           <td><button type="button" class="secondary-button" data-action="add-tie">Add tie</button></td>
         </tr>
+        <tr class="dd-group"><td colspan="9">Either leaf</td></tr>
+        ${rows.filter(t => t.kind === "both").map(line).join("")}
         <tr class="dd-group"><td colspan="9">Inner-leaf ties</td></tr>
         ${rows.filter(t => t.kind === "inner").map(line).join("")}</tbody></table></div>
-        <p class="dd-note">Outer tie sizes can be added, removed or re-measured; the selector picks the shortest tie whose actual length reaches the outer leaf, so <strong>actual length</strong> drives selection. A tie level is only as strong as its weaker tie: level capacity = min(inner tie, outer tie selected for the wall). A DU carries two inner and two outer ties per level, so its level capacity is twice the weaker tie. Catalogue: U / DU 1.713 kN (U tie governs), L / I 2.250 kN.</p>`;
+        <p class="dd-note">Outer tie sizes can be added, removed or re-measured; the selector picks the shortest tie whose actual length reaches the outer leaf, so <strong>actual length</strong> drives selection. The EDC25-U tie ties a U or DU post back to the inner leaf and, where the cavity is too tight for the shortest EDC, serves the outer leaf as well; its length is the design constant, so editing it here or there is the same figure. A tie level is only as strong as its weaker tie: level capacity = min(inner tie, outer tie). A DU level carries two inner and two outer ties and adds them: 2 &times; outer + 2 &times; inner. Catalogue: U 1.713 kN (the U tie governs), L / I 2.250 kN, DU 7.926 kN per level.</p>`;
     }
 
     function designPanel() {

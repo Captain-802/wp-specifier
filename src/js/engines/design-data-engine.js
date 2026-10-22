@@ -30,6 +30,12 @@
   const P = (windpost.parameters && windpost.parameters.design) || {};
   const DB = windpost.connectionsDatabase || { connections: [], anchors: [], boltSkus: [] };
   const FAMILY_STRENGTH = config.DEFAULT_TIE_STRENGTH_KN || { U: 1.713, L: 2.25, DU: 1.713, I: 2.25 };
+  // One product, one name, wherever it appears.
+  const U_TIE = config.U_TIE_NAME || "EDC25-U tie";
+  const SHEAR_TIE = config.SHEAR_TIE_NAME || "Shear tie";
+  // What the tie list used to call the U tie. A project or a browser saved
+  // before the rename keys its edits on the old name.
+  const LEGACY_TIE_NAMES = Object.freeze({ "U tie": U_TIE });
 
   const BOLT_FAMILIES = Object.freeze(["Stainless Steel Bolts", "RGM BOLTS", "FAZ II BOLTS", "FAZ II PLUS BOLTS"]);
   const ANCHOR_FAMILIES = Object.freeze(["RGM", "FAZ II", "FAZ II PLUS"]);
@@ -54,9 +60,11 @@
   // stronger family figure, the U tie the U figure and the shear tie the L
   // figure, so min(inner, outer) gives the published level strengths.
   const OUTER_DEFAULT_KN = Math.max(Number(FAMILY_STRENGTH.U) || 0, Number(FAMILY_STRENGTH.L) || 0);
+  // The U tie is "both": it ties a U or DU post back to the inner leaf, and
+  // in a cavity too tight for the shortest EDC it serves the outer leaf too.
   const INNER_TIES = Object.freeze([
-    { name: "U tie", label: "EDC25-U Tie", kind: "inner", posts: "U, DU", nominal_mm: null, actual_mm: 84, width_mm: 21, thickness_mm: 1.2, catalogue_kN: Number(FAMILY_STRENGTH.U) },
-    { name: "Shear tie", label: "Shear Tie", kind: "inner", posts: "L, I", nominal_mm: null, actual_mm: 240, width_mm: 21, thickness_mm: 1.2, catalogue_kN: Number(FAMILY_STRENGTH.L) }
+    { name: U_TIE, label: U_TIE, kind: "both", posts: "U, DU inner; any outer", nominal_mm: null, actual_mm: 84, width_mm: 21, thickness_mm: 1.2, catalogue_kN: Number(FAMILY_STRENGTH.U) },
+    { name: SHEAR_TIE, label: "Shear Tie", kind: "inner", posts: "L, I", nominal_mm: null, actual_mm: 240, width_mm: 21, thickness_mm: 1.2, catalogue_kN: Number(FAMILY_STRENGTH.L) }
   ]);
 
   function catalogueTies() {
@@ -74,9 +82,17 @@
       };
     });
     const shear = profiles && profiles.shearTie;
-    return outer.concat(INNER_TIES.map(t => t.name === "Shear tie" && shear
-      ? { ...t, actual_mm: shear.overallLength_mm, width_mm: shear.width_mm, thickness_mm: shear.thickness_mm }
-      : { ...t }));
+    // The U tie's length is held as a design constant, because it also sets
+    // the inner-leaf geometry; the table shows that one figure rather than a
+    // second copy of it.
+    const uLength = finite(designValues().uTieActualLength_mm);
+    return outer.concat(INNER_TIES.map(t => {
+      if (t.name === SHEAR_TIE && shear) {
+        return { ...t, actual_mm: shear.overallLength_mm, width_mm: shear.width_mm, thickness_mm: shear.thickness_mm };
+      }
+      if (t.name === U_TIE && uLength !== null) return { ...t, actual_mm: uLength };
+      return { ...t };
+    }));
   }
 
   const PT = (windpost.parameters && windpost.parameters.tie) || {};
@@ -92,12 +108,12 @@
     // Wall geometry: clearances, embedments and the tie slot connection.
     { key: "uInnerClearance_mm", label: "U post clear of inner leaf", hint: "gap between a U/DU post and the inner leaf", unit: "mm", decimals: 1, min: 0, max: 200, value: PT.uInnerClearance_mm ?? 6 },
     { key: "lInnerLeafEmbedment_mm", label: "L post embedment into inner leaf", hint: "how far an L/I post sits inside the inner leaf", unit: "mm", decimals: 1, min: 0, max: 300, value: PT.lInnerLeafEmbedment_mm ?? 90 },
-    { key: "minimumOuterGap_mm", label: "Minimum clear gap to outer leaf", hint: "least space allowed between post and outer leaf", unit: "mm", decimals: 1, min: 0, max: 200, value: PT.minGap_mm ?? 4 },
+    { key: "minimumOuterGap_mm", label: "Minimum clear gap to outer leaf", hint: "least space allowed between post and outer leaf", unit: "mm", decimals: 1, min: 0, max: 200, value: PT.minGap_mm ?? 15 },
     { key: "minimumOuterEmbedment_mm", label: "Minimum outer tie embedment", hint: "least tie embedment into the outer leaf", unit: "mm", decimals: 1, min: 0, max: 300, value: PT.minEmbedment_mm ?? 55 },
     { key: "tieNotchLength_mm", label: "Tie notch length", hint: "consumed by the windpost slot", unit: "mm", decimals: 2, min: 0, max: 100, value: PT.notch_mm ?? 7.6 },
     { key: "tieTailBeyondNotch_mm", label: "Tie tail beyond notch", hint: "consumed beyond the notch", unit: "mm", decimals: 2, min: 0, max: 100, value: PT.tailBeyondNotch_mm ?? 11.17 },
-    { key: "uTieActualLength_mm", label: "U tie actual length", hint: "inner-leaf U tie", unit: "mm", decimals: 1, min: 1, max: 500, value: PT.uTieActualLength_mm ?? 84 },
-    { key: "uTieInnerEmbedment_mm", label: "U tie inner-leaf embedment", hint: "inner-leaf U tie", unit: "mm", decimals: 2, min: 0, max: 500, value: PT.uTieInnerEmbedment_mm ?? 65.23 }
+    { key: "uTieActualLength_mm", label: "EDC25-U tie actual length", hint: "the U tie, inner leaf or outer", unit: "mm", decimals: 1, min: 1, max: 500, value: PT.uTieActualLength_mm ?? 84 },
+    { key: "uTieInnerEmbedment_mm", label: "EDC25-U tie inner-leaf embedment", hint: "the U tie in the inner leaf", unit: "mm", decimals: 2, min: 0, max: 500, value: PT.uTieInnerEmbedment_mm ?? 65.23 }
   ]);
 
   function catalogueAnchors() {
@@ -177,9 +193,10 @@
       out.capacity_kN = capEdited ? store.ties[row.name] : row.catalogue_kN;
       out.edited = capEdited || Object.keys(fields).length > 0 || row.added;
       return out;
-    }).sort((a, b) => (a.kind === b.kind)
-      ? (Number(a.actual_mm) || 0) - (Number(b.actual_mm) || 0)
-      : (a.kind === "outer" ? -1 : 1));
+    }).sort((a, b) => {
+      const rank = row => (row.kind === "outer" ? 0 : row.kind === "both" ? 1 : 2);
+      return (rank(a) - rank(b)) || ((Number(a.actual_mm) || 0) - (Number(b.actual_mm) || 0));
+    });
   }
 
   // The outer tie sizes the selection engine actually uses.
@@ -192,6 +209,9 @@
     if (!TIE_GEOMETRY.includes(key)) return false;
     const row = tieRows().find(t => t.name === name);
     if (!row) return false;
+    // The U tie's length lives in the design constants, so an edit here goes
+    // to the same place rather than leaving the two views disagreeing.
+    if (name === U_TIE && key === "actual_mm") return setDesign("uTieActualLength_mm", value);
     const v = finite(value);
     if (v === null || v < 0) return false;
     const added = store.tiesAdded.find(t => t.name === name);
@@ -256,7 +276,7 @@
   }
 
   function innerTieName(type) {
-    return type === "L" || type === "I" ? "Shear tie" : "U tie";
+    return type === "L" || type === "I" ? SHEAR_TIE : U_TIE;
   }
 
   // The level capacity for a post: the weaker of its inner tie and the
@@ -555,12 +575,36 @@
     return clone(store);
   }
 
+  // A store written before the U tie was renamed keys its edits on the old
+  // name, so those keys are moved across rather than silently dropped.
+  function renameLegacyTies(value) {
+    let src;
+    // restore() accepts anything, so a value that will not clone is handed
+    // back untouched for the field-by-field checks below to reject.
+    try { src = clone(value); } catch (error) { return value; }
+    Object.keys(LEGACY_TIE_NAMES).forEach(was => {
+      const now = LEGACY_TIE_NAMES[was];
+      if (src.ties && Object.prototype.hasOwnProperty.call(src.ties, was)) {
+        if (!Object.prototype.hasOwnProperty.call(src.ties, now)) src.ties[now] = src.ties[was];
+        delete src.ties[was];
+      }
+      if (src.tieFields && Object.prototype.hasOwnProperty.call(src.tieFields, was)) {
+        if (!Object.prototype.hasOwnProperty.call(src.tieFields, now)) src.tieFields[now] = src.tieFields[was];
+        delete src.tieFields[was];
+      }
+      if (Array.isArray(src.tiesRemoved)) {
+        src.tiesRemoved = src.tiesRemoved.map(n => (n === was ? now : n));
+      }
+    });
+    return src;
+  }
+
   // Accepts a serialized store (or null to clear). Unknown keys and bad
   // values are dropped, so a hand-edited file cannot break the engines.
   function restore(value) {
     const fresh = empty();
     if (value && typeof value === "object") {
-      const src = value;
+      const src = renameLegacyTies(value);
       const ties = catalogueTies();
       Object.keys(src.ties || {}).forEach(name => {
         const n = finite(src.ties[name]);

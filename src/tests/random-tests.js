@@ -86,7 +86,11 @@ function independentWall(section, wall) {
     gap = cavity - projection;
   }
 
-  if (projection < 0 || gap < 4) return { suitable: false, reason: "post fit", projection, gap };
+  // The post must leave at least the minimum clear gap to the outer leaf.
+  // At that gap the U tie can never reach the outer leaf (it projects
+  // 84 - 18.77 = 65.23 mm, against 15 + 55 = 70 mm required), so the EDC
+  // sizes below are the whole candidate list.
+  if (projection < 0 || gap < 15) return { suitable: false, reason: "post fit", projection, gap };
   // Drawing geometry: actual tie = nominal + 8, slot connection consumes
   // 7.6 + 11.17 = 18.77 mm, minimum outer embedment 55 mm.
   const requiredProjection = gap + 55;
@@ -114,11 +118,14 @@ function independentCalculation(section, input) {
     ? Math.max(0, Math.floor((input.length_mm - 50) / 225))
     : Math.max(0, Math.floor((input.length_mm - 225) / 225));
   const expectedTieCapacity = expectedTieCount * W.config.DEFAULT_TIE_STRENGTH_KN[input.type];
-  const expectedFinalCapacity = Math.min(
+  const governing = Math.min(
     calculation.ultimateLoadDeflectionBased,
     calculation.ultimateLoadBendingMomentBased,
     expectedTieCapacity
   );
+  // The published figure is the governing value rounded DOWN to 2 dp, so the
+  // post is never credited with capacity it does not have.
+  const expectedFinalCapacity = Math.floor(governing * 100 + 1e-9) / 100;
   return { calculation, expectedTieCount, expectedTieCapacity, expectedFinalCapacity };
 }
 
