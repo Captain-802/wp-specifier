@@ -30,6 +30,8 @@ const SEED = 18072026;
 const AUTOMATIC_CASES = 1200;
 const MANUAL_CASES = 400;
 const EDC_LENGTHS = [100, 125, 150, 175, 200, 225, 250, 275, 300, 325, 350, 375];
+// The U tie: 84 mm actual, the one tie that can serve either leaf.
+const U_TIE_ACTUAL = 84;
 
 function mulberry32(seed) {
   return function random() {
@@ -87,18 +89,23 @@ function independentWall(section, wall) {
   }
 
   // The post must leave at least the minimum clear gap to the outer leaf.
-  // At that gap the U tie can never reach the outer leaf (it projects
-  // 84 - 18.77 = 65.23 mm, against 15 + 55 = 70 mm required), so the EDC
-  // sizes below are the whole candidate list.
   if (projection < 0 || gap < 15) return { suitable: false, reason: "post fit", projection, gap };
   // Drawing geometry: actual tie = nominal + 8, slot connection consumes
-  // 7.6 + 11.17 = 18.77 mm, minimum outer embedment 55 mm.
-  const requiredProjection = gap + 55;
-  const tieLength = EDC_LENGTHS.find((length) => length + 8 - 18.77 + 1e-9 >= requiredProjection);
-  if (!tieLength) return { suitable: false, reason: "tie length", projection, gap, requiredProjection };
-  const embedment = tieLength + 8 - 18.77 - gap;
-  if (embedment > outer) return { suitable: false, reason: "outer leaf", projection, gap, tieLength, embedment };
-  return { suitable: true, projection, gap, tieLength, embedment };
+  // 7.6 + 11.17 = 18.77 mm, minimum outer embedment 50 mm.
+  const requiredProjection = gap + 50;
+  const reaches = (actual) => actual - 18.77 + 1e-9 >= requiredProjection;
+  const fits = (actual) => actual - 18.77 - gap <= outer + 1e-9;
+  // The EDC sizes first, shortest that reaches; then the U tie, which at
+  // 84 mm projects 65.23 mm, so it reaches a gap of 15.23 mm or less. It is
+  // taken only where no EDC both reaches and stays inside the outer leaf.
+  const edc = EDC_LENGTHS.map((length) => ({ length, actual: length + 8 })).filter((t) => reaches(t.actual));
+  const chosen = edc.find((t) => fits(t.actual))
+    || (reaches(U_TIE_ACTUAL) && fits(U_TIE_ACTUAL) ? { length: null, actual: U_TIE_ACTUAL } : null)
+    || edc[0];
+  if (!chosen) return { suitable: false, reason: "tie length", projection, gap, requiredProjection };
+  const embedment = chosen.actual - 18.77 - gap;
+  if (embedment > outer) return { suitable: false, reason: "outer leaf", projection, gap, tieLength: chosen.length, embedment };
+  return { suitable: true, projection, gap, tieLength: chosen.length, embedment };
 }
 
 function independentCalculation(section, input) {
@@ -191,7 +198,7 @@ for (let index = 0; index < AUTOMATIC_CASES; index += 1) {
   check(close(selected.calculation.totalTiesCapacity, expected.expectedTieCapacity), "ultimate tie capacity differs from count times per-tie strength", { index, input });
   check(selected.wall.selectedTieLength_mm === expected.wall.tieLength, "outer EDC tie differs from independent discrete selection", { index, input, actual: selected.wall.selectedTieLength_mm, expected: expected.wall.tieLength });
   check(close(selected.wall.outerEmbedment_mm, expected.wall.embedment), "outer tie embedment equation differs", { index, input, actual: selected.wall.outerEmbedment_mm, expected: expected.wall.embedment });
-  check(selected.wall.outerEmbedment_mm >= 55 && selected.wall.outerEmbedment_mm <= input.wall.outerLeafThickness_mm, "outer tie embedment is outside accepted geometry", { index, input, embedment: selected.wall.outerEmbedment_mm });
+  check(selected.wall.outerEmbedment_mm >= 50 && selected.wall.outerEmbedment_mm <= input.wall.outerLeafThickness_mm, "outer tie embedment is outside accepted geometry", { index, input, embedment: selected.wall.outerEmbedment_mm });
 
   statistics.selectedTies[selected.wall.selectedTieLength_mm] += 1;
   if (samples.length < 12) {

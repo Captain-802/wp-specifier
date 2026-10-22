@@ -38,7 +38,7 @@
       ]),
       notch_mm: 7.6,
       tailBeyondNotch_mm: 11.17,
-      minEmbedment_mm: 55,
+      minEmbedment_mm: 50,
       minGap_mm: 15,
       uInnerClearance_mm: 6,
       uTieActualLength_mm: 84,

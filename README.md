@@ -71,10 +71,9 @@ Step 6 opens the workbook's editable figures in the page:
   be added, removed or re-measured. Actual length drives selection.
 
 A tie level is as strong as its weaker tie, except a DU, which carries two
-inner and two outer ties and adds them. At the catalogue values the U tie
-cannot reach the outer leaf — it projects 65.23 mm, against the 70 mm a 15 mm
-gap needs — so that use opens only if the minimum gap or the minimum outer
-embedment is lowered here. Edits are highlighted, kept in the
+inner and two outer ties and adds them. The minimum outer tie embedment is
+50 mm, so the `EDC25-U tie` serves the outer leaf where the clear gap is
+15.23 mm or less and the EDC that would reach is too long for the leaf. Edits are highlighted, kept in the
 browser, saved inside the project JSON and printed on the calculation record;
 *Reset* returns to the catalogue.
 

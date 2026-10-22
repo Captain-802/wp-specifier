@@ -89,15 +89,14 @@ Every one of these is editable in the Design constants panel.
   cavity is tight enough for it to reach and still fit the outer leaf. It is
   one product with one name, so the tie table lists it once, under **Either
   leaf**.
-- Minimum outer-leaf embedment: `55 mm`. Minimum clear gap to the outer leaf:
+- Minimum outer-leaf embedment: `50 mm`. Minimum clear gap to the outer leaf:
   `15 mm`.
 
-  Those two together close the U tie's outer-leaf branch at the catalogue
-  values: it projects `84 − 18.77 = 65.23 mm` from the post face, while
-  reaching the outer leaf needs `gap + 55`, which is `70 mm` at a 15 mm gap.
-  The U tie reaches the outer leaf only where the gap is `10.23 mm` or less,
-  so the branch opens only if the minimum gap or the minimum embedment is
-  lowered in the Design constants.
+  The U tie projects `84 − 18.77 = 65.23 mm` from the post face, and reaching
+  the outer leaf needs `gap + 50`, so it serves the outer leaf where the gap
+  is `15.23 mm` or less — that is, at the tightest cavity the 15 mm rule
+  allows, and only where the EDC that would reach is too long for the outer
+  leaf.
 - Tie geometry from the EDC drawings: actual length = nominal + `8 mm`
   (`EDC25-125` is 133 mm overall). The windpost slot consumes the `7.6 mm`
   notch plus the `11.17 mm` tail beyond it (`18.77 mm`), so the length

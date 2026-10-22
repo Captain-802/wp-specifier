@@ -109,7 +109,7 @@
     { key: "uInnerClearance_mm", label: "U post clear of inner leaf", hint: "gap between a U/DU post and the inner leaf", unit: "mm", decimals: 1, min: 0, max: 200, value: PT.uInnerClearance_mm ?? 6 },
     { key: "lInnerLeafEmbedment_mm", label: "L post embedment into inner leaf", hint: "how far an L/I post sits inside the inner leaf", unit: "mm", decimals: 1, min: 0, max: 300, value: PT.lInnerLeafEmbedment_mm ?? 90 },
     { key: "minimumOuterGap_mm", label: "Minimum clear gap to outer leaf", hint: "least space allowed between post and outer leaf", unit: "mm", decimals: 1, min: 0, max: 200, value: PT.minGap_mm ?? 15 },
-    { key: "minimumOuterEmbedment_mm", label: "Minimum outer tie embedment", hint: "least tie embedment into the outer leaf", unit: "mm", decimals: 1, min: 0, max: 300, value: PT.minEmbedment_mm ?? 55 },
+    { key: "minimumOuterEmbedment_mm", label: "Minimum outer tie embedment", hint: "least tie embedment into the outer leaf", unit: "mm", decimals: 1, min: 0, max: 300, value: PT.minEmbedment_mm ?? 50 },
     { key: "tieNotchLength_mm", label: "Tie notch length", hint: "consumed by the windpost slot", unit: "mm", decimals: 2, min: 0, max: 100, value: PT.notch_mm ?? 7.6 },
     { key: "tieTailBeyondNotch_mm", label: "Tie tail beyond notch", hint: "consumed beyond the notch", unit: "mm", decimals: 2, min: 0, max: 100, value: PT.tailBeyondNotch_mm ?? 11.17 },
     { key: "uTieActualLength_mm", label: "EDC25-U tie actual length", hint: "the U tie, inner leaf or outer", unit: "mm", decimals: 1, min: 1, max: 500, value: PT.uTieActualLength_mm ?? 84 },

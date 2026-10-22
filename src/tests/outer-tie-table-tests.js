@@ -111,9 +111,10 @@ const formerUTieCells = [
 
 for (const cell of formerUTieCells) verifyUReference(...cell);
 
-// Exercise each EDC length and the exact 55 mm minimum-embedment boundary.
+// Exercise each EDC length at the gap that embeds it exactly 55 mm.
 // Usable projection = nominal + 8 − 18.77, so 55 mm embedment occurs at
-// gap = nominal − 65.77.
+// gap = nominal − 65.77. (This is a geometric boundary, not the 50 mm
+// minimum: the next size down still falls short of reaching.)
 for (const tieLength of W.outerTieSelectionEngine.EDC_TIE_LENGTHS_MM) {
   const gap = tieLength - 65.77;
   const cavity = gap + 6 + 55;
@@ -200,6 +201,6 @@ if (failures.length) {
 
 console.log(`PASS: ${uEdcReferenceCells.length} uploaded U-table EDC cells match exactly.`);
 console.log(`PASS: ${formerUTieCells.length} former U-Tie cells follow the confirmed EDC25-100-only rule.`);
-console.log(`PASS: all ${W.outerTieSelectionEngine.EDC_TIE_LENGTHS_MM.length} EDC boundary lengths select with 55 mm embedment.`);
+console.log(`PASS: all ${W.outerTieSelectionEngine.EDC_TIE_LENGTHS_MM.length} EDC lengths select at the gap that embeds them 55 mm.`);
 console.log(`PASS: ${lReferences.length} L-post placement and outer-tie cases match the 90 mm inner-leaf embedment rule.`);
 console.log(`PASS: ${automaticCases.length} complete automatic designs carry the correct selected outer tie.`);

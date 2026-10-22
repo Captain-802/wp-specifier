@@ -71,7 +71,7 @@
     uTieInnerEmbedment_mm: P.uTieInnerEmbedment_mm ?? 65.23,
     lInnerLeafEmbedment_mm: P.lInnerLeafEmbedment_mm ?? 90,
     minimumOuterGap_mm: P.minGap_mm ?? 15,
-    minimumOuterEmbedment_mm: P.minEmbedment_mm ?? 55,
+    minimumOuterEmbedment_mm: P.minEmbedment_mm ?? 50,
     // The windpost-slot connection consumes the 7.6 mm notch plus the 11.17 mm
     // tail beyond it, so the length available from the post face is the tie's
     // ACTUAL length minus 18.77 mm.

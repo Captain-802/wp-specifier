@@ -270,24 +270,26 @@ assert(true, "the final design value is rounded down to 2 dp, never up");
     innerLeafThickness_mm: 100, cavityWidth_mm: cavity, outerLeafThickness_mm: outer
   });
 
-  // At the 15 mm minimum gap the U tie can never reach the outer leaf: it
-  // projects 84 - 18.77 = 65.23 mm, against 15 + 55 = 70 mm required. The
-  // branch therefore only opens if the gap or the outer embedment is
-  // lowered in the design data.
-  const atDefault = run("UP 120x80x8", 130, 75);
-  assert(!atDefault.suitable, "a 4 mm gap is refused at the 15 mm default");
-
-  assert(D.setDesign("minimumOuterGap_mm", 4), "the minimum gap is editable");
-
-  // Thin outer leaf: EDC25-100 would drive 85.23 mm into a 75 mm leaf.
-  const tight = run("UP 120x80x8", 130, 75);
+  // The U tie projects 84 - 18.77 = 65.23 mm, and reaching the outer leaf
+  // needs gap + 50, so it reaches only where the gap is 15.23 mm or less.
+  // With the minimum gap at 15 mm that leaves a narrow band, right at the
+  // tightest cavity the rules allow.
+  //
+  // UP 85x60x4 sits 6 mm clear, so a 106 mm cavity leaves exactly 15 mm.
+  // EDC25-100 would drive 74.23 mm into a 70 mm leaf, so the U tie is used.
+  const tight = run("UP 85x60x4", 106, 70);
   assert(tight.suitable && tight.outerTie === "EDC25-U tie",
     "a tight cavity with a thin outer leaf uses the U tie on the outer leaf");
-  assert(tight.outerEmbedment_mm <= 75 + 1e-9,
-    "the U tie stays within the outer leaf");
+  assert(Math.abs(tight.outerEmbedment_mm - 50.23) < 1e-9,
+    "the U tie embeds 50.23 mm, inside the 70 mm leaf");
 
-  // Same post, normal outer leaf: the stronger EDC is preferred.
-  const roomy = run("UP 120x80x8", 130, 100);
+  // One millimetre wider and the U tie no longer reaches; the EDC that does
+  // reach would burst through the thin leaf, so nothing suits.
+  const justPast = run("UP 85x60x4", 107, 70);
+  assert(!justPast.suitable, "past 15.23 mm of gap the U tie cannot reach the outer leaf");
+
+  // Same wall, ordinary outer leaf: the stronger EDC is preferred.
+  const roomy = run("UP 85x60x4", 106, 100);
   assert(roomy.suitable && roomy.outerTie === "EDC25-100",
     "an EDC tie is preferred whenever one fits");
 
@@ -305,9 +307,10 @@ assert(true, "the final design value is rounded down to 2 dp, never up");
     }
   });
 
-  D.reset("design");
   assert(D.designSpec().find((d) => d.key === "minimumOuterGap_mm").current === 15,
-    "the minimum gap returns to its 15 mm catalogue value");
+    "the minimum clear gap to the outer leaf is 15 mm");
+  assert(D.designSpec().find((d) => d.key === "minimumOuterEmbedment_mm").current === 50,
+    "the minimum outer tie embedment is 50 mm");
 })();
 assert(true, "the U tie is scanned for the outer leaf when the cavity is tight");
 
