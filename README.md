@@ -46,9 +46,11 @@ Pick a windpost and its ties:
 - **Wall build-up** — inner leaf, cavity and outer leaf verify the post fits
   and select the outer-leaf tie.
 - **Ties** — inner-leaf tie by family (`EDC25-U tie` for U/DU, shear tie for
-  L/I) and the shortest outer tie that reaches without burying itself past the
-  back of the outer leaf. The `EDC25-U tie` is one product that can serve
-  either leaf, so the tie table lists it once, under **Either leaf**.
+  L/I) and, for the outer leaf, the `EDC25-U tie` first — it is the shortest
+  EDC25 product, so it is the one that reaches in a tight cavity — then the
+  EDC sizes, shortest that reaches without burying itself past the back of the
+  leaf. It is one product serving either leaf, so the tie table lists it once,
+  under **Either leaf**.
 - **Output** — section, final ULS capacity, governing check, utilisation, the
   next suitable sections, the tie schedule, post weights and a printable
   calculation record.
@@ -71,9 +73,11 @@ Step 6 opens the workbook's editable figures in the page:
   be added, removed or re-measured. Actual length drives selection.
 
 A tie level is as strong as its weaker tie, except a DU, which carries two
-inner and two outer ties and adds them. The minimum outer tie embedment is
-50 mm, so the `EDC25-U tie` serves the outer leaf where the clear gap is
-15.23 mm or less and the EDC that would reach is too long for the leaf. Edits are highlighted, kept in the
+inner and two outer ties and adds them. The `EDC25-U tie` is checked first
+for the outer leaf and is taken wherever the clear gap is 15.23 mm or less;
+past that it cannot reach and an EDC size is used. A U post keeps the same
+level capacity either way, while an L or DU post carries less on the walls
+where the U tie is used. Edits are highlighted, kept in the
 browser, saved inside the project JSON and printed on the calculation record;
 *Reset* returns to the catalogue.
 

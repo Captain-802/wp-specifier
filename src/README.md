@@ -84,19 +84,23 @@ Every one of these is editable in the Design constants panel.
   embedment into the inner leaf; the post is held `6 mm` clear of the inner
   leaf.
 - L/I inner-leaf tie: the shear tie.
-- Outer-leaf tie: an EDC25 tie, `EDC25-100` to `EDC25-375` in 25 mm steps —
-  **or the `EDC25-U tie`**, which is taken over no solution at all when the
-  cavity is tight enough for it to reach and still fit the outer leaf. It is
-  one product with one name, so the tie table lists it once, under **Either
-  leaf**.
+- Outer-leaf tie: the **`EDC25-U tie` is checked first** — it is an EDC25
+  product like the rest and, being the shortest, it is the one that reaches in
+  a tight cavity. The `EDC25-100` to `EDC25-375` sizes follow, shortest that
+  reaches. It is one product with one name, so the tie table lists it once,
+  under **Either leaf**.
+
+  What that costs: a U post is unaffected (its inner tie is the U tie, and the
+  weaker of the two governs, so the level stays at `1.713 kN` either way). An
+  L post drops from `2.250` to `1.713 kN` per level and a DU from `7.926` to
+  `6.852 kN` on the walls where the U tie reaches.
 - Minimum outer-leaf embedment: `50 mm`. Minimum clear gap to the outer leaf:
   `15 mm`.
 
   The U tie projects `84 − 18.77 = 65.23 mm` from the post face, and reaching
-  the outer leaf needs `gap + 50`, so it serves the outer leaf where the gap
-  is `15.23 mm` or less — that is, at the tightest cavity the 15 mm rule
-  allows, and only where the EDC that would reach is too long for the outer
-  leaf.
+  the outer leaf needs `gap + 50`, so it is taken where the gap is `15.23 mm`
+  or less — the tightest band the 15 mm minimum allows. Beyond that it cannot
+  reach and an EDC size is used.
 - Tie geometry from the EDC drawings: actual length = nominal + `8 mm`
   (`EDC25-125` is 133 mm overall). The windpost slot consumes the `7.6 mm`
   notch plus the `11.17 mm` tail beyond it (`18.77 mm`), so the length

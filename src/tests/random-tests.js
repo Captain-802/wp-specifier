@@ -95,12 +95,11 @@ function independentWall(section, wall) {
   const requiredProjection = gap + 50;
   const reaches = (actual) => actual - 18.77 + 1e-9 >= requiredProjection;
   const fits = (actual) => actual - 18.77 - gap <= outer + 1e-9;
-  // The EDC sizes first, shortest that reaches; then the U tie, which at
-  // 84 mm projects 65.23 mm, so it reaches a gap of 15.23 mm or less. It is
-  // taken only where no EDC both reaches and stays inside the outer leaf.
+  // The U tie is checked first: at 84 mm it projects 65.23 mm, so it reaches
+  // a gap of 15.23 mm or less. The EDC sizes follow, shortest that reaches.
   const edc = EDC_LENGTHS.map((length) => ({ length, actual: length + 8 })).filter((t) => reaches(t.actual));
-  const chosen = edc.find((t) => fits(t.actual))
-    || (reaches(U_TIE_ACTUAL) && fits(U_TIE_ACTUAL) ? { length: null, actual: U_TIE_ACTUAL } : null)
+  const chosen = (reaches(U_TIE_ACTUAL) && fits(U_TIE_ACTUAL) ? { length: null, actual: U_TIE_ACTUAL } : null)
+    || edc.find((t) => fits(t.actual))
     || edc[0];
   if (!chosen) return { suitable: false, reason: "tie length", projection, gap, requiredProjection };
   const embedment = chosen.actual - 18.77 - gap;

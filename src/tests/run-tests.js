@@ -74,7 +74,8 @@ const shortGapTie = W.outerTieSelectionEngine.calculateWallAndTie(up85, {
   cavityWidth_mm: 106,
   outerLeafThickness_mm: 100
 });
-assert(shortGapTie.outerTie === "EDC25-100" && Math.abs(shortGapTie.outerEmbedment_mm - 74.23) < 1e-6, "EDC25-100 is used at the smallest gap the rules allow");
+// At that gap the U tie reaches, and it is checked before the EDC sizes.
+assert(shortGapTie.outerTie === "EDC25-U tie" && Math.abs(shortGapTie.outerEmbedment_mm - 50.23) < 1e-6, "the U tie is used at the smallest gap the rules allow");
 
 // One millimetre tighter and the post no longer fits.
 const tooTight = W.outerTieSelectionEngine.calculateWallAndTie(up85, {
@@ -270,28 +271,31 @@ assert(true, "the final design value is rounded down to 2 dp, never up");
     innerLeafThickness_mm: 100, cavityWidth_mm: cavity, outerLeafThickness_mm: outer
   });
 
-  // The U tie projects 84 - 18.77 = 65.23 mm, and reaching the outer leaf
-  // needs gap + 50, so it reaches only where the gap is 15.23 mm or less.
-  // With the minimum gap at 15 mm that leaves a narrow band, right at the
-  // tightest cavity the rules allow.
+  // The U tie is checked before the EDC sizes. It projects
+  // 84 - 18.77 = 65.23 mm and reaching the outer leaf needs gap + 50, so it
+  // is taken wherever the gap is 15.23 mm or less - the tightest band the
+  // 15 mm minimum allows.
   //
   // UP 85x60x4 sits 6 mm clear, so a 106 mm cavity leaves exactly 15 mm.
-  // EDC25-100 would drive 74.23 mm into a 70 mm leaf, so the U tie is used.
   const tight = run("UP 85x60x4", 106, 70);
   assert(tight.suitable && tight.outerTie === "EDC25-U tie",
-    "a tight cavity with a thin outer leaf uses the U tie on the outer leaf");
+    "the U tie is taken where it reaches");
   assert(Math.abs(tight.outerEmbedment_mm - 50.23) < 1e-9,
     "the U tie embeds 50.23 mm, inside the 70 mm leaf");
 
-  // One millimetre wider and the U tie no longer reaches; the EDC that does
-  // reach would burst through the thin leaf, so nothing suits.
-  const justPast = run("UP 85x60x4", 107, 70);
-  assert(!justPast.suitable, "past 15.23 mm of gap the U tie cannot reach the outer leaf");
-
-  // Same wall, ordinary outer leaf: the stronger EDC is preferred.
+  // Same gap, ordinary outer leaf: still the U tie, because it is checked
+  // first and it reaches. EDC25-100 would have embedded 74.23 mm.
   const roomy = run("UP 85x60x4", 106, 100);
-  assert(roomy.suitable && roomy.outerTie === "EDC25-100",
-    "an EDC tie is preferred whenever one fits");
+  assert(roomy.suitable && roomy.outerTie === "EDC25-U tie",
+    "the U tie is taken first even where an EDC would also fit");
+
+  // One millimetre wider and the U tie no longer reaches, so the EDC takes
+  // over - into a 100 mm leaf it fits, into a 70 mm leaf nothing suits.
+  const justPast = run("UP 85x60x4", 107, 100);
+  assert(justPast.suitable && justPast.outerTie === "EDC25-100",
+    "past 15.23 mm of gap the EDC takes over");
+  assert(!run("UP 85x60x4", 107, 70).suitable,
+    "and in a thin leaf past that gap nothing suits");
 
   // Ordinary walls are untouched.
   const normal = run("UP 90x60x6", 150, 100);

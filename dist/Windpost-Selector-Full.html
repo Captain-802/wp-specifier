@@ -5694,15 +5694,19 @@ details.design-data-step > summary.design-data-summary:hover h3 { color: #0f766e
       .sort((a, b) => a.actual_mm - b.actual_mm);
   }
 
-  // Candidates for the OUTER leaf. The EDC sizes are the standard product; the
-  // U tie is also carried because it is shorter than the shortest EDC, so in a
-  // tight cavity it can reach without driving too far into the outer leaf.
-  // EDC is preferred wherever one fits, because it is the stronger tie.
+  // Candidates for the OUTER leaf. The EDC25-U tie is checked FIRST (owner,
+  // 22 Oct 2026): it is an EDC25 product like the rest, and being shorter than
+  // the shortest EDC it reaches in a tight cavity without driving as far into
+  // the outer leaf. The EDC sizes follow, shortest first.
+  //
+  // Where the U tie reaches, a U post keeps the same level capacity either way
+  // (its inner tie is the U tie, and the weaker of the two governs), while an
+  // L or DU post gives up the EDC's higher figure for it.
   function outerCandidates(W) {
-    const edc = tieList().map((t) => ({ ...t, preference: 0 }));
+    const edc = tieList().map((t) => ({ ...t, preference: 1 }));
     const uLen = Number(W.uTieActualLength_mm);
     if (!Number.isFinite(uLen) || uLen <= 0) return edc;
-    return edc.concat([{ name: uTieName(), nominal_mm: null, actual_mm: uLen, preference: 1 }]);
+    return [{ name: uTieName(), nominal_mm: null, actual_mm: uLen, preference: 0 }].concat(edc);
   }
 
   const WALL_DEFAULTS = Object.freeze({
@@ -5877,7 +5881,7 @@ details.design-data-step > summary.design-data-summary:hover h3 { color: #0f766e
     const selectedTie = pick(fitting) || pick(reaching);
 
     if (!selectedTie) {
-      const edcOnly = TIES.filter((t) => t.preference === 0);
+      const edcOnly = TIES.filter((t) => t.preference === 1);
       const longestTie = edcOnly[edcOnly.length - 1];
       return invalidResult(
         `The required outer tie exceeds ${longestTie ? longestTie.name : "the longest available tie"}.`,
@@ -8010,7 +8014,7 @@ details.design-data-step > summary.design-data-summary:hover h3 { color: #0f766e
         ${rows.filter(t => t.kind === "both").map(line).join("")}
         <tr class="dd-group"><td colspan="9">Inner-leaf ties</td></tr>
         ${rows.filter(t => t.kind === "inner").map(line).join("")}</tbody></table></div>
-        <p class="dd-note">Outer tie sizes can be added, removed or re-measured; the selector picks the shortest tie whose actual length reaches the outer leaf, so <strong>actual length</strong> drives selection. The EDC25-U tie ties a U or DU post back to the inner leaf and, where the cavity is too tight for the shortest EDC, serves the outer leaf as well; its length is the design constant, so editing it here or there is the same figure. A tie level is only as strong as its weaker tie: level capacity = min(inner tie, outer tie). A DU level carries two inner and two outer ties and adds them: 2 &times; outer + 2 &times; inner. Catalogue: U 1.713 kN (the U tie governs), L / I 2.250 kN, DU 7.926 kN per level.</p>`;
+        <p class="dd-note">Outer tie sizes can be added, removed or re-measured; the selector picks the shortest tie whose actual length reaches the outer leaf, so <strong>actual length</strong> drives selection. The EDC25-U tie ties a U or DU post back to the inner leaf and is also the <strong>first candidate for the outer leaf</strong>: being the shortest EDC25 product it is the one that reaches in a tight cavity, and the EDC sizes follow. Its length is the design constant, so editing it here or there is the same figure. On an L or DU post it carries less than an EDC, so a wall tight enough to take it has a lower level capacity. A tie level is only as strong as its weaker tie: level capacity = min(inner tie, outer tie). A DU level carries two inner and two outer ties and adds them: 2 &times; outer + 2 &times; inner. Catalogue: U 1.713 kN (the U tie governs), L / I 2.250 kN, DU 7.926 kN per level.</p>`;
     }
 
     function designPanel() {

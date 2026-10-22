@@ -54,15 +54,19 @@
       .sort((a, b) => a.actual_mm - b.actual_mm);
   }
 
-  // Candidates for the OUTER leaf. The EDC sizes are the standard product; the
-  // U tie is also carried because it is shorter than the shortest EDC, so in a
-  // tight cavity it can reach without driving too far into the outer leaf.
-  // EDC is preferred wherever one fits, because it is the stronger tie.
+  // Candidates for the OUTER leaf. The EDC25-U tie is checked FIRST (owner,
+  // 22 Oct 2026): it is an EDC25 product like the rest, and being shorter than
+  // the shortest EDC it reaches in a tight cavity without driving as far into
+  // the outer leaf. The EDC sizes follow, shortest first.
+  //
+  // Where the U tie reaches, a U post keeps the same level capacity either way
+  // (its inner tie is the U tie, and the weaker of the two governs), while an
+  // L or DU post gives up the EDC's higher figure for it.
   function outerCandidates(W) {
-    const edc = tieList().map((t) => ({ ...t, preference: 0 }));
+    const edc = tieList().map((t) => ({ ...t, preference: 1 }));
     const uLen = Number(W.uTieActualLength_mm);
     if (!Number.isFinite(uLen) || uLen <= 0) return edc;
-    return edc.concat([{ name: uTieName(), nominal_mm: null, actual_mm: uLen, preference: 1 }]);
+    return [{ name: uTieName(), nominal_mm: null, actual_mm: uLen, preference: 0 }].concat(edc);
   }
 
   const WALL_DEFAULTS = Object.freeze({
@@ -237,7 +241,7 @@
     const selectedTie = pick(fitting) || pick(reaching);
 
     if (!selectedTie) {
-      const edcOnly = TIES.filter((t) => t.preference === 0);
+      const edcOnly = TIES.filter((t) => t.preference === 1);
       const longestTie = edcOnly[edcOnly.length - 1];
       return invalidResult(
         `The required outer tie exceeds ${longestTie ? longestTie.name : "the longest available tie"}.`,
