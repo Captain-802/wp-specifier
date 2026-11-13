@@ -332,7 +332,19 @@ button.app-tab:focus-visible { outline: 2px solid #83d6cf; outline-offset: 2px; 
 
 @media print {
   /* Professional A4 portrait calculation report. */
-  @page { size: A4 portrait; margin: 16mm 15mm; }
+  /* Declaring the margin boxes stops Chrome and Edge printing their own
+     header and footer there (date, page title and the page's web address).
+     The report carries its own date; the page number is put back here. */
+  @page {
+    size: A4 portrait;
+    margin: 16mm 15mm;
+    @top-left { content: ""; }
+    @top-center { content: ""; }
+    @top-right { content: ""; }
+    @bottom-left { content: ""; }
+    @bottom-center { content: ""; }
+    @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 8pt Arial, sans-serif; color: #5b636c; }
+  }
   html, body { background: #fff !important; }
   .top-rule, .site-header, .intro, .app-grid, .site-footer, .no-print { display: none !important; }
   .shell, .detailed-section { width: 100% !important; max-width: none !important; margin: 0 !important; padding: 0 !important; }
