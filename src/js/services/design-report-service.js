@@ -72,7 +72,6 @@
           ${supplyTable(c)}
           <div class="calculation-grid compact">
             <div class="calc-line"><span>Post weight = blank &times; t &times; L &times; &rho;</span><strong>${format(c.post.blankWidth_mm, 2)} &times; L &times; ${format(c.post.kgPerMetre, 3)} kg/m &rarr; ${format(c.post.weight_kg, 3)} kg</strong></div>
-            <div class="calc-line"><span>${format(c.postsCount, 0)} similar post${c.postsCount === 1 ? "" : "s"}, ${format(c.deliveries, 0)} deliver${c.deliveries === 1 ? "y" : "ies"}</span><strong>${format(c.post.weight_kg * c.postsCount, 3)} kg</strong></div>
           </div>
         </section>`;
   }
@@ -98,8 +97,8 @@
     const equations = equationSet(inputs);
     const isParapet = inputs.supportCondition === "cantilever";
     const tieEquation = isParapet
-      ? `N<sub>ties</sub> = floor[(L − c<sub>top</sub>)/s]`
-      : `N<sub>ties</sub> = floor[(L − s₁)/s]`;
+      ? `N<sub>levels</sub> = floor[(L − c<sub>top</sub>)/s]`
+      : `N<sub>levels</sub> = floor[(L − s₁)/s]`;
     const tieSubstitution = isParapet
       ? `floor[(${format(inputs.length_mm, 0)} − ${format(windpost.config.PARAPET_TOP_TIE_CLEARANCE_MM, 0)})/${format(designDefaults.standardTieSpacing, 0)}] = ${format(calculation.numberOfTies, 0)}`
       : `floor[(${format(inputs.length_mm, 0)} − ${format(designDefaults.firstTieSpacing, 0)})/${format(designDefaults.standardTieSpacing, 0)}] = ${format(calculation.numberOfTies, 0)}`;
@@ -127,7 +126,6 @@
           <div>
             <p class="report-kicker">Windpost selection calculation</p>
             <h2>${escapeHtml(section.name)} at ${format(inputs.length_mm, 0)} mm</h2>
-            <p>Automatic calculation using the existing windpost design engines and locked design assumptions.</p>
           </div>
           <div>
             <div class="report-status">${resultStatus}</div>
@@ -152,7 +150,7 @@
             <tr><td>I<sub>xx</sub></td><td>${format(properties.ixx_mm4, 2)} mm⁴</td><td>Z<sub>xx</sub></td><td>${format(properties.zxx_mm3, 2)} mm³</td></tr>
             <tr><td>Allowable stress, f<sub>y</sub></td><td>${format(designDefaults.fy)} N/mm²</td><td>Initial E</td><td>${format(designDefaults.e, 0)} kN/mm²</td></tr>
             <tr><td>Secant proof strength</td><td>${format(designDefaults.secantFy)} N/mm²</td><td>Ramberg–Osgood n</td><td>${format(designDefaults.secantN, 0)}</td></tr>
-            <tr><td>Tie strength</td><td>${format((calculation.tieStrength ?? windpost.config.DEFAULT_TIE_STRENGTH_KN[section.type]), 3)} kN/tie</td><td>Tie spacing</td><td>${format(designDefaults.standardTieSpacing, 0)} mm c/c</td></tr>
+            <tr><td>Tie capacity per level</td><td>${format((calculation.tieStrength ?? windpost.config.DEFAULT_TIE_STRENGTH_KN[section.type]), 3)} kN/level</td><td>Tie spacing</td><td>${format(designDefaults.standardTieSpacing, 0)} mm c/c</td></tr>
           </table>
         </section>
 
@@ -185,7 +183,7 @@
             <div class="calc-line"><span>E<sub>mb</sub> = L<sub>actual</sub> − 18.77 − g</span><strong>${format(wall.actualTieLength_mm, 0)} − 18.77 − ${format(wall.outerGap_mm, 1)} = ${format(wall.outerEmbedment_mm, 1)} mm</strong></div>`}
             ${innerTieCalculation}
             <div class="calc-line"><span>${tieEquation}</span><strong>${tieSubstitution}</strong></div>
-            <div class="calc-line"><span>Ultimate tie capacity</span><strong>${format(calculation.numberOfTies, 0)} × ${format((calculation.tieStrength ?? windpost.config.DEFAULT_TIE_STRENGTH_KN[section.type]), 3)} = ${format(calculation.totalTiesCapacity, 3)} kN</strong></div>
+            <div class="calc-line"><span>Ultimate tie capacity = N<sub>levels</sub> × capacity per level</span><strong>${format(calculation.numberOfTies, 0)} × ${format((calculation.tieStrength ?? windpost.config.DEFAULT_TIE_STRENGTH_KN[section.type]), 3)} = ${format(calculation.totalTiesCapacity, 3)} kN</strong></div>
           </div>
         </section>
 

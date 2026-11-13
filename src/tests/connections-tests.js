@@ -168,9 +168,10 @@ console.log(`\n${passed} checks passed.`);
     W.automaticSelectionEngine.runDesign({ type: "U", supportCondition: "simplySupported", loadType: "udl", mode: "manual", length_mm: 2670, selectedSectionName: "UP 90x60x4", wall: { innerLeafThickness_mm: 100, cavityWidth_mm: 150, outerLeafThickness_mm: 100 } }),
     seven
   );
-  // The bolt quantities are switched off with the rest of the fixings, so the
-  // record carries the post count and the weight for all seven posts.
-  assert(report.includes("7 similar posts"), "the record names the number of posts");
+  // The supply table carries the totals for all seven posts; the separate
+  // "N similar posts, N deliveries" line is not printed.
+  assert(report.includes(">7 posts<"), "the supply table is headed for all the posts");
   assert(report.includes(format3(one.post.weight_kg * 7)), "the record prints the weight of all the posts");
+  assert(!/similar post|deliver(y|ies)/i.test(report), "no similar-posts or deliveries line");
   console.log("PASS supply: bolts, ties and weights scale with the number of similar posts");
 }

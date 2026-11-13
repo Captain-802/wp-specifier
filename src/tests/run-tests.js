@@ -421,6 +421,20 @@ assert(
   !selectorPage.includes("this.connectionsBlockHtml(connections)"),
   "the connections and bolts block is not rendered"
 );
+(function reportWording() {
+  const R = context.window.Windpost;
+  const d = R.automaticSelectionEngine.runDesign({ type: "DU", supportCondition: "simplySupported", loadType: "udl",
+    mode: "automatic", length_mm: 4000, requiredLoad_kN: 6,
+    wall: { innerLeafThickness_mm: 100, cavityWidth_mm: 150, outerLeafThickness_mm: 100 }, connections: {} });
+  // This harness does not load the connection engine, so section 5 (weights)
+  // is covered by connections-tests; here the header and tie wording.
+  const html = R.designReportService.buildReport(d);
+  assert(!html.includes("locked design assumptions"), "the report header carries no engine boilerplate");
+  assert(html.includes("Tie capacity per level") && html.includes("7.926 kN/level"),
+    "a DU's 2 EDC + 2 U ties are reported as one capacity per level");
+  assert(!html.includes("kN/tie"), "nothing is labelled per tie");
+  assert(html.includes("N<sub>levels</sub>"), "the multiplier is the number of tie levels");
+})();
 assert(
   transferEnginePage.includes("sectionName: section.name") &&
   transferEnginePage.includes("length_mm: finite(inputs.length_mm)") &&

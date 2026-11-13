@@ -249,7 +249,8 @@ check("the report lists the edits and the pages carry the editor", () => {
   const connections = W.connectionSelectionEngine.select({ type: "U", supportCondition: "simplySupported", loadType: "udl", length_mm: 2670, section: design.selected.section, finalCapacity_kN: design.selected.finalCapacity_kN, numberOfTies: design.selected.calculation.numberOfTies, headFixing: "U POST TO TIMBER JOIST BB", baseFixing: "U POST TO TIMBER JOIST TB" });
   const report = W.designReportService.buildReport(design, connections);
   assert(report.includes("Design data edited for this calculation") && report.includes("EDC25-U tie capacity 1.713 -&gt; 1.200 kN"), "edit line printed (HTML-escaped arrow)");
-  assert(report.includes("1.200 kN/tie"), "the tie strength used is printed, not the catalogue one");
+  assert(report.includes("1.200 kN/level"), "the level capacity used is printed, not the catalogue one");
+  assert(!report.includes("kN/tie"), "the figure is labelled per level, not per tie");
   D.reset();
   assert(!W.designReportService.buildReport(design, connections).includes("Design data edited"));
   const index = fs.readFileSync(path.join(root, "index.html"), "utf8");
