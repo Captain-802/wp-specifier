@@ -421,6 +421,19 @@ assert(
   !selectorPage.includes("this.connectionsBlockHtml(connections)"),
   "the connections and bolts block is not rendered"
 );
+(function printedPdfCarriesNoBrowserHeaderOrFooter() {
+  // Chrome and Edge print the date, page title and the page's web address in
+  // the page margins unless every margin box is declared; the page number is
+  // the report's own.
+  const css = fs.readFileSync(path.join(root, "css/app.css"), "utf8");
+  // The @page block runs from "@page {" to the first line that is only "}".
+  const page = (css.match(/@page\s*\{[\s\S]*?\n\s*\}/) || [""])[0];
+  ["top-left", "top-center", "top-right", "bottom-left", "bottom-center", "bottom-right"].forEach((box) =>
+    assert(new RegExp("@" + box + "\\s*\\{").test(page), `the @page rule declares @${box}`));
+  assert(/@bottom-right\s*\{\s*content:\s*"Page " counter\(page\) " of " counter\(pages\)/.test(page),
+    "the printed report numbers its own pages");
+  assert(/margin:\s*16mm 15mm/.test(page), "the A4 margins are kept on every page");
+})();
 (function reportWording() {
   const R = context.window.Windpost;
   const d = R.automaticSelectionEngine.runDesign({ type: "DU", supportCondition: "simplySupported", loadType: "udl",
